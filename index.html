@@ -41,14 +41,14 @@
 
       <div class="grid cols-4" style="margin-top:16px">
         <div class="card kpi"><div class="label">Nota combinada</div><div class="value">3 fuentes</div><div class="hint">SofaScore + FotMob + StatMuse</div></div>
-        <div class="card kpi"><div class="label">Puntos por minuto</div><div class="value">Sin corte</div><div class="hint">Comparamos el rendimiento según los minutos jugados</div></div>
+        <div class="card kpi"><div class="label">Puntos por minuto</div><div class="value">Sin corte</div><div class="hint">No usamos “partido válido” ni mínimo de 45'</div></div>
         <div class="card kpi"><div class="label">Aporte</div><div class="value">Nota × min</div><div class="hint">Fórmula: nota × minutos / 90</div></div>
         <div class="card kpi"><div class="label">Gestión del banquillo</div><div class="value">7 + 5</div><div class="hint">7 suplentes de campo · hasta 5 cambios</div></div>
       </div>
 
       <div class="grid cols-2" style="margin-top:16px">
         <div class="card">
-          <div class="section-head" style="margin-top:0"><div><h2>Ranking actualizado</h2><p>Último ranking consolidado que venimos construyendo.</p></div></div>
+          <div class="section-head" style="margin-top:0"><div><h2>Ranking de eficiencia actualizado</h2><p>Ordenado por minutos necesarios por punto: cuanto menor, mejor.</p></div></div>
           <div class="ranking" id="ratingBars"></div>
         </div>
         <div class="card quick-notes">
@@ -65,12 +65,12 @@
     </section>
 
     <section class="section" id="estadisticas">
-      <div class="section-head"><div><h2>Puntuaciones y eficiencia</h2><p>Separamos datos consolidados de datos parciales para no inventar huecos.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Media 4PJ</th><th>Min. conocidos</th><th>Aporte conocido</th><th>Min / punto</th><th>Estado del dato</th></tr></thead><tbody id="statsBody"></tbody></table></div>
+      <div class="section-head"><div><h2>Puntuaciones y eficiencia</h2><p>Una única base actual: tres fuentes, todos los minutos y sin corte mínimo.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Media actual</th><th>Minutos</th><th>Aporte</th><th>Min / punto</th><th>Estado</th></tr></thead><tbody id="statsBody"></tbody></table></div>
       <div class="grid cols-3" style="margin-top:16px">
-        <div class="card"><div class="eyebrow">Valoración</div><h3>Media de 3 páginas</h3><p class="muted">La nota de cada jugador se calcula con SofaScore, FotMob y StatMuse. Cuando existen las tres valoraciones, cada una pesa un tercio de la nota combinada.</p></div>
-        <div class="card"><div class="eyebrow">Comparación</div><h3>Eficiencia por tiempo</h3><p class="muted">La comparación se apoya directamente en la nota, los minutos, el aporte y la relación entre puntos y tiempo jugado, de modo que también cuentan las apariciones cortas.</p></div>
-        <div class="card"><div class="eyebrow">Eficiencia</div><h3>Aporte por tiempo</h3><p class="muted">Aporte = nota × minutos / 90. Para comparar eficiencia usamos también los minutos necesarios por cada punto de aporte.</p></div>
+        <div class="card"><div class="eyebrow">Valoración</div><h3>Media de 3 páginas</h3><p class="muted">La nota combinada usa SofaScore, FotMob y StatMuse con el mismo peso cuando están disponibles.</p></div>
+        <div class="card"><div class="eyebrow">Comparación</div><h3>Sin “partido válido”</h3><p class="muted">No descartamos automáticamente apariciones cortas por no llegar a 45 minutos. El tiempo jugado entra en el cálculo de eficiencia.</p></div>
+        <div class="card"><div class="eyebrow">Eficiencia</div><h3>Aporte por tiempo</h3><p class="muted">Aporte = nota × minutos / 90. El ranking se ordena por minutos por punto: cuanto menos tiempo necesita un jugador para generar un punto de aporte, mejor.</p></div>
       </div>
     </section>
 
