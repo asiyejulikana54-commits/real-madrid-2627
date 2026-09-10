@@ -70,3 +70,9 @@ loadCommunity();
 if(!document.querySelector('script[data-matchday]')){
   const script=document.createElement('script');script.src='matchday.js?v=1';script.dataset.matchday='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-playerhub]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='playerhub.css?v=1';link.dataset.playerhub='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-playerhub]')){
+  const script=document.createElement('script');script.src='playerhub.js?v=1';script.dataset.playerhub='1';document.body.appendChild(script);
+}
