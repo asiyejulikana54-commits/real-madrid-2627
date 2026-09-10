@@ -7,31 +7,31 @@ const sections=[
 ['once','◆','Once','Constructor de once','Crea y guarda nuestras opciones tácticas.']];
 
 const players=[
-{name:'Courtois',pos:'POR',role:'Portero · titular de referencia',tags:['Fijo']},
-{name:'Lunin',pos:'POR',role:'Portero · segundo portero',tags:['Plantilla']},
-{name:'Dumfries',pos:'DEF',role:'LD · lateral derecho',tags:['Titular base','Debate Trent']},
-{name:'Trent Alexander-Arnold',short:'Trent',pos:'DEF',role:'LD · lateral / opción interior',tags:['Debate Dumfries','Construcción']},
-{name:'Konaté',pos:'DEF',role:'DFC · central',tags:['Titular base','Debate centrales']},
-{name:'Rüdiger',pos:'DEF',role:'DFC · central',tags:['Debate centrales']},
-{name:'Huijsen',pos:'DEF',role:'DFC · central',tags:['Titular base','Salida']},
-{name:'Raúl Asencio',short:'Asencio',pos:'DEF',role:'DFC · central',tags:['Plantilla']},
-{name:'Cucurella',pos:'DEF',role:'LI · lateral izquierdo',tags:['Titular base','Debate Carreras']},
-{name:'Álvaro Carreras',short:'Carreras',pos:'DEF',role:'LI · lateral izquierdo',tags:['Eficiencia']},
-{name:'Ferland Mendy',short:'Mendy',pos:'DEF',role:'LI · lateral izquierdo',tags:['Plantilla']},
-{name:'Valverde',pos:'MED',role:'MC · pieza estructural',tags:['Titular base','Posible descanso']},
-{name:'Bernardo Silva',short:'Bernardo',pos:'MED',role:'MC/MP · creatividad y control',tags:['Titular base']},
-{name:'Camavinga',pos:'MED',role:'MC · equilibrio y conducción',tags:['Rotación fuerte']},
-{name:'Tchouaméni',pos:'MED',role:'MCD/MC · pivote',tags:['Plantilla']},
-{name:'Bellingham',pos:'MED',role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso']},
-{name:'Arda Güler',short:'Güler',pos:'MED',role:'MP/ED · creador',tags:['Fijo actual','MVP Betis']},
-{name:'Brahim Díaz',short:'Brahim',pos:'MED',role:'MP/ED · alternativa ofensiva',tags:['Debate banda']},
-{name:'Thiago Pitarch',short:'Thiago',pos:'MED',role:'MC · Castilla / plantilla ampliada',tags:['Cantera']},
-{name:'Mbappé',pos:'ATA',role:'DC · referencia ofensiva',tags:['Fijo']},
-{name:'Vini Jr.',short:'Vini',pos:'ATA',role:'EI · desequilibrio',tags:['Debate banda']},
-{name:'Rodrygo',pos:'ATA',role:'EI/ED · extremo',tags:['Plantilla']},
-{name:'Diomande',short:'Diomandé',pos:'ATA',role:'ED · amplitud y profundidad',tags:['Debate banda']},
-{name:'Endrick',pos:'ATA',role:'DC · delantero',tags:['Plantilla']},
-{name:'Carlos Espí',short:'Espí',pos:'ATA',role:'DC · delantero',tags:['Eficiencia']}
+{name:'Courtois',pos:'POR',eligible:['POR'],role:'Portero · titular de referencia',tags:['Fijo']},
+{name:'Lunin',pos:'POR',eligible:['POR'],role:'Portero · segundo portero',tags:['Plantilla']},
+{name:'Dumfries',pos:'DEF',eligible:['LD','ED'],role:'LD · lateral / carrilero derecho',tags:['Titular base','Debate Trent']},
+{name:'Trent Alexander-Arnold',short:'Trent',pos:'DEF',eligible:['LD','MC'],role:'LD · lateral / opción interior',tags:['Debate Dumfries','Construcción']},
+{name:'Konaté',pos:'DEF',eligible:['DFC'],role:'DFC · central',tags:['Titular base','Debate centrales']},
+{name:'Rüdiger',pos:'DEF',eligible:['DFC'],role:'DFC · central',tags:['Debate centrales']},
+{name:'Huijsen',pos:'DEF',eligible:['DFC'],role:'DFC · central',tags:['Titular base','Salida']},
+{name:'Raúl Asencio',short:'Asencio',pos:'DEF',eligible:['DFC'],role:'DFC · central',tags:['Plantilla']},
+{name:'Cucurella',pos:'DEF',eligible:['LI'],role:'LI · lateral izquierdo',tags:['Titular base','Debate Carreras']},
+{name:'Álvaro Carreras',short:'Carreras',pos:'DEF',eligible:['LI'],role:'LI · lateral izquierdo',tags:['Eficiencia']},
+{name:'Ferland Mendy',short:'Mendy',pos:'DEF',eligible:['LI'],role:'LI · lateral izquierdo',tags:['Plantilla']},
+{name:'Valverde',pos:'MED',eligible:['MC','LD','ED'],role:'MC · también LD/ED',tags:['Titular base','Posible descanso']},
+{name:'Bernardo Silva',short:'Bernardo',pos:'MED',eligible:['MC','MP','ED'],role:'MC/MP/ED · creatividad y control',tags:['Titular base']},
+{name:'Camavinga',pos:'MED',eligible:['MC','LI'],role:'MC · también opción en LI',tags:['Rotación fuerte']},
+{name:'Tchouaméni',pos:'MED',eligible:['MC','DFC'],role:'MCD/MC · también central',tags:['Plantilla']},
+{name:'Bellingham',pos:'MED',eligible:['MP','MC'],role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso']},
+{name:'Arda Güler',short:'Güler',pos:'MED',eligible:['MP','ED','MC'],role:'MP/ED/MC · creador',tags:['Fijo actual','MVP Betis']},
+{name:'Brahim Díaz',short:'Brahim',pos:'MED',eligible:['MP','ED','EI'],role:'MP/ED/EI · alternativa ofensiva',tags:['Debate banda']},
+{name:'Thiago Pitarch',short:'Thiago',pos:'MED',eligible:['MC'],role:'MC · Castilla / plantilla ampliada',tags:['Cantera']},
+{name:'Mbappé',pos:'ATA',eligible:['DC','EI'],role:'DC/EI · referencia ofensiva',tags:['Fijo']},
+{name:'Vini Jr.',short:'Vini',pos:'ATA',eligible:['EI','DC'],role:'EI · también opción como segundo punta',tags:['Debate banda']},
+{name:'Rodrygo',pos:'ATA',eligible:['EI','ED','DC'],role:'EI/ED/DC · atacante polivalente',tags:['Plantilla']},
+{name:'Diomande',short:'Diomandé',pos:'ATA',eligible:['ED','EI'],role:'ED/EI · amplitud y profundidad',tags:['Debate banda']},
+{name:'Endrick',pos:'ATA',eligible:['DC'],role:'DC · delantero',tags:['Plantilla']},
+{name:'Carlos Espí',short:'Espí',pos:'ATA',eligible:['DC'],role:'DC · delantero',tags:['Eficiencia']}
 ];
 
 const efficiencyRanking=[
@@ -69,21 +69,21 @@ const matches=[
 
 const baseXI={gk:'Courtois',lb:'Cucurella',lcb:'Huijsen',rcb:'Konaté',rb:'Dumfries',dm1:'Valverde',dm2:'Bernardo Silva',am:'Bellingham',lw:'Vini Jr.',rw:'Arda Güler',st:'Mbappé'};
 const rayoXI={gk:'Courtois',lb:'Álvaro Carreras',lcb:'Rüdiger',rcb:'Huijsen',rb:'Trent Alexander-Arnold',dm1:'Valverde',dm2:'Arda Güler',am:'Bellingham',lw:'Vini Jr.',rw:'Diomande',st:'Mbappé'};
-const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'DEF'],['lcb','DFC',38,75,'DEF'],['rcb','DFC',62,75,'DEF'],['rb','LD',86,73,'DEF'],['dm1','MC',36,55,'MED'],['dm2','MC',64,55,'MED'],['am','MP',50,37,'MED'],['lw','EI',20,25,'ATA'],['rw','ED',80,25,'ATA'],['st','DC',50,12,'ATA']];
+const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'LI'],['lcb','DFC',38,75,'DFC'],['rcb','DFC',62,75,'DFC'],['rb','LD',86,73,'LD'],['dm1','MC',36,55,'MC'],['dm2','MC',64,55,'MC'],['am','MP',50,37,'MP'],['lw','EI',20,25,'EI'],['rw','ED',80,25,'ED'],['st','DC',50,12,'DC']];
 
 function navHtml(mobile=false){return sections.map((s,i)=>`<button class="${i===0?'active':''}" data-section="${s[0]}" onclick="showSection('${s[0]}')">${mobile?'':`<span>${s[1]}</span>`}${s[2]}</button>`).join('')}
 document.getElementById('navDesktop').innerHTML=navHtml(false);document.getElementById('navMobile').innerHTML=navHtml(true);
 function showSection(id){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===id));const s=sections.find(x=>x[0]===id);document.getElementById('pageTitle').textContent=s[3];document.getElementById('pageSub').textContent=s[4];window.scrollTo({top:0,behavior:'smooth'})}
 function initials(n){return n.split(/[ .-]/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function tagClass(t){if(/Fijo|Titular|MVP/.test(t))return 'green';if(/Debate|Posible/.test(t))return 'gold';if(/Cantera|Construcción|Eficiencia/.test(t))return 'blue';return ''}
-function renderPlayers(){const q=document.getElementById('playerSearch').value.toLowerCase(),p=document.getElementById('positionFilter').value;const list=players.filter(x=>(p==='ALL'||x.pos===p)&&x.name.toLowerCase().includes(q));document.getElementById('playerCount').textContent=`${list.length} jugadores`;document.getElementById('playersGrid').innerHTML=list.map(x=>{const m=metricFor(x),r=currentRating(m);return `<article class="card player"><div class="pos">${x.pos}</div><h3>${x.name}</h3><div class="meta">${x.role}${r!==null?`<br>Media actual: <b>${r.toFixed(2)}</b><br>Minutos: <b>${m.minutes}</b> · Min/punto: <b>${m.minPerPoint.toFixed(2)}</b>`:'<br><span class="muted">Sin datos suficientes en el ranking actual</span>'}</div><div class="tags">${x.tags.map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></article>`}).join('')}
+function renderPlayers(){const q=document.getElementById('playerSearch').value.toLowerCase(),p=document.getElementById('positionFilter').value;const list=players.filter(x=>(p==='ALL'||x.pos===p)&&x.name.toLowerCase().includes(q));document.getElementById('playerCount').textContent=`${list.length} jugadores`;document.getElementById('playersGrid').innerHTML=list.map(x=>{const m=metricFor(x),r=currentRating(m);return `<article class="card player"><div class="pos">${x.pos}</div><h3>${x.name}</h3><div class="meta">${x.role}<br>Elegible en el once: <b>${x.eligible.join(' · ')}</b>${r!==null?`<br>Media actual: <b>${r.toFixed(2)}</b><br>Minutos: <b>${m.minutes}</b> · Min/punto: <b>${m.minPerPoint.toFixed(2)}</b>`:'<br><span class="muted">Sin datos suficientes en el ranking actual</span>'}</div><div class="tags">${x.tags.map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></article>`}).join('')}
 document.getElementById('playerSearch').addEventListener('input',renderPlayers);document.getElementById('positionFilter').addEventListener('change',renderPlayers);
 function renderBars(){const min=Math.min(...efficiencyRanking.map(x=>x.minPerPoint)),max=Math.max(...efficiencyRanking.map(x=>x.minPerPoint));document.getElementById('ratingBars').innerHTML=efficiencyRanking.map(m=>{const width=30+70*((max-m.minPerPoint)/(max-min));return `<div class="rank-row"><small>${m.short||m.name}</small><div class="bar"><i style="width:${width.toFixed(1)}%"></i></div><b>${m.minPerPoint.toFixed(2)}</b></div>`}).join('')}
 function renderStats(){document.getElementById('statsBody').innerHTML=players.map(x=>{const m=metricFor(x),r=currentRating(m);return `<tr><td><b>${x.name}</b></td><td>${x.pos}</td><td class="score">${r!==null?r.toFixed(2):'—'}</td><td>${m?m.minutes:'—'}</td><td>${m?m.points.toFixed(2):'—'}</td><td>${m?m.minPerPoint.toFixed(2):'—'}</td><td><span class="tag ${m?'blue':''}">${m?'Ranking actual':'Pendiente'}</span></td></tr>`}).join('')}
 function renderMatches(){document.getElementById('matchesList').innerHTML=matches.map((m,i)=>`<article class="card match-card"><div class="match-badge"><b>PARTIDO ${i+1}</b><small>${m.comp}</small></div><div><h3>Real Madrid · ${m.rival}</h3><p>${m.note}</p></div><div class="status">● ${m.state}</div></article>`).join('')}
 function compareOptions(){const opts=players.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');document.getElementById('compareA').innerHTML=opts;document.getElementById('compareB').innerHTML=opts;document.getElementById('compareA').value='Dumfries';document.getElementById('compareB').value='Trent Alexander-Arnold';document.getElementById('compareA').onchange=renderCompare;document.getElementById('compareB').onchange=renderCompare;renderCompare()}
 function renderCompare(){const a=players.find(p=>p.name===document.getElementById('compareA').value),b=players.find(p=>p.name===document.getElementById('compareB').value);const card=p=>{const m=metricFor(p),r=currentRating(m);return `<div class="card compare-card"><div class="avatar">${initials(p.short||p.name)}</div><h2>${p.name}</h2><div class="muted">${p.role}</div><div style="margin-top:14px"><div class="compare-stat"><span>Posición</span><b>${p.pos}</b></div><div class="compare-stat"><span>Media actual</span><b>${r!==null?r.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Minutos</span><b>${m?m.minutes:'—'}</b></div><div class="compare-stat"><span>Aporte</span><b>${m?m.points.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Min/punto</span><b>${m?m.minPerPoint.toFixed(2):'—'}</b></div></div></div>`};document.getElementById('compareView').innerHTML=card(a)+`<div class="vs">VS</div>`+card(b)}
-function pitchOptions(group){return `<option value="">—</option>`+players.filter(p=>group==='DEF'?p.pos==='DEF':group==='MED'?p.pos==='MED':group==='ATA'?p.pos==='ATA':p.pos==='POR').map(p=>`<option value="${p.name}">${p.short||p.name}</option>`).join('')}
+function pitchOptions(position){return `<option value="">—</option>`+players.filter(p=>p.eligible.includes(position)).map(p=>`<option value="${p.name}">${p.short||p.name}</option>`).join('')}
 function buildPitch(){document.getElementById('pitch').innerHTML=slots.map(s=>`<div class="slot" style="left:${s[2]}%;top:${s[3]}%"><label>${s[1]}</label><select id="slot_${s[0]}">${pitchOptions(s[4])}</select></div>`).join('');loadPreset('base',false)}
 function currentXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('slot_'+s[0]).value]))}
 function setXI(xi){slots.forEach(s=>document.getElementById('slot_'+s[0]).value=xi[s[0]]||'')}
@@ -94,7 +94,7 @@ function restoreLineup(id){const x=JSON.parse(localStorage.getItem('rm_lineups')
 function deleteLineup(id){const arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]').filter(x=>x.id!==id);localStorage.setItem('rm_lineups',JSON.stringify(arr));renderSaved();toast('Once eliminado')}
 function clearLineup(){setXI({});document.getElementById('lineupName').value='';document.getElementById('lineupComment').value=''}
 const notes=document.getElementById('notes');notes.value=localStorage.getItem('rm_notes')||'';let noteTimer;notes.addEventListener('input',()=>{document.getElementById('saveState').textContent='Guardando…';clearTimeout(noteTimer);noteTimer=setTimeout(()=>{localStorage.setItem('rm_notes',notes.value);document.getElementById('saveState').textContent='Guardado'},400)});
-function exportData(){const payload={version:'1.1',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',lineups:JSON.parse(localStorage.getItem('rm_lineups')||'[]')};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
+function exportData(){const payload={version:'1.2',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',lineups:JSON.parse(localStorage.getItem('rm_lineups')||'[]')};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
 document.getElementById('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(typeof d.notes==='string'){localStorage.setItem('rm_notes',d.notes);notes.value=d.notes}if(Array.isArray(d.lineups))localStorage.setItem('rm_lineups',JSON.stringify(d.lineups));renderSaved();toast('Datos importados')}catch{toast('Archivo no válido')}e.target.value=''});
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 renderPlayers();renderBars();renderStats();renderMatches();compareOptions();buildPitch();renderSaved();
