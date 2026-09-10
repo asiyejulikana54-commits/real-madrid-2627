@@ -76,3 +76,9 @@ if(!document.querySelector('link[data-playerhub]')){
 if(!document.querySelector('script[data-playerhub]')){
   const script=document.createElement('script');script.src='playerhub.js?v=1';script.dataset.playerhub='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-mvp]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='mvp.css?v=1';link.dataset.mvp='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-mvp]')){
+  const script=document.createElement('script');script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
+}
