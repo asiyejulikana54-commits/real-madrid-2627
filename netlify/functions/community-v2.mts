@@ -22,7 +22,45 @@ function cleanAlias(value){return String(value||"").replace(/[\u0000-\u001f\u007
 function validParticipantId(value){return typeof value==="string" && /^[A-Za-z0-9_-]{16,80}$/.test(value)}
 function validateXI(xi){if(!xi||typeof xi!=="object")return "XI no válido";const values=[];for(const slot of SLOTS){const name=xi[slot];if(typeof name!=="string"||!ELIGIBLE[name]||!ELIGIBLE[name].includes(slot))return `Jugador no válido en ${slot}`;values.push(name)}if(new Set(values).size!==11)return "No se pueden repetir jugadores";return null}
 async function readPredictions(store,prefix){const {blobs}=await store.list({prefix});const rows=[];for(const b of blobs){const row=await store.get(b.key,{type:"json"});if(row)rows.push(row)}return rows}
-function summarize(predictions){const total=predictions.length,slotShares={},popularXI={};for(const slot of SLOTS){const counts={};for(const p of predictions){const name=p.xi?.[slot];if(name)counts[name]=(counts[name]||0)+1}const rows=Object.entries(counts).map(([name,count])=>({name,count,percentage:total?Math.round(count*1000/total)/10:0})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"es"));slotShares[slot]=rows;if(rows[0])popularXI[slot]=rows[0]}return {total,slotShares,popularXI}}
+function summarize(predictions){
+  const total=predictions.length,slotShares={},popularXI={};
+  for(const slot of SLOTS){
+    const counts={};
+    for(const p of predictions){const name=p.xi?.[slot];if(name)counts[name]=(counts[name]||0)+1}
+    slotShares[slot]=Object.entries(counts).map(([name,count])=>({name,count,percentage:total?Math.round(count*1000/total)/10:0})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"es"));
+  }
+  if(!total)return {total,slotShares,popularXI};
+
+  // El XI popular se calcula de forma global: un futbolista solo puede ocupar una posición.
+  // Maximizamos el total de votos recibidos por los 11 elegidos y, en caso de empate,
+  // favorecemos la posición más natural según el orden definido en ELIGIBLE.
+  const players=[...new Set(SLOTS.flatMap(slot=>(slotShares[slot]||[]).map(row=>row.name)))];
+  const playerBit=new Map(players.map((name,index)=>[name,1n<<BigInt(index)]));
+  const order=[...SLOTS].sort((a,b)=>(slotShares[a]?.length||0)-(slotShares[b]?.length||0)||a.localeCompare(b,"es"));
+  const memo=new Map();
+  const signature=picks=>SLOTS.map(slot=>picks[slot]?.name||"~").join("|");
+
+  function solve(index,usedMask){
+    if(index===order.length)return {score:0,preference:0,picks:{}};
+    const key=`${index}:${usedMask.toString()}`;
+    if(memo.has(key))return memo.get(key);
+    const slot=order[index];
+    let best=null;
+    for(const row of slotShares[slot]||[]){
+      const bit=playerBit.get(row.name);
+      if(bit===undefined||(usedMask&bit)!==0n)continue;
+      const rest=solve(index+1,usedMask|bit);if(!rest)continue;
+      const prefIndex=ELIGIBLE[row.name]?.indexOf(slot)??99;
+      const candidate={score:row.count+rest.score,preference:prefIndex+rest.preference,picks:{...rest.picks,[slot]:row}};
+      if(!best||candidate.score>best.score||(candidate.score===best.score&&candidate.preference<best.preference)||(candidate.score===best.score&&candidate.preference===best.preference&&signature(candidate.picks).localeCompare(signature(best.picks),"es")<0))best=candidate;
+    }
+    memo.set(key,best);return best;
+  }
+
+  const result=solve(0,0n);
+  if(result)for(const slot of SLOTS)if(result.picks[slot])popularXI[slot]=result.picks[slot];
+  return {total,slotShares,popularXI};
+}
 
 export default async (req) => {
   const match=MATCHES[0];
