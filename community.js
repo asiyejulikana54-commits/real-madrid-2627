@@ -1,15 +1,25 @@
 const communitySection=['comunidad','♟','Comunidad','La comunidad','XI más votado, porcentajes y ranking de aciertos.'];
 const predictionIndex=sections.findIndex(s=>s[0]==='prediccion');
-if(!sections.some(s=>s[0]==='comunidad'))sections.splice(predictionIndex+1,0,communitySection);
+if(!sections.some(s=>s[0]==='comunidad'))sections.splice(predictionIndex,0,communitySection);
 document.getElementById('navDesktop').innerHTML=navHtml(false);
 document.getElementById('navMobile').innerHTML=navHtml(true);
 
 const participantStorageKey='rm_community_participant_id';
 function getParticipantId(){let id=localStorage.getItem(participantStorageKey);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);localStorage.setItem(participantStorageKey,id)}return id}
-function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
+function escapeHtml(value){return String(value??'').replace(/[&<>'\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[ch]))}
 
 const baseShowSection=showSection;
 showSection=function(id){baseShowSection(id);if(id==='comunidad')loadCommunity()};
+
+const predictionActions=document.querySelector('#prediccion .prediction-actions');
+if(predictionActions&&!document.getElementById('goCommunityBtn')){
+  const goCommunityBtn=document.createElement('button');
+  goCommunityBtn.className='btn';
+  goCommunityBtn.id='goCommunityBtn';
+  goCommunityBtn.textContent='Ver comunidad';
+  goCommunityBtn.onclick=()=>showSection('comunidad');
+  predictionActions.appendChild(goCommunityBtn);
+}
 
 const baseSavePrediction=savePrediction;
 savePrediction=async function(){
@@ -23,7 +33,7 @@ savePrediction=async function(){
   try{
     const response=await fetch('/.netlify/functions/community-v2',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
     const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||`Error ${response.status}`);
-    toast(result.updated?'Predicción comunitaria actualizada':'Predicción publicada en la comunidad');communityCache=null;loadCommunity(true)
+    toast(result.updated?'Predicción comunitaria actualizada':'Predicción publicada en la comunidad');communityCache=null;await loadCommunity(true);setTimeout(()=>showSection('comunidad'),350)
   }catch(error){toast(`Guardada en tu móvil · ${error.message||'sin conexión con la comunidad'}`)}
   finally{btn.textContent='Publicar predicción';btn.disabled=predictionIsClosed()}
 };
