@@ -44,13 +44,13 @@ function summarize(predictions){
       globalCount:globalCounts[name]||0,
       globalPercentage:total?Math.round((globalCounts[name]||0)*1000/total)/10:0,
       multiPosition:(ELIGIBLE[name]?.length||0)>1
-    })).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"es"));
+    })).sort((a,b)=>b.count-a.count||b.globalCount-a.globalCount||a.name.localeCompare(b.name,"es"));
   }
   if(!total)return {total,slotShares,popularXI};
 
   // El XI popular se calcula de forma global: un futbolista solo puede ocupar una posición.
-  // Maximizamos el total de votos recibidos por los 11 elegidos y, en caso de empate,
-  // favorecemos la posición más natural según el orden definido en ELIGIBLE.
+  // Primero maximizamos los votos por posición. Si dos opciones empatan, gana la que suma
+  // más porcentaje global de sus jugadores; después usamos la posición más natural.
   const players=[...new Set(SLOTS.flatMap(slot=>(slotShares[slot]||[]).map(row=>row.name)))];
   const playerBit=new Map(players.map((name,index)=>[name,1n<<BigInt(index)]));
   const order=[...SLOTS].sort((a,b)=>(slotShares[a]?.length||0)-(slotShares[b]?.length||0)||a.localeCompare(b,"es"));
@@ -58,7 +58,7 @@ function summarize(predictions){
   const signature=picks=>SLOTS.map(slot=>picks[slot]?.name||"~").join("|");
 
   function solve(index,usedMask){
-    if(index===order.length)return {score:0,preference:0,picks:{}};
+    if(index===order.length)return {score:0,globalScore:0,preference:0,picks:{}};
     const key=`${index}:${usedMask.toString()}`;
     if(memo.has(key))return memo.get(key);
     const slot=order[index];
@@ -68,8 +68,14 @@ function summarize(predictions){
       if(bit===undefined||(usedMask&bit)!==0n)continue;
       const rest=solve(index+1,usedMask|bit);if(!rest)continue;
       const prefIndex=ELIGIBLE[row.name]?.indexOf(slot)??99;
-      const candidate={score:row.count+rest.score,preference:prefIndex+rest.preference,picks:{...rest.picks,[slot]:row}};
-      if(!best||candidate.score>best.score||(candidate.score===best.score&&candidate.preference<best.preference)||(candidate.score===best.score&&candidate.preference===best.preference&&signature(candidate.picks).localeCompare(signature(best.picks),"es")<0))best=candidate;
+      const candidate={score:row.count+rest.score,globalScore:(row.globalCount||0)+rest.globalScore,preference:prefIndex+rest.preference,picks:{...rest.picks,[slot]:row}};
+      if(
+        !best||
+        candidate.score>best.score||
+        (candidate.score===best.score&&candidate.globalScore>best.globalScore)||
+        (candidate.score===best.score&&candidate.globalScore===best.globalScore&&candidate.preference<best.preference)||
+        (candidate.score===best.score&&candidate.globalScore===best.globalScore&&candidate.preference===best.preference&&signature(candidate.picks).localeCompare(signature(best.picks),"es")<0)
+      )best=candidate;
     }
     memo.set(key,best);return best;
   }
