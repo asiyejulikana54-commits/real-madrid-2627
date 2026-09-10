@@ -24,10 +24,27 @@ function validateXI(xi){if(!xi||typeof xi!=="object")return "XI no válido";cons
 async function readPredictions(store,prefix){const {blobs}=await store.list({prefix});const rows=[];for(const b of blobs){const row=await store.get(b.key,{type:"json"});if(row)rows.push(row)}return rows}
 function summarize(predictions){
   const total=predictions.length,slotShares={},popularXI={};
+
+  // Porcentaje global: cuántos pronósticos incluyen al jugador en cualquier posición.
+  // Así, si dos usuarios eligen a Güler pero uno como MP y otro como MC,
+  // tendrá 50% en cada posición y 100% global.
+  const globalCounts={};
+  for(const p of predictions){
+    const uniquePlayers=new Set(Object.values(p.xi||{}).filter(Boolean));
+    for(const name of uniquePlayers)globalCounts[name]=(globalCounts[name]||0)+1;
+  }
+
   for(const slot of SLOTS){
     const counts={};
     for(const p of predictions){const name=p.xi?.[slot];if(name)counts[name]=(counts[name]||0)+1}
-    slotShares[slot]=Object.entries(counts).map(([name,count])=>({name,count,percentage:total?Math.round(count*1000/total)/10:0})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"es"));
+    slotShares[slot]=Object.entries(counts).map(([name,count])=>({
+      name,
+      count,
+      percentage:total?Math.round(count*1000/total)/10:0,
+      globalCount:globalCounts[name]||0,
+      globalPercentage:total?Math.round((globalCounts[name]||0)*1000/total)/10:0,
+      multiPosition:(ELIGIBLE[name]?.length||0)>1
+    })).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"es"));
   }
   if(!total)return {total,slotShares,popularXI};
 
