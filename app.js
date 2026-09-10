@@ -24,14 +24,33 @@ const players=[
 {name:'Tchouaméni',pos:'MED',role:'MCD/MC · pivote',tags:['Plantilla']},
 {name:'Bellingham',pos:'MED',role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso'],rating4:8.50},
 {name:'Arda Güler',short:'Güler',pos:'MED',role:'MP/ED · creador',tags:['Fijo actual','MVP Betis'],rating4:8.13},
-{name:'Brahim Díaz',short:'Brahim',pos:'MED',role:'MP/ED · alternativa ofensiva',tags:['Rotación fuerte']},
+{name:'Brahim Díaz',short:'Brahim',pos:'MED',role:'MP/ED · alternativa ofensiva',tags:['Debate banda']},
 {name:'Thiago Pitarch',short:'Thiago',pos:'MED',role:'MC · Castilla / plantilla ampliada',tags:['Cantera']},
 {name:'Mbappé',pos:'ATA',role:'DC · referencia ofensiva',tags:['Fijo'],rating4:7.50},
-{name:'Vini Jr.',short:'Vini',pos:'ATA',role:'EI · desequilibrio',tags:['Fijo'],rating4:6.75},
+{name:'Vini Jr.',short:'Vini',pos:'ATA',role:'EI · desequilibrio',tags:['Debate banda'],rating4:6.75},
 {name:'Rodrygo',pos:'ATA',role:'EI/ED · extremo',tags:['Plantilla']},
-{name:'Diomande',short:'Diomandé',pos:'ATA',role:'ED · amplitud y profundidad',tags:['Debate ataque']},
+{name:'Diomande',short:'Diomandé',pos:'ATA',role:'ED · amplitud y profundidad',tags:['Debate banda']},
 {name:'Endrick',pos:'ATA',role:'DC · delantero',tags:['Plantilla']},
 {name:'Carlos Espí',short:'Espí',pos:'ATA',role:'DC · delantero',tags:['Eficiencia'],minutes:22,contribution:1.713,minPerPoint:12.84}
+];
+
+const updatedRanking=[
+{name:'Bellingham',score:8.06},
+{name:'Mbappé',score:8.02},
+{name:'Arda Güler',short:'Güler',score:7.85},
+{name:'Vinícius Jr.',short:'Vini',score:7.55},
+{name:'Trent',score:7.52},
+{name:'Valverde',score:7.51},
+{name:'Brahim Díaz',short:'Brahim',score:7.50},
+{name:'Rüdiger',score:7.42},
+{name:'Huijsen',score:7.31},
+{name:'Cucurella',score:7.06},
+{name:'Konaté',score:7.02},
+{name:'Bernardo Silva',short:'Bernardo',score:7.00},
+{name:'Camavinga',score:6.90},
+{name:'Courtois',score:6.78},
+{name:'Álvaro Carreras',short:'Carreras',score:6.75},
+{name:'Dumfries',score:6.67}
 ];
 
 const matches=[
@@ -53,7 +72,7 @@ function initials(n){return n.split(/[ .-]/).filter(Boolean).slice(0,2).map(x=>x
 function tagClass(t){if(/Fijo|Titular|MVP/.test(t))return 'green';if(/Debate|Posible/.test(t))return 'gold';if(/Cantera|Construcción|Eficiencia/.test(t))return 'blue';return ''}
 function renderPlayers(){const q=document.getElementById('playerSearch').value.toLowerCase(),p=document.getElementById('positionFilter').value;const list=players.filter(x=>(p==='ALL'||x.pos===p)&&x.name.toLowerCase().includes(q));document.getElementById('playerCount').textContent=`${list.length} jugadores`;document.getElementById('playersGrid').innerHTML=list.map(x=>`<article class="card player"><div class="pos">${x.pos}</div><h3>${x.name}</h3><div class="meta">${x.role}${x.rating4?`<br>Media histórica 4PJ: <b>${x.rating4.toFixed(2)}</b>`:''}${x.minutes?`<br>Último dato puntual: <b>${x.minutes}'</b>`:''}</div><div class="tags">${x.tags.map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></article>`).join('')}
 document.getElementById('playerSearch').addEventListener('input',renderPlayers);document.getElementById('positionFilter').addEventListener('change',renderPlayers);
-function renderBars(){const data=players.filter(x=>x.rating4).sort((a,b)=>b.rating4-a.rating4);document.getElementById('ratingBars').innerHTML=data.map(x=>`<div class="rank-row"><small>${x.short||x.name}</small><div class="bar"><i style="width:${(x.rating4/10)*100}%"></i></div><b>${x.rating4.toFixed(2)}</b></div>`).join('')}
+function renderBars(){document.getElementById('ratingBars').innerHTML=updatedRanking.map(x=>`<div class="rank-row"><small>${x.short||x.name}</small><div class="bar"><i style="width:${(x.score/10)*100}%"></i></div><b>${x.score.toFixed(2)}</b></div>`).join('')}
 function renderStats(){document.getElementById('statsBody').innerHTML=players.map(x=>`<tr><td><b>${x.name}</b></td><td>${x.pos}</td><td class="score">${x.rating4?x.rating4.toFixed(2):'—'}</td><td>${x.minutes??'—'}</td><td>${x.contribution??'—'}</td><td>${x.minPerPoint??'—'}</td><td><span class="tag ${x.rating4||x.minutes?'blue':''}">${x.rating4?'Corte 4PJ':x.minutes?'Dato puntual':'Pendiente'}</span></td></tr>`).join('')}
 function renderMatches(){document.getElementById('matchesList').innerHTML=matches.map((m,i)=>`<article class="card match-card"><div class="match-badge"><b>PARTIDO ${i+1}</b><small>${m.comp}</small></div><div><h3>Real Madrid · ${m.rival}</h3><p>${m.note}</p></div><div class="status">● ${m.state}</div></article>`).join('')}
 function compareOptions(){const opts=players.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');document.getElementById('compareA').innerHTML=opts;document.getElementById('compareB').innerHTML=opts;document.getElementById('compareA').value='Dumfries';document.getElementById('compareB').value='Trent Alexander-Arnold';document.getElementById('compareA').onchange=renderCompare;document.getElementById('compareB').onchange=renderCompare;renderCompare()}
@@ -62,7 +81,7 @@ function pitchOptions(group){return `<option value="">—</option>`+players.filt
 function buildPitch(){document.getElementById('pitch').innerHTML=slots.map(s=>`<div class="slot" style="left:${s[2]}%;top:${s[3]}%"><label>${s[1]}</label><select id="slot_${s[0]}">${pitchOptions(s[4])}</select></div>`).join('');loadPreset('base',false)}
 function currentXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('slot_'+s[0]).value]))}
 function setXI(xi){slots.forEach(s=>document.getElementById('slot_'+s[0]).value=xi[s[0]]||'')}
-function loadPreset(kind,go=true){setXI(kind==='rayo'?rayoXI:baseXI);document.getElementById('lineupName').value=kind==='rayo'?'Rayo · idea que estamos valorando':'Once base de referencia';document.getElementById('lineupComment').value=kind==='rayo'?'Escenario de trabajo: Courtois, Mbappé, Vini y Güler como piezas que venimos considerando fijas; dudas principales en laterales, centrales y posible descanso de Valverde/Bellingham.':'Once base histórico: Courtois; Dumfries, Konaté, Huijsen, Cucurella; Valverde, Bernardo; Bellingham; Güler, Vini; Mbappé.';if(go)showSection('once')}
+function loadPreset(kind,go=true){setXI(kind==='rayo'?rayoXI:baseXI);document.getElementById('lineupName').value=kind==='rayo'?'Rayo · idea que estamos valorando':'Once base de referencia';document.getElementById('lineupComment').value=kind==='rayo'?'Escenario de trabajo: Courtois, Mbappé y Güler como piezas fijas en nuestra previsión; Vini entra en la duda de banda junto a Diomandé y Brahim. También seguimos las dudas en laterales, centrales y posible descanso de Valverde/Bellingham.':'Once base histórico: Courtois; Dumfries, Konaté, Huijsen, Cucurella; Valverde, Bernardo; Bellingham; Güler, Vini; Mbappé.';if(go)showSection('once')}
 function saveLineup(){const name=document.getElementById('lineupName').value.trim()||'Once sin nombre';const data={id:Date.now(),name,comment:document.getElementById('lineupComment').value,xi:currentXI()};const arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]');arr.unshift(data);localStorage.setItem('rm_lineups',JSON.stringify(arr));renderSaved();toast('Once guardado')}
 function renderSaved(){const arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]');document.getElementById('savedLineups').innerHTML=arr.length?arr.map(x=>`<div class="saved-lineup"><div><b>${x.name}</b><small>${x.comment?'<br>'+x.comment.slice(0,62)+(x.comment.length>62?'…':''):''}</small></div><div><button class="btn" onclick="restoreLineup(${x.id})">Abrir</button> <button class="btn" onclick="deleteLineup(${x.id})">×</button></div></div>`).join(''):'<div class="muted">Todavía no has guardado ningún once.</div>'}
 function restoreLineup(id){const x=JSON.parse(localStorage.getItem('rm_lineups')||'[]').find(x=>x.id===id);if(!x)return;setXI(x.xi);document.getElementById('lineupName').value=x.name;document.getElementById('lineupComment').value=x.comment||'';toast('Once cargado')}
