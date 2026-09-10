@@ -1,4 +1,5 @@
 import { getDeployStore, getStore } from "@netlify/blobs";
+import type { Context } from "@netlify/functions";
 
 function matchConfig(){
   return {id:"rayo-2026-09-12",closesAt:"2026-09-12T17:55:00Z"};
@@ -17,10 +18,8 @@ function json(data:unknown,status=200){
 function validParticipantId(value:unknown){
   return typeof value==="string" && /^[A-Za-z0-9_-]{16,80}$/.test(value);
 }
-function storeFor(){
-  const netlifyGlobal=(globalThis as any).Netlify;
-  const deployContext=netlifyGlobal?.context?.deploy?.context;
-  return deployContext==="production"
+function storeFor(context:Context){
+  return context?.deploy?.context==="production"
     ? getStore("rm-matchday",{consistency:"strong"})
     : getDeployStore("rm-matchday-preview");
 }
@@ -39,11 +38,11 @@ async function readPoll(store:any,matchId:string,poll:any,participantId?:string)
   return {id:poll.id,question:poll.question,total,options,selected};
 }
 
-export default async (req:Request) => {
+export default async (req:Request,context:Context) => {
   try{
     const match=matchConfig();
     const polls=pollDefinitions();
-    const store=storeFor();
+    const store=storeFor(context);
     if(req.method==="GET"){
       const url=new URL(req.url);
       const participantId=url.searchParams.get("participantId")||undefined;
