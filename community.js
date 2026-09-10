@@ -6,7 +6,7 @@ document.getElementById('navMobile').innerHTML=navHtml(true);
 
 const participantStorageKey='rm_community_participant_id';
 function getParticipantId(){let id=localStorage.getItem(participantStorageKey);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);localStorage.setItem(participantStorageKey,id)}return id}
-function escapeHtml(value){return String(value??'').replace(/[&<>'\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[ch]))}
+function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
 
 const baseShowSection=showSection;
 showSection=function(id){baseShowSection(id);if(id==='comunidad')loadCommunity()};
@@ -14,11 +14,8 @@ showSection=function(id){baseShowSection(id);if(id==='comunidad')loadCommunity()
 const predictionActions=document.querySelector('#prediccion .prediction-actions');
 if(predictionActions&&!document.getElementById('goCommunityBtn')){
   const goCommunityBtn=document.createElement('button');
-  goCommunityBtn.className='btn';
-  goCommunityBtn.id='goCommunityBtn';
-  goCommunityBtn.textContent='Ver comunidad';
-  goCommunityBtn.onclick=()=>showSection('comunidad');
-  predictionActions.appendChild(goCommunityBtn);
+  goCommunityBtn.className='btn';goCommunityBtn.id='goCommunityBtn';goCommunityBtn.textContent='Ver comunidad';
+  goCommunityBtn.onclick=()=>showSection('comunidad');predictionActions.appendChild(goCommunityBtn);
 }
 
 const baseSavePrediction=savePrediction;
@@ -69,3 +66,7 @@ async function loadCommunity(force=false){
   catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>'}
 }
 loadCommunity();
+
+if(!document.querySelector('script[data-matchday]')){
+  const script=document.createElement('script');script.src='matchday.js?v=1';script.dataset.matchday='1';document.body.appendChild(script);
+}
