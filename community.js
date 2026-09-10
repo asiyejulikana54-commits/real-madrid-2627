@@ -21,8 +21,8 @@ savePrediction=async function(){
   baseSavePrediction();
   const btn=document.getElementById('savePredictionBtn');btn.disabled=true;btn.textContent='Publicando…';
   try{
-    const response=await fetch('/api/community',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
-    const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||'No se pudo publicar');
+    const response=await fetch('/.netlify/functions/community',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
+    const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||`Error ${response.status}`);
     toast(result.updated?'Predicción comunitaria actualizada':'Predicción publicada en la comunidad');communityCache=null;loadCommunity(true)
   }catch(error){toast(`Guardada en tu móvil · ${error.message||'sin conexión con la comunidad'}`)}
   finally{btn.textContent='Publicar predicción';btn.disabled=predictionIsClosed()}
@@ -55,7 +55,7 @@ function renderCommunity(data){
 }
 async function loadCommunity(force=false){
   if(communityCache&&!force){renderCommunity(communityCache);return}
-  try{const response=await fetch('/api/community',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data)}
+  try{const response=await fetch('/.netlify/functions/community',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data)}
   catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>'}
 }
 loadCommunity();
