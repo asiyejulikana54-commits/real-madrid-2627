@@ -1,0 +1,9 @@
+{
+  "name": "real-madrid-2627-panel",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "latest",
+    "@netlify/functions": "latest"
+  }
+}
