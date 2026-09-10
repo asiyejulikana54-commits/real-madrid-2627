@@ -7,58 +7,64 @@ const sections=[
 ['once','◆','Once','Constructor de once','Crea y guarda nuestras opciones tácticas.']];
 
 const players=[
-{name:'Courtois',pos:'POR',role:'Portero · titular de referencia',tags:['Fijo'],rating4:6.75},
+{name:'Courtois',pos:'POR',role:'Portero · titular de referencia',tags:['Fijo']},
 {name:'Lunin',pos:'POR',role:'Portero · segundo portero',tags:['Plantilla']},
 {name:'Dumfries',pos:'DEF',role:'LD · lateral derecho',tags:['Titular base','Debate Trent']},
 {name:'Trent Alexander-Arnold',short:'Trent',pos:'DEF',role:'LD · lateral / opción interior',tags:['Debate Dumfries','Construcción']},
 {name:'Konaté',pos:'DEF',role:'DFC · central',tags:['Titular base','Debate centrales']},
 {name:'Rüdiger',pos:'DEF',role:'DFC · central',tags:['Debate centrales']},
-{name:'Huijsen',pos:'DEF',role:'DFC · central',tags:['Titular base','Salida'],rating4:7.50},
+{name:'Huijsen',pos:'DEF',role:'DFC · central',tags:['Titular base','Salida']},
 {name:'Raúl Asencio',short:'Asencio',pos:'DEF',role:'DFC · central',tags:['Plantilla']},
-{name:'Cucurella',pos:'DEF',role:'LI · lateral izquierdo',tags:['Titular base','Debate Carreras'],rating4:6.88},
-{name:'Álvaro Carreras',short:'Carreras',pos:'DEF',role:'LI · lateral izquierdo',tags:['Eficiencia'],minutes:114,contribution:8.45,minPerPoint:13.49},
+{name:'Cucurella',pos:'DEF',role:'LI · lateral izquierdo',tags:['Titular base','Debate Carreras']},
+{name:'Álvaro Carreras',short:'Carreras',pos:'DEF',role:'LI · lateral izquierdo',tags:['Eficiencia']},
 {name:'Ferland Mendy',short:'Mendy',pos:'DEF',role:'LI · lateral izquierdo',tags:['Plantilla']},
-{name:'Valverde',pos:'MED',role:'MC · pieza estructural',tags:['Titular base','Posible descanso'],rating4:7.13},
+{name:'Valverde',pos:'MED',role:'MC · pieza estructural',tags:['Titular base','Posible descanso']},
 {name:'Bernardo Silva',short:'Bernardo',pos:'MED',role:'MC/MP · creatividad y control',tags:['Titular base']},
-{name:'Camavinga',pos:'MED',role:'MC · equilibrio y conducción',tags:['Rotación fuerte'],rating4:6.63},
+{name:'Camavinga',pos:'MED',role:'MC · equilibrio y conducción',tags:['Rotación fuerte']},
 {name:'Tchouaméni',pos:'MED',role:'MCD/MC · pivote',tags:['Plantilla']},
-{name:'Bellingham',pos:'MED',role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso'],rating4:8.50},
-{name:'Arda Güler',short:'Güler',pos:'MED',role:'MP/ED · creador',tags:['Fijo actual','MVP Betis'],rating4:8.13},
+{name:'Bellingham',pos:'MED',role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso']},
+{name:'Arda Güler',short:'Güler',pos:'MED',role:'MP/ED · creador',tags:['Fijo actual','MVP Betis']},
 {name:'Brahim Díaz',short:'Brahim',pos:'MED',role:'MP/ED · alternativa ofensiva',tags:['Debate banda']},
 {name:'Thiago Pitarch',short:'Thiago',pos:'MED',role:'MC · Castilla / plantilla ampliada',tags:['Cantera']},
-{name:'Mbappé',pos:'ATA',role:'DC · referencia ofensiva',tags:['Fijo'],rating4:7.50},
-{name:'Vini Jr.',short:'Vini',pos:'ATA',role:'EI · desequilibrio',tags:['Debate banda'],rating4:6.75},
+{name:'Mbappé',pos:'ATA',role:'DC · referencia ofensiva',tags:['Fijo']},
+{name:'Vini Jr.',short:'Vini',pos:'ATA',role:'EI · desequilibrio',tags:['Debate banda']},
 {name:'Rodrygo',pos:'ATA',role:'EI/ED · extremo',tags:['Plantilla']},
 {name:'Diomande',short:'Diomandé',pos:'ATA',role:'ED · amplitud y profundidad',tags:['Debate banda']},
 {name:'Endrick',pos:'ATA',role:'DC · delantero',tags:['Plantilla']},
-{name:'Carlos Espí',short:'Espí',pos:'ATA',role:'DC · delantero',tags:['Eficiencia'],minutes:22,contribution:1.713,minPerPoint:12.84}
+{name:'Carlos Espí',short:'Espí',pos:'ATA',role:'DC · delantero',tags:['Eficiencia']}
 ];
 
-const updatedRanking=[
-{name:'Bellingham',score:8.06},
-{name:'Mbappé',score:8.02},
-{name:'Arda Güler',short:'Güler',score:7.85},
-{name:'Vinícius Jr.',short:'Vini',score:7.55},
-{name:'Trent',score:7.52},
-{name:'Valverde',score:7.51},
-{name:'Brahim Díaz',short:'Brahim',score:7.50},
-{name:'Rüdiger',score:7.42},
-{name:'Huijsen',score:7.31},
-{name:'Cucurella',score:7.06},
-{name:'Konaté',score:7.02},
-{name:'Bernardo Silva',short:'Bernardo',score:7.00},
-{name:'Camavinga',score:6.90},
-{name:'Courtois',score:6.78},
-{name:'Álvaro Carreras',short:'Carreras',score:6.75},
-{name:'Dumfries',score:6.67}
+const efficiencyRanking=[
+{name:'Arda Güler',short:'Güler',minutes:209,points:19.04,minPerPoint:10.98},
+{name:'Bellingham',minutes:425,points:38.39,minPerPoint:11.07},
+{name:'Mbappé',minutes:450,points:40.28,minPerPoint:11.17},
+{name:'Brahim Díaz',short:'Brahim',minutes:156,points:13.39,minPerPoint:11.65},
+{name:'Valverde',minutes:429,points:36.54,minPerPoint:11.74},
+{name:'Vinícius Jr.',short:'Vini',minutes:441,points:37.06,minPerPoint:11.90},
+{name:'Rüdiger',minutes:90,points:7.55,minPerPoint:11.93},
+{name:'Trent',minutes:205,points:17.04,minPerPoint:12.03},
+{name:'Huijsen',minutes:450,points:36.37,minPerPoint:12.37},
+{name:'Carlos Espí',short:'Espí',minutes:22,points:1.78,minPerPoint:12.39},
+{name:'Cucurella',minutes:339,points:27.22,minPerPoint:12.45},
+{name:'Konaté',minutes:360,points:28.41,minPerPoint:12.67},
+{name:'Camavinga',minutes:176,points:13.75,minPerPoint:12.80},
+{name:'Bernardo Silva',short:'Bernardo',minutes:205,points:15.75,minPerPoint:13.02},
+{name:'Courtois',minutes:450,points:34.15,minPerPoint:13.18},
+{name:'Dumfries',minutes:324,points:24.31,minPerPoint:13.33},
+{name:'Álvaro Carreras',short:'Carreras',minutes:114,points:8.25,minPerPoint:13.82},
+{name:'Diomandé',minutes:94,points:6.79,minPerPoint:13.84},
+{name:'Tchouaméni',minutes:11,points:0.77,minPerPoint:14.29}
 ];
+
+function metricFor(p){return efficiencyRanking.find(m=>m.name===p.name||(p.short&&(m.name===p.short||m.short===p.short)))||null}
+function currentRating(m){return m&&m.minutes?m.points*90/m.minutes:null}
 
 const matches=[
 {rival:'Betis',comp:'LaLiga',note:'Partido trabajado en detalle. Güler fue nuestro mejor jugador y recibió el premio del partido.',state:'Analizado'},
 {rival:'Málaga',comp:'LaLiga',note:'Notas individuales y comparación con el Betis incorporadas al seguimiento.',state:'Analizado'},
 {rival:'Real Sociedad',comp:'LaLiga',note:'Valoración por jugador y comparación del tipo de partido con los anteriores.',state:'Analizado'},
-{rival:'Espanyol',comp:'LaLiga',note:'Cuarto partido del corte de medias históricas que consolidamos.',state:'Analizado'},
-{rival:'Inter',comp:'Champions',note:'Partido posterior con seguimiento de notas y huecos. Camavinga, Bernardo y Güler llegaron sancionados a este encuentro.',state:'Analizado'}
+{rival:'Espanyol',comp:'LaLiga',note:'Cuarto partido del primer corte histórico.',state:'Analizado'},
+{rival:'Inter',comp:'Champions',note:'Partido posterior incorporado al seguimiento de tres fuentes y eficiencia por minutos.',state:'Analizado'}
 ];
 
 const baseXI={gk:'Courtois',lb:'Cucurella',lcb:'Huijsen',rcb:'Konaté',rb:'Dumfries',dm1:'Valverde',dm2:'Bernardo Silva',am:'Bellingham',lw:'Vini Jr.',rw:'Arda Güler',st:'Mbappé'};
@@ -70,13 +76,13 @@ document.getElementById('navDesktop').innerHTML=navHtml(false);document.getEleme
 function showSection(id){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===id));const s=sections.find(x=>x[0]===id);document.getElementById('pageTitle').textContent=s[3];document.getElementById('pageSub').textContent=s[4];window.scrollTo({top:0,behavior:'smooth'})}
 function initials(n){return n.split(/[ .-]/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function tagClass(t){if(/Fijo|Titular|MVP/.test(t))return 'green';if(/Debate|Posible/.test(t))return 'gold';if(/Cantera|Construcción|Eficiencia/.test(t))return 'blue';return ''}
-function renderPlayers(){const q=document.getElementById('playerSearch').value.toLowerCase(),p=document.getElementById('positionFilter').value;const list=players.filter(x=>(p==='ALL'||x.pos===p)&&x.name.toLowerCase().includes(q));document.getElementById('playerCount').textContent=`${list.length} jugadores`;document.getElementById('playersGrid').innerHTML=list.map(x=>`<article class="card player"><div class="pos">${x.pos}</div><h3>${x.name}</h3><div class="meta">${x.role}${x.rating4?`<br>Media histórica 4PJ: <b>${x.rating4.toFixed(2)}</b>`:''}${x.minutes?`<br>Último dato puntual: <b>${x.minutes}'</b>`:''}</div><div class="tags">${x.tags.map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></article>`).join('')}
+function renderPlayers(){const q=document.getElementById('playerSearch').value.toLowerCase(),p=document.getElementById('positionFilter').value;const list=players.filter(x=>(p==='ALL'||x.pos===p)&&x.name.toLowerCase().includes(q));document.getElementById('playerCount').textContent=`${list.length} jugadores`;document.getElementById('playersGrid').innerHTML=list.map(x=>{const m=metricFor(x),r=currentRating(m);return `<article class="card player"><div class="pos">${x.pos}</div><h3>${x.name}</h3><div class="meta">${x.role}${r!==null?`<br>Media actual: <b>${r.toFixed(2)}</b><br>Minutos: <b>${m.minutes}</b> · Min/punto: <b>${m.minPerPoint.toFixed(2)}</b>`:'<br><span class="muted">Sin datos suficientes en el ranking actual</span>'}</div><div class="tags">${x.tags.map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></article>`}).join('')}
 document.getElementById('playerSearch').addEventListener('input',renderPlayers);document.getElementById('positionFilter').addEventListener('change',renderPlayers);
-function renderBars(){document.getElementById('ratingBars').innerHTML=updatedRanking.map(x=>`<div class="rank-row"><small>${x.short||x.name}</small><div class="bar"><i style="width:${(x.score/10)*100}%"></i></div><b>${x.score.toFixed(2)}</b></div>`).join('')}
-function renderStats(){document.getElementById('statsBody').innerHTML=players.map(x=>`<tr><td><b>${x.name}</b></td><td>${x.pos}</td><td class="score">${x.rating4?x.rating4.toFixed(2):'—'}</td><td>${x.minutes??'—'}</td><td>${x.contribution??'—'}</td><td>${x.minPerPoint??'—'}</td><td><span class="tag ${x.rating4||x.minutes?'blue':''}">${x.rating4?'Corte 4PJ':x.minutes?'Dato puntual':'Pendiente'}</span></td></tr>`).join('')}
+function renderBars(){const min=Math.min(...efficiencyRanking.map(x=>x.minPerPoint)),max=Math.max(...efficiencyRanking.map(x=>x.minPerPoint));document.getElementById('ratingBars').innerHTML=efficiencyRanking.map(m=>{const width=30+70*((max-m.minPerPoint)/(max-min));return `<div class="rank-row"><small>${m.short||m.name}</small><div class="bar"><i style="width:${width.toFixed(1)}%"></i></div><b>${m.minPerPoint.toFixed(2)}</b></div>`}).join('')}
+function renderStats(){document.getElementById('statsBody').innerHTML=players.map(x=>{const m=metricFor(x),r=currentRating(m);return `<tr><td><b>${x.name}</b></td><td>${x.pos}</td><td class="score">${r!==null?r.toFixed(2):'—'}</td><td>${m?m.minutes:'—'}</td><td>${m?m.points.toFixed(2):'—'}</td><td>${m?m.minPerPoint.toFixed(2):'—'}</td><td><span class="tag ${m?'blue':''}">${m?'Ranking actual':'Pendiente'}</span></td></tr>`}).join('')}
 function renderMatches(){document.getElementById('matchesList').innerHTML=matches.map((m,i)=>`<article class="card match-card"><div class="match-badge"><b>PARTIDO ${i+1}</b><small>${m.comp}</small></div><div><h3>Real Madrid · ${m.rival}</h3><p>${m.note}</p></div><div class="status">● ${m.state}</div></article>`).join('')}
 function compareOptions(){const opts=players.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');document.getElementById('compareA').innerHTML=opts;document.getElementById('compareB').innerHTML=opts;document.getElementById('compareA').value='Dumfries';document.getElementById('compareB').value='Trent Alexander-Arnold';document.getElementById('compareA').onchange=renderCompare;document.getElementById('compareB').onchange=renderCompare;renderCompare()}
-function renderCompare(){const a=players.find(p=>p.name===document.getElementById('compareA').value),b=players.find(p=>p.name===document.getElementById('compareB').value);const card=p=>`<div class="card compare-card"><div class="avatar">${initials(p.short||p.name)}</div><h2>${p.name}</h2><div class="muted">${p.role}</div><div style="margin-top:14px"><div class="compare-stat"><span>Posición</span><b>${p.pos}</b></div><div class="compare-stat"><span>Media 4PJ</span><b>${p.rating4?p.rating4.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Minutos conocidos</span><b>${p.minutes??'—'}</b></div><div class="compare-stat"><span>Min/punto</span><b>${p.minPerPoint??'—'}</b></div></div></div>`;document.getElementById('compareView').innerHTML=card(a)+`<div class="vs">VS</div>`+card(b)}
+function renderCompare(){const a=players.find(p=>p.name===document.getElementById('compareA').value),b=players.find(p=>p.name===document.getElementById('compareB').value);const card=p=>{const m=metricFor(p),r=currentRating(m);return `<div class="card compare-card"><div class="avatar">${initials(p.short||p.name)}</div><h2>${p.name}</h2><div class="muted">${p.role}</div><div style="margin-top:14px"><div class="compare-stat"><span>Posición</span><b>${p.pos}</b></div><div class="compare-stat"><span>Media actual</span><b>${r!==null?r.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Minutos</span><b>${m?m.minutes:'—'}</b></div><div class="compare-stat"><span>Aporte</span><b>${m?m.points.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Min/punto</span><b>${m?m.minPerPoint.toFixed(2):'—'}</b></div></div></div>`};document.getElementById('compareView').innerHTML=card(a)+`<div class="vs">VS</div>`+card(b)}
 function pitchOptions(group){return `<option value="">—</option>`+players.filter(p=>group==='DEF'?p.pos==='DEF':group==='MED'?p.pos==='MED':group==='ATA'?p.pos==='ATA':p.pos==='POR').map(p=>`<option value="${p.name}">${p.short||p.name}</option>`).join('')}
 function buildPitch(){document.getElementById('pitch').innerHTML=slots.map(s=>`<div class="slot" style="left:${s[2]}%;top:${s[3]}%"><label>${s[1]}</label><select id="slot_${s[0]}">${pitchOptions(s[4])}</select></div>`).join('');loadPreset('base',false)}
 function currentXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('slot_'+s[0]).value]))}
@@ -88,7 +94,7 @@ function restoreLineup(id){const x=JSON.parse(localStorage.getItem('rm_lineups')
 function deleteLineup(id){const arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]').filter(x=>x.id!==id);localStorage.setItem('rm_lineups',JSON.stringify(arr));renderSaved();toast('Once eliminado')}
 function clearLineup(){setXI({});document.getElementById('lineupName').value='';document.getElementById('lineupComment').value=''}
 const notes=document.getElementById('notes');notes.value=localStorage.getItem('rm_notes')||'';let noteTimer;notes.addEventListener('input',()=>{document.getElementById('saveState').textContent='Guardando…';clearTimeout(noteTimer);noteTimer=setTimeout(()=>{localStorage.setItem('rm_notes',notes.value);document.getElementById('saveState').textContent='Guardado'},400)});
-function exportData(){const payload={version:'1.0',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',lineups:JSON.parse(localStorage.getItem('rm_lineups')||'[]')};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
+function exportData(){const payload={version:'1.1',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',lineups:JSON.parse(localStorage.getItem('rm_lineups')||'[]')};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
 document.getElementById('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(typeof d.notes==='string'){localStorage.setItem('rm_notes',d.notes);notes.value=d.notes}if(Array.isArray(d.lineups))localStorage.setItem('rm_lineups',JSON.stringify(d.lineups));renderSaved();toast('Datos importados')}catch{toast('Archivo no válido')}e.target.value=''});
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 renderPlayers();renderBars();renderStats();renderMatches();compareOptions();buildPitch();renderSaved();
