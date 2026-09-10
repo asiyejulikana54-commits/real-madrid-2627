@@ -82,3 +82,9 @@ if(!document.querySelector('link[data-mvp]')){
 if(!document.querySelector('script[data-mvp]')){
   const script=document.createElement('script');script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-history]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='history.css?v=1';link.dataset.history='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-history]')){
+  const script=document.createElement('script');script.src='history.js?v=1';script.dataset.history='1';document.body.appendChild(script);
+}
