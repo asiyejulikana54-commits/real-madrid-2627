@@ -42,7 +42,7 @@ let communityCache=null;
 function renderCommunityPitch(popularXI,total){
   const pitch=document.getElementById('communityPitch');if(!pitch)return;
   if(!total){pitch.innerHTML='<div class="community-loading">Todavía no hay pronósticos. Sé el primero desde “Predicción”.</div>';return}
-  pitch.innerHTML=slots.map(s=>{const choice=popularXI?.[s[0]];return `<div class="community-slot" style="left:${s[2]}%;top:${s[3]}%"><small>${s[1]}</small><b>${choice?escapeHtml(displayName(choice.name)):'—'}</b><span>${choice?`${choice.percentage}%${choice.multiPosition?` (${choice.globalPercentage}%)`:''}`:'0%'}</span></div>`}).join('')
+  pitch.innerHTML=slots.map(s=>{const choice=popularXI?.[s[0]];return `<div class="community-slot" style="left:${s[2]}%;top:${s[3]}%"><small>${s[1]}</small><b>${choice?escapeHtml(displayName(choice.name)):'—'}</b><span>${choice?`${choice.percentage}%${choice.globalPercentage!==choice.percentage?` (${choice.globalPercentage}%)`:''}`:'0%'}</span></div>`}).join('')
 }
 function pollBlock(title,slotData){
   const items=(slotData||[]).slice(0,4);if(!items.length)return `<div class="community-poll"><h3>${title}</h3><div class="muted">Sin votos todavía</div></div>`;
