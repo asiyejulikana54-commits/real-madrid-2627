@@ -46,7 +46,7 @@ function renderCommunityPitch(popularXI,total){
 }
 function pollBlock(title,slotData){
   const items=(slotData||[]).slice(0,4);if(!items.length)return `<div class="community-poll"><h3>${title}</h3><div class="muted">Sin votos todavía</div></div>`;
-  return `<div class="community-poll"><h3>${title}</h3>${items.map(x=>`<div class="poll-row"><div><span>${escapeHtml(displayName(x.name))}</span><b>${x.percentage}%</b></div><div class="poll-bar"><i style="width:${x.percentage}%"></i></div></div>`).join('')}</div>`
+  return `<div class="community-poll"><h3>${title}</h3>${items.map(x=>`<div class="poll-row"><div><span>${escapeHtml(displayName(x.name))}</span><b>${x.percentage}%${x.multiPosition?` <small>(global ${x.globalPercentage}%)</small>`:''}</b></div><div class="poll-bar"><i style="width:${x.percentage}%"></i></div></div>`).join('')}</div>`
 }
 function renderCommunity(data){
   communityCache=data;const total=data.totalPredictions||0;
