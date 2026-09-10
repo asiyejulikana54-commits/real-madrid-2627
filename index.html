@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RM 26/27 · Panel de análisis</title>
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -18,14 +18,14 @@
   <main>
     <div class="topbar">
       <div><div class="eyebrow">Real Madrid · Temporada 2026/27</div><h1 id="pageTitle">Centro de mando</h1><div class="sub" id="pageSub">Todo el seguimiento del equipo en un único sitio.</div></div>
-      <div class="actions"><button class="btn" onclick="exportData()">Exportar datos</button><label class="btn" for="importFile">Importar</label><input id="importFile" type="file" accept="application/json" hidden><button class="btn primary" onclick="showSection('once')">Crear once</button></div>
+      <div class="actions"><button class="btn" onclick="exportData()">Exportar datos</button><label class="btn" for="importFile">Importar</label><input id="importFile" type="file" accept="application/json" hidden><button class="btn" onclick="showSection('prediccion')">Predice el XI</button><button class="btn primary" onclick="showSection('once')">Crear once</button></div>
     </div>
 
     <section class="section active" id="inicio">
       <div class="card hero">
         <div class="next-match">
           <div><div class="eyebrow">Próximo partido</div><div class="match-title">REAL MADRID <span>vs</span> RAYO</div><div class="match-meta"><span class="pill">12 SEP 2026 · 21:00</span><span class="pill">LALIGA</span><span class="pill">SANTIAGO BERNABÉU</span></div></div>
-          <div><button class="btn primary" onclick="loadPreset('rayo')">Cargar once que estamos valorando</button></div>
+          <div class="actions" style="justify-content:flex-start"><button class="btn primary" onclick="showSection('prediccion')">Haz tu predicción</button><button class="btn" onclick="loadPreset('rayo')">Cargar once que estamos valorando</button></div>
         </div>
         <div class="focus-box">
           <h3>Debates abiertos para el Rayo</h3>
@@ -33,8 +33,8 @@
             <div class="focus-item"><span>Lateral derecho</span><b>Dumfries / Trent</b></div>
             <div class="focus-item"><span>Central</span><b>Rüdiger / Huijsen / Konaté</b></div>
             <div class="focus-item"><span>Medio con posible descanso</span><b>Valverde / Bellingham</b></div>
-            <div class="focus-item"><span>Banda / ataque</span><b>Vini / Diomandé / Brahim</b></div>
-            <div class="focus-item"><span>Fijos en nuestra previsión</span><b>Courtois · Mbappé · Güler</b></div>
+            <div class="focus-item"><span>Banda / ataque</span><b>Diomandé / Brahim</b></div>
+            <div class="focus-item"><span>Fijos en nuestra previsión</span><b>Courtois · Mbappé · Güler · Vini</b></div>
           </div>
         </div>
       </div>
@@ -43,7 +43,7 @@
         <div class="card kpi"><div class="label">Nota combinada</div><div class="value">3 fuentes</div><div class="hint">SofaScore + FotMob + StatMuse</div></div>
         <div class="card kpi"><div class="label">Puntos por minuto</div><div class="value">Sin corte</div><div class="hint">No usamos “partido válido” ni mínimo de 45'</div></div>
         <div class="card kpi"><div class="label">Aporte</div><div class="value">Nota × min</div><div class="hint">Fórmula: nota × minutos / 90</div></div>
-        <div class="card kpi"><div class="label">Gestión del banquillo</div><div class="value">7 + 5</div><div class="hint">7 suplentes de campo · hasta 5 cambios</div></div>
+        <div class="card kpi"><div class="label">Predicción del próximo XI</div><div class="value">0–11</div><div class="hint">1 punto por cada titular acertado</div></div>
       </div>
 
       <div class="grid cols-2" style="margin-top:16px">
@@ -93,6 +93,27 @@
       </div>
     </section>
 
+    <section class="section" id="prediccion">
+      <div class="section-head"><div><h2>Predice el XI contra el Rayo</h2><p>Elige quién crees que será titular. Tu predicción se guarda solo en tu dispositivo.</p></div><span class="pill" id="predictionStatus">Predicción abierta</span></div>
+      <div class="card prediction-hero">
+        <div><div class="eyebrow">JUEGO DEL PRÓXIMO PARTIDO</div><h2>¿Cuántos titulares de Mourinho vas a acertar?</h2><p class="muted">1 punto por cada jugador que aparezca en el once oficial, independientemente de la posición. Máximo: 11 puntos.</p></div>
+        <div class="prediction-rules"><b>REAL MADRID vs RAYO</b><span>12 SEP · 21:00</span><span>Se cierra: 19:55</span></div>
+      </div>
+      <div class="pitch-wrap" style="margin-top:16px">
+        <div class="pitch" id="predictionPitch"></div>
+        <div class="card lineup-side">
+          <div class="eyebrow">TU PRONÓSTICO</div>
+          <h3>Nombre o apodo <span class="muted" style="font-weight:400">(opcional)</span></h3>
+          <input class="input" id="predictionName" style="width:100%;min-width:0" placeholder="Ej.: Pedro">
+          <h3>Comentario</h3>
+          <textarea id="predictionComment" placeholder="Ej.: creo que descansará Valverde y entrará Camavinga..."></textarea>
+          <div class="actions prediction-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" id="savePredictionBtn" onclick="savePrediction()">Guardar predicción</button><button class="btn" onclick="loadPredictionPreset()">Usar nuestra idea</button><button class="btn" onclick="clearPrediction()">Vaciar</button><button class="btn" onclick="sharePrediction()">Compartir</button></div>
+          <div id="predictionSummary" class="prediction-summary"></div>
+          <div id="predictionResult" class="prediction-result"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="once">
       <div class="section-head"><div><h2>Constructor de once</h2><p>Formación 4-2-3-1 adaptable. El once queda guardado en el navegador.</p></div><div class="actions"><button class="btn" onclick="loadPreset('base')">Once base</button><button class="btn" onclick="loadPreset('rayo')">Idea Rayo</button></div></div>
       <div class="pitch-wrap">
@@ -109,6 +130,6 @@
 </div>
 <nav class="mobile-nav" id="navMobile"></nav>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
