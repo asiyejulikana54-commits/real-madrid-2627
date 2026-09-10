@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RM 26/27 · Panel de análisis</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="crest">RM</div><div><b>RM 26/27</b><small>Centro de análisis</small></div></div>
+    <nav class="nav" id="navDesktop"></nav>
+    <div class="side-bottom"><b style="color:#fff">Proyecto personalizado</b><br>No oficial. Datos, criterios, onces y conclusiones de nuestro seguimiento de la temporada.</div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div><div class="eyebrow">Real Madrid · Temporada 2026/27</div><h1 id="pageTitle">Centro de mando</h1><div class="sub" id="pageSub">Todo el seguimiento del equipo en un único sitio.</div></div>
+      <div class="actions"><button class="btn" onclick="exportData()">Exportar datos</button><label class="btn" for="importFile">Importar</label><input id="importFile" type="file" accept="application/json" hidden><button class="btn primary" onclick="showSection('once')">Crear once</button></div>
+    </div>
+
+    <section class="section active" id="inicio">
+      <div class="card hero">
+        <div class="next-match">
+          <div><div class="eyebrow">Próximo partido</div><div class="match-title">REAL MADRID <span>vs</span> RAYO</div><div class="match-meta"><span class="pill">12 SEP 2026 · 21:00</span><span class="pill">LALIGA</span><span class="pill">SANTIAGO BERNABÉU</span></div></div>
+          <div><button class="btn primary" onclick="loadPreset('rayo')">Cargar once que estamos valorando</button></div>
+        </div>
+        <div class="focus-box">
+          <h3>Debates abiertos para el Rayo</h3>
+          <div class="focus-list">
+            <div class="focus-item"><span>Lateral derecho</span><b>Dumfries / Trent</b></div>
+            <div class="focus-item"><span>Central</span><b>Rüdiger / Huijsen / Konaté</b></div>
+            <div class="focus-item"><span>Medio con posible descanso</span><b>Valverde / Bellingham</b></div>
+            <div class="focus-item"><span>Banda / ataque</span><b>Vini / Diomandé / Brahim</b></div>
+            <div class="focus-item"><span>Fijos en nuestra previsión</span><b>Courtois · Mbappé · Vini · Güler</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-4" style="margin-top:16px">
+        <div class="card kpi"><div class="label">Nota combinada</div><div class="value">3 fuentes</div><div class="hint">SofaScore + FotMob + StatMuse</div></div>
+        <div class="card kpi"><div class="label">Puntos por minuto</div><div class="value">Sin corte</div><div class="hint">Comparamos el rendimiento según los minutos jugados</div></div>
+        <div class="card kpi"><div class="label">Aporte</div><div class="value">Nota × min</div><div class="hint">Fórmula: nota × minutos / 90</div></div>
+        <div class="card kpi"><div class="label">Gestión del banquillo</div><div class="value">7 + 5</div><div class="hint">7 suplentes de campo · hasta 5 cambios</div></div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:16px">
+        <div class="card">
+          <div class="section-head" style="margin-top:0"><div><h2>Mejores medias · corte 4 partidos</h2><p>Último corte histórico completo que tenemos consolidado.</p></div></div>
+          <div class="ranking" id="ratingBars"></div>
+        </div>
+        <div class="card quick-notes">
+          <div class="section-head" style="margin-top:0"><div><h2>Bloc del proyecto</h2><p>Se guarda automáticamente en este dispositivo.</p></div><span class="pill" id="saveState">Guardado</span></div>
+          <textarea id="notes" placeholder="Ej.: contra el Rayo quiero comprobar si Trent puede jugar por dentro con Diomandé abierto..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="plantilla">
+      <div class="section-head"><div><h2>Plantilla actual</h2><p>Plantilla del Real Madrid 2026/27 que estamos siguiendo en el proyecto.</p></div><span class="pill" id="playerCount"></span></div>
+      <div class="player-toolbar"><input class="input" id="playerSearch" placeholder="Buscar jugador…"><select class="select" id="positionFilter"><option value="ALL">Todas las posiciones</option><option value="POR">Porteros</option><option value="DEF">Defensas</option><option value="MED">Centrocampistas</option><option value="ATA">Atacantes</option></select></div>
+      <div class="players" id="playersGrid"></div>
+    </section>
+
+    <section class="section" id="estadisticas">
+      <div class="section-head"><div><h2>Puntuaciones y eficiencia</h2><p>Separamos datos consolidados de datos parciales para no inventar huecos.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Media 4PJ</th><th>Min. conocidos</th><th>Aporte conocido</th><th>Min / punto</th><th>Estado del dato</th></tr></thead><tbody id="statsBody"></tbody></table></div>
+      <div class="grid cols-3" style="margin-top:16px">
+        <div class="card"><div class="eyebrow">Valoración</div><h3>Media de 3 páginas</h3><p class="muted">La nota de cada jugador se calcula con SofaScore, FotMob y StatMuse. Cuando existen las tres valoraciones, cada una pesa un tercio de la nota combinada.</p></div>
+        <div class="card"><div class="eyebrow">Comparación</div><h3>Eficiencia por tiempo</h3><p class="muted">La comparación se apoya directamente en la nota, los minutos, el aporte y la relación entre puntos y tiempo jugado, de modo que también cuentan las apariciones cortas.</p></div>
+        <div class="card"><div class="eyebrow">Eficiencia</div><h3>Aporte por tiempo</h3><p class="muted">Aporte = nota × minutos / 90. Para comparar eficiencia usamos también los minutos necesarios por cada punto de aporte.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="partidos">
+      <div class="section-head"><div><h2>Partidos analizados</h2><p>Archivo de los encuentros que ya han entrado en nuestro seguimiento.</p></div></div>
+      <div class="match-list" id="matchesList"></div>
+    </section>
+
+    <section class="section" id="comparador">
+      <div class="section-head"><div><h2>Comparador de jugadores</h2><p>Útil para nuestras dudas recurrentes de jerarquía y once.</p></div></div>
+      <div class="card">
+        <div class="player-toolbar"><select class="select" id="compareA"></select><select class="select" id="compareB"></select></div>
+        <div class="compare-grid" id="compareView"></div>
+      </div>
+      <div class="section-head"><div><h2>Comparaciones que seguimos</h2></div></div>
+      <div class="grid cols-3">
+        <div class="card"><div class="eyebrow">Lateral derecho</div><h3>Dumfries ↔ Trent</h3><p class="muted">Profundidad y físico frente a salida interior y construcción.</p></div>
+        <div class="card"><div class="eyebrow">Centrales</div><h3>Konaté ↔ Rüdiger ↔ Huijsen</h3><p class="muted">Jerarquía, contundencia y salida de balón según el tipo de rival.</p></div>
+        <div class="card"><div class="eyebrow">Lateral izquierdo</div><h3>Cucurella ↔ Carreras</h3><p class="muted">Seguimiento de rendimiento, minutos y eficiencia para decidir rotaciones.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="once">
+      <div class="section-head"><div><h2>Constructor de once</h2><p>Formación 4-2-3-1 adaptable. El once queda guardado en el navegador.</p></div><div class="actions"><button class="btn" onclick="loadPreset('base')">Once base</button><button class="btn" onclick="loadPreset('rayo')">Idea Rayo</button></div></div>
+      <div class="pitch-wrap">
+        <div class="pitch" id="pitch"></div>
+        <div class="card lineup-side">
+          <div class="eyebrow">Guardar escenario</div><h3 style="margin-top:6px">Nombre del once</h3><input class="input" id="lineupName" style="width:100%;min-width:0" placeholder="Ej.: Rayo · opción agresiva">
+          <h3>Comentario táctico</h3><textarea id="lineupComment" placeholder="Por qué jugaría este once, quién descansaría, cambios previstos…"></textarea>
+          <div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" onclick="saveLineup()">Guardar once</button><button class="btn" onclick="clearLineup()">Vaciar</button></div>
+          <div class="section-head"><div><h2 style="font-size:16px">Onces guardados</h2></div></div><div id="savedLineups"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<nav class="mobile-nav" id="navMobile"></nav>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
