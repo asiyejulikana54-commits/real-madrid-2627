@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RM 26/27 · Panel de análisis</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="community.css?v=1">
 </head>
 <body>
 
@@ -94,7 +95,7 @@
     </section>
 
     <section class="section" id="prediccion">
-      <div class="section-head"><div><h2>Predice el XI contra el Rayo</h2><p>Elige quién crees que será titular. Tu predicción se guarda solo en tu dispositivo.</p></div><span class="pill" id="predictionStatus">Predicción abierta</span></div>
+      <div class="section-head"><div><h2>Predice el XI contra el Rayo</h2><p>Elige quién crees que será titular y publica tu pronóstico en la comunidad.</p></div><span class="pill" id="predictionStatus">Predicción abierta</span></div>
       <div class="card prediction-hero">
         <div><div class="eyebrow">JUEGO DEL PRÓXIMO PARTIDO</div><h2>¿Cuántos titulares de Mourinho vas a acertar?</h2><p class="muted">1 punto por cada jugador que aparezca en el once oficial, independientemente de la posición. Máximo: 11 puntos.</p></div>
         <div class="prediction-rules"><b>REAL MADRID vs RAYO</b><span>12 SEP · 21:00</span><span>Se cierra: 19:55</span></div>
@@ -103,14 +104,41 @@
         <div class="pitch" id="predictionPitch"></div>
         <div class="card lineup-side">
           <div class="eyebrow">TU PRONÓSTICO</div>
-          <h3>Nombre o apodo <span class="muted" style="font-weight:400">(opcional)</span></h3>
-          <input class="input" id="predictionName" style="width:100%;min-width:0" placeholder="Ej.: Pedro">
-          <h3>Comentario</h3>
+          <h3>Nombre o apodo <span class="muted" style="font-weight:400">(visible en el ranking)</span></h3>
+          <input class="input" id="predictionName" style="width:100%;min-width:0" placeholder="Ej.: Pedro" maxlength="24">
+          <h3>Comentario <span class="muted" style="font-weight:400">(privado)</span></h3>
           <textarea id="predictionComment" placeholder="Ej.: creo que descansará Valverde y entrará Camavinga..."></textarea>
-          <div class="actions prediction-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" id="savePredictionBtn" onclick="savePrediction()">Guardar predicción</button><button class="btn" onclick="loadPredictionPreset()">Usar nuestra idea</button><button class="btn" onclick="clearPrediction()">Vaciar</button><button class="btn" onclick="sharePrediction()">Compartir</button></div>
+          <div class="actions prediction-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" id="savePredictionBtn" onclick="savePrediction()">Publicar predicción</button><button class="btn" onclick="loadPredictionPreset()">Usar nuestra idea</button><button class="btn" onclick="clearPrediction()">Vaciar</button><button class="btn" onclick="sharePrediction()">Compartir</button></div>
           <div id="predictionSummary" class="prediction-summary"></div>
           <div id="predictionResult" class="prediction-result"></div>
+          <p class="privacy-note">🔒 Solo se publica tu apodo y tu XI. El comentario no sale de tu dispositivo.</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="comunidad">
+      <div class="section-head"><div><h2>Predicciones de la comunidad</h2><p>Qué está eligiendo la gente para el próximo partido y quién acierta más a lo largo de la temporada.</p></div><button class="btn" onclick="loadCommunity(true)">Actualizar</button></div>
+      <div class="grid cols-4 community-kpis">
+        <div class="card kpi"><div class="label">Pronósticos</div><div class="value" id="communityTotal">—</div><div class="hint">Un voto por dispositivo y partido</div></div>
+        <div class="card kpi"><div class="label">Lateral derecho favorito</div><div class="value small-value" id="communityRB">—</div><div class="hint" id="communityRBShare">Esperando votos</div></div>
+        <div class="card kpi"><div class="label">Banda derecha favorita</div><div class="value small-value" id="communityRW">—</div><div class="hint" id="communityRWShare">Esperando votos</div></div>
+        <div class="card kpi"><div class="label">Partidos puntuados</div><div class="value" id="communityScoredMatches">0</div><div class="hint">El ranking empieza al publicarse onces oficiales</div></div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:16px">
+        <div class="card">
+          <div class="section-head" style="margin-top:0"><div><h2>XI más votado</h2><p>El jugador más elegido por la comunidad en cada posición.</p></div></div>
+          <div class="pitch community-pitch" id="communityPitch"><div class="community-loading">Cargando comunidad…</div></div>
+        </div>
+        <div class="card">
+          <div class="section-head" style="margin-top:0"><div><h2>Porcentajes por posición</h2><p>Así se reparten las elecciones en los puestos con más debate.</p></div></div>
+          <div id="communityPolls" class="community-polls"><div class="muted">Cargando…</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-head" style="margin-top:0"><div><h2>Ranking de pronosticadores</h2><p>1 acierto por cada titular correctamente predicho. Las posiciones no afectan a la puntuación.</p></div></div>
+        <div id="communityLeaderboard" class="community-leaderboard"><div class="muted">El ranking aparecerá cuando haya al menos un once oficial puntuado.</div></div>
       </div>
     </section>
 
@@ -130,6 +158,7 @@
 </div>
 <nav class="mobile-nav" id="navMobile"></nav>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
+<script src="community.js?v=1"></script>
 </body>
 </html>
