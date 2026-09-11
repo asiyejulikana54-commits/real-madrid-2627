@@ -16,30 +16,51 @@ Los huecos no documentados permanecen ausentes/pending; no se inventan valores p
 
 Fuentes objetivo del modelo acumulado:
 
-- SofaScore: **50** valoraciones recuperadas
+- SofaScore: **74** valoraciones recuperadas
 - FotMob: **70** valoraciones recuperadas
 - StatMuse: **71** valoraciones recuperadas
 
 Sobre **77 apariciones con minutos > 0**:
 
-- **47** tienen las tres fuentes (`3/3`)
-- **22** tienen dos fuentes (`2/3`)
-- **6** tienen una fuente (`1/3`)
+- **68** tienen las tres fuentes (`3/3`)
+- **4** tienen dos fuentes (`2/3`)
+- **3** tienen una fuente (`1/3`)
 - **2** no tienen valoración recuperada
 
-Por tanto, la cobertura todavía no permite sustituir de forma limpia el ranking acumulado principal por el cálculo nuevo de tres fuentes.
+Las capturas directas aportadas el 11-09-2026 permiten cerrar SofaScore de **Real Sociedad** y **Espanyol** para todas las apariciones calificadas mostradas. También corrigen a **Carlos Espí vs Espanyol: 7,8** en SofaScore.
 
-## Pendientes prioritarios
+La cobertura ha mejorado de 47 a 68 apariciones `3/3`, pero todavía no se sustituye automáticamente el ranking acumulado principal hasta reconciliar también los minutos acumulados.
 
-La prioridad de recuperación es SofaScore, especialmente en **Real Sociedad** y **Espanyol**, además de algunas apariciones muy cortas. No se asignará una nota a un jugador solo porque otra fuente la muestre o porque el valor parezca deducible.
+## Casos que siguen sin 3/3
 
-Casos especialmente cortos, como Carreras/Carlos Espí ante el Inter, pueden aparecer sin nota si la fuente no publicó valoración; eso no se transforma en un cero ni en una estimación.
+### Málaga
+
+- Arda Güler — `1/3`: falta SofaScore + FotMob.
+
+### Real Sociedad
+
+- Brahim Díaz — `2/3`: falta StatMuse.
+- Diomande — `2/3`: falta FotMob.
+- Carlos Espí — `2/3`: falta FotMob.
+
+### Betis
+
+- Bernardo Silva — `2/3`: falta StatMuse.
+- Álvaro Carreras — `1/3`: falta FotMob + StatMuse.
+- Carlos Espí — `1/3`: falta FotMob + StatMuse.
+
+### Inter
+
+- Álvaro Carreras — `0/3`: sin nota recuperada en las tres fuentes.
+- Carlos Espí — `0/3`: sin nota recuperada en las tres fuentes.
+
+Los casos especialmente cortos pueden permanecer legítimamente sin nota si la fuente no publicó valoración; eso no se transforma en un cero ni en una estimación.
 
 ## Evidencia directa y conflictos
 
-Para Inter se priorizan las capturas directas del partido conservadas en el proyecto frente a valores que puedan aparecer después en perfiles agregados. Esta regla se aplica a cualquier partido: **la evidencia directa del encuentro prevalece sobre un resumen posterior cuando existe conflicto**.
+Cuando existe una captura directa del partido conservada en el proyecto, esa evidencia prevalece sobre perfiles agregados o resúmenes posteriores si aparece un conflicto.
 
-La auditoría ya ha servido para corregir minutajes reconstruidos anteriores. Los cambios verificados se incorporan a `season-data.js` y la reconstrucción se descarta.
+La auditoría ya ha servido para corregir tanto valoraciones como minutajes reconstruidos anteriores. Los cambios verificados se incorporan a `season-data.js` y cualquier reconstrucción incompatible se descarta.
 
 ## Minutos acumulados: reconciliación pendiente
 
