@@ -38,6 +38,7 @@ jobs:
           node --check playerhub.js
           node --check player-experience.js
           node --check site-guide.js
+          node --check personal-home.js
           node --check ux-cleanup.js
           node --check ux-refine.js
           node --check visual-system.js
@@ -46,6 +47,8 @@ jobs:
           grep -q "public-engagement.js?v=3" public-polish.js
           grep -q "site-guide.js?v=1" public-polish.js
           grep -q "site-guide.css?v=1" public-polish.js
+          grep -q "personal-home.js?v=1" public-polish.js
+          grep -q "personal-home.css?v=1" public-polish.js
           grep -q "share-cards.js?v=2" public-polish.js
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
@@ -59,8 +62,11 @@ jobs:
           grep -q "FORMA PARTIDO A PARTIDO" player-experience.js
           grep -q "RMSiteGuide" site-guide.js
           grep -q "DICCIONARIO RÁPIDO" site-guide.js
-          grep -q "Power RM" site-guide.js
-          grep -q "public-polish.js?v=6" ux-cleanup.js
+          grep -q "RMPersonalHome" personal-home.js
+          grep -q "TU SIGUIENTE PASO" personal-home.js
+          grep -q "DESDE TU ÚLTIMA VISITA" personal-home.js
+          grep -q "rm_player_favorites_v1" personal-home.js
+          grep -q "public-polish.js?v=7" ux-cleanup.js
           grep -q "uxInstallRM" ux-cleanup.js
           grep -q "Instalar RM 26/27" ux-cleanup.js
           grep -q "rm_prediction_history_v1" personal-hub.js
@@ -70,7 +76,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -93,6 +99,8 @@ jobs:
           grep -q 'player-experience.css' sw.js
           grep -q 'site-guide.js' sw.js
           grep -q 'site-guide.css' sw.js
+          grep -q 'personal-home.js' sw.js
+          grep -q 'personal-home.css' sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
