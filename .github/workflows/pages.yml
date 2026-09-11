@@ -31,6 +31,7 @@ jobs:
         run: |
           node --check community.js
           node --check matchday.js
+          node --check matchday-pro.js
           node --check compare-pro.js
           node --check stats-pro.js
           node --check match-history-pro.js
@@ -68,6 +69,9 @@ jobs:
           grep -q "squad-pro.js?v=1" public-polish.js
           grep -q "squad-pro.css?v=1" public-polish.js
           grep -q "loadSquadPro" public-polish.js
+          grep -q "matchday-pro.js?v=1" public-polish.js
+          grep -q "matchday-pro.css?v=1" public-polish.js
+          grep -q "loadMatchdayPro" public-polish.js
           grep -q "compare-pro.js?v=1" public-polish.js
           grep -q "compare-pro.css?v=1" public-polish.js
           grep -q "loadComparePro" public-polish.js
@@ -102,6 +106,11 @@ jobs:
           grep -q "SC o ausencia de nota nunca se convierten en 0" squad-pro.js
           grep -q "sqp-grid" squad-pro.css
           grep -q "sqp-sample" squad-pro.css
+          grep -q "RMMatchdayPro" matchday-pro.js
+          grep -q "BLOC DEL PARTIDO · LOCAL" matchday-pro.js
+          grep -q "Mantener pantalla activa" matchday-pro.js
+          grep -q "rm_matchday_notes_v1_" matchday-pro.js
+          grep -q "mdp-mobile-bar" matchday-pro.css
           grep -q "RMComparePro" compare-pro.js
           grep -q "VEREDICTO ACTUAL" compare-pro.js
           grep -q "Duelos rápidos" compare-pro.js
@@ -233,7 +242,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js personal-season-pro.js squad-pro.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js intelligence.js lineuplab.js accessibility.js command-palette.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js personal-season-pro.js squad-pro.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js matchday-pro.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js intelligence.js lineuplab.js accessibility.js command-palette.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -264,6 +273,8 @@ jobs:
           grep -q 'personal-home.css' sw.js
           grep -q 'matchday.js' sw.js
           grep -q 'matchday.css' sw.js
+          grep -q 'matchday-pro.js' sw.js
+          grep -q 'matchday-pro.css' sw.js
           grep -q 'compare-pro.js' sw.js
           grep -q 'compare-pro.css' sw.js
           grep -q 'stats-pro.js' sw.js
@@ -293,7 +304,7 @@ jobs:
           grep -q 'mobile-ux.js' sw.js
           grep -q 'mobile-ux.css' sw.js
           grep -q 'ux-dedupe.js' sw.js
-          grep -q "rm2627-static-v23" sw.js
+          grep -q "rm2627-static-v24" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
