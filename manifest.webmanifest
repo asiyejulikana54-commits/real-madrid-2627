@@ -1,0 +1,41 @@
+{
+  "name": "RM 26/27 · Datos, XI y comunidad",
+  "short_name": "RM 26/27",
+  "description": "Datos, rendimiento, onces, comparaciones y comunidad del Real Madrid 2026/27 en un proyecto independiente y no oficial.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06101d",
+  "theme_color": "#071421",
+  "orientation": "portrait-primary",
+  "categories": ["sports", "entertainment"],
+  "icons": [
+    {
+      "src": "app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Predecir XI",
+      "short_name": "Predicción",
+      "url": "./?section=prediccion",
+      "icons": [{"src":"app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    },
+    {
+      "name": "Ver Power RM",
+      "short_name": "Power",
+      "url": "./?section=power",
+      "icons": [{"src":"app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    },
+    {
+      "name": "Crear mi XI",
+      "short_name": "Mi XI",
+      "url": "./?section=once",
+      "icons": [{"src":"app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    }
+  ]
+}
