@@ -35,6 +35,8 @@ jobs:
           node --check share-cards.js
           node --check personal-hub.js
           node --check personal-nav.js
+          node --check playerhub.js
+          node --check player-experience.js
           node --check ux-cleanup.js
           node --check ux-refine.js
           node --check visual-system.js
@@ -45,6 +47,13 @@ jobs:
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
           grep -q "requestIdleCallback" community.js
+          grep -q "playerhub.js?v=2" community.js
+          grep -q "player-experience.js?v=1" community.js
+          grep -q "player-experience.css?v=1" community.js
+          grep -q "RMPlayerExperience" player-experience.js
+          grep -q "rm_player_favorites_v1" player-experience.js
+          grep -q "rm_player_recents_v1" player-experience.js
+          grep -q "FORMA PARTIDO A PARTIDO" player-experience.js
           grep -q "uxInstallRM" ux-cleanup.js
           grep -q "Instalar RM 26/27" ux-cleanup.js
           grep -q "rm_prediction_history_v1" personal-hub.js
@@ -54,8 +63,8 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js; then
-            echo "No se permiten observadores globales en las capas de presentación"; exit 1;
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js; then
+            echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
       - name: Validate PWA
@@ -72,6 +81,9 @@ jobs:
           grep -q 'showInstallGuide' pwa.js
           grep -q 'personal-hub.js' sw.js
           grep -q 'personal-nav.js' sw.js
+          grep -q 'playerhub.js' sw.js
+          grep -q 'player-experience.js' sw.js
+          grep -q 'player-experience.css' sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
