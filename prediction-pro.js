@@ -58,6 +58,7 @@ function bind(){
   section.addEventListener('input',e=>{if(e.target?.id==='predictionName'||e.target?.id==='predictionComment')render()});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
   document.addEventListener('rm-community-updated',render);
+  document.addEventListener('rm-mobile-nav-fallback',render);
 }
 function scheduleDeadline(){clearTimeout(deadlineTimer);const ts=safe(()=>new Date(predictionMatch.deadline).getTime(),NaN);if(!Number.isFinite(ts))return;const delay=ts-Date.now()+1000;if(delay>0&&delay<2147483647)deadlineTimer=setTimeout(()=>{safe(()=>renderPredictionStatus());render()},delay)}
 function install(){
