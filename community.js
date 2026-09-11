@@ -100,3 +100,9 @@ if(!document.querySelector('link[data-lineuplab]')){
 if(!document.querySelector('script[data-lineuplab]')){
   const script=document.createElement('script');script.async=false;script.src='lineuplab.js?v=1';script.dataset.lineuplab='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-decisionradar]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='decisionradar.css?v=1';link.dataset.decisionradar='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-decisionradar]')){
+  const script=document.createElement('script');script.async=false;script.src='decisionradar.js?v=1';script.dataset.decisionradar='1';document.body.appendChild(script);
+}
