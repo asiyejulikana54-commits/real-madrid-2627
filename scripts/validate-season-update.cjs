@@ -25,12 +25,15 @@ if(data.officialRatingEntry('__smoke__','Courtois')?.value!==7)failures.push('la
 if(data.aggregatePlayer('Courtois').totalMinutes!==540)failures.push(`Courtois debería acumular 540 minutos y acumula ${data.aggregatePlayer('Courtois').totalMinutes}`);
 if(data.recentRating('Courtois',1)?.rows?.[0]?.match?.id!=='__smoke__')failures.push('la forma reciente no incorpora el partido nuevo');
 if(data.sourceAudit().pendingAppearances!==0)failures.push('la prueba deja apariciones pendientes');
+const courtoisAgg=data.aggregatePlayer('Courtois');
+if(!Number.isFinite(courtoisAgg.minPerPoint)||Math.abs(courtoisAgg.minPerPoint-courtoisAgg.totalMinutes/courtoisAgg.totalPoints)>.000001)failures.push('la eficiencia agregada no respeta minutos / aporte');
+
+const root=path.join(__dirname,'..');
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 
 // MVP PRO: valida que la capa compile, sea local-first y esté disponible offline.
-const root=path.join(__dirname,'..');
 const mvpJs=fs.readFileSync(path.join(root,'mvp.js'),'utf8');
 const mvpCss=fs.readFileSync(path.join(root,'mvp.css'),'utf8');
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 try{new vm.Script(mvpJs,{filename:'mvp.js'})}catch(error){failures.push(`MVP PRO no compila: ${error.message}`)}
 if(!mvpJs.includes('RMMvpPro'))failures.push('MVP PRO no expone su API pública');
 if(!mvpJs.includes('MEJOR NOTA')||!mvpJs.includes('TU MVP'))failures.push('MVP PRO no separa mejor nota y elección personal');
@@ -40,5 +43,20 @@ if(/MutationObserver\s*\(/.test(mvpJs))failures.push('MVP PRO vuelve a usar Muta
 if(!mvpCss.includes('.mvp-pro-match-grid')||!mvpCss.includes('.mvp-pro-kpis'))failures.push('faltan estilos estructurales de MVP PRO');
 if(!sw.includes("'mvp.js'")||!sw.includes("'mvp.css'"))failures.push('MVP PRO no está incluido en la PWA');
 
+// EFICIENCIA PRO: valida fórmula, contexto de muestra, integración y PWA.
+const efficiencyJs=fs.readFileSync(path.join(root,'efficiency-pro.js'),'utf8');
+const efficiencyCss=fs.readFileSync(path.join(root,'efficiency-pro.css'),'utf8');
+const polish=fs.readFileSync(path.join(root,'public-polish.js'),'utf8');
+try{new vm.Script(efficiencyJs,{filename:'efficiency-pro.js'})}catch(error){failures.push(`Eficiencia PRO no compila: ${error.message}`)}
+if(!efficiencyJs.includes('RMEfficiencyPro'))failures.push('Eficiencia PRO no expone su API pública');
+if(!efficiencyJs.includes('Min/punto = minutos totales ÷ aporte total'))failures.push('Eficiencia PRO no explica la fórmula');
+if(!efficiencyJs.includes('MUESTRA CORTA')||!efficiencyJs.includes('MEJOR 270+ MIN'))failures.push('Eficiencia PRO no contextualiza la muestra');
+if(!efficiencyJs.includes('SC nunca se convierte en nota 0'))failures.push('Eficiencia PRO no protege la semántica de SC');
+if(!efficiencyJs.includes('no usa “partido válido”'))failures.push('Eficiencia PRO no documenta la ausencia de corte oculto');
+if(/MutationObserver\s*\(/.test(efficiencyJs))failures.push('Eficiencia PRO usa MutationObserver');
+if(!efficiencyCss.includes('.efp-row')||!efficiencyCss.includes('.efp-sample')||!efficiencyCss.includes('.efp-method'))failures.push('faltan estilos estructurales de Eficiencia PRO');
+if(!polish.includes('loadEfficiencyPro')||!polish.includes('efficiency-pro.js?v=1')||!polish.includes('efficiency-pro.css?v=1'))failures.push('Eficiencia PRO no está integrada en la experiencia pública');
+if(!sw.includes("'efficiency-pro.js'")||!sw.includes("'efficiency-pro.css'"))failures.push('Eficiencia PRO no está incluida en la PWA');
+
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO validado`);
+console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO validados`);
