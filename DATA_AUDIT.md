@@ -63,11 +63,33 @@ Cuando existe una captura directa del partido conservada en el proyecto, esa evi
 
 La auditoría ha servido para corregir valoraciones y minutajes reconstruidos anteriores. Los cambios verificados se incorporan a `season-data.js` y cualquier reconstrucción incompatible se descarta.
 
-## Minutos acumulados: reconciliación pendiente
+## Minutos acumulados: reconciliación cerrada
 
-Los minutos acumulados que usa actualmente `app.js` no coinciden exactamente con la suma simple de los minutajes partido a partido de la nueva capa histórica. Esto puede deberse a convenciones distintas de registro, redondeos y/o a datos históricos todavía no reconciliados.
+La comparación jugador por jugador entre el antiguo `efficiencyRanking` y la suma de los minutos confirmados de los cinco partidos ha quedado cerrada.
 
-Por ese motivo **no se reemplaza todavía `efficiencyRanking`**. La cobertura por fuente ya está cerrada; el bloqueo pendiente para migrar el ranking principal es ahora la reconciliación de minutos y la comparación final con el ranking legado.
+- Jugadores del ranking comprobados: **19**
+- Coincidencias exactas: **17/19**
+- Diferencias reales: **2**
+- Total antiguo del ranking: **4.950 minutos**
+- Total histórico central: **4.950 minutos**
+- Total por partido: **990 minutos** (11 × 90) en cada uno de los cinco encuentros
+
+Las dos diferencias eran el mismo minuto del Inter asignado de forma distinta:
+
+- **Mbappé:** 450 → **449 minutos**. Inter queda confirmado en 89'.
+- **Carlos Espí:** 22 → **23 minutos**. Inter queda confirmado en 1'.
+
+Por tanto, no existía una discrepancia de convención global ni minutos perdidos: el total de equipo ya era correcto y solo había que reasignar un minuto entre ambos jugadores.
+
+Desde esta auditoría, `minute-sync.js` toma `RMSeasonData.MINUTES` como fuente de verdad para el ranking. Al cargarse la base histórica:
+
+1. suma automáticamente los minutos partido a partido de cada jugador;
+2. sustituye cualquier acumulado legado distinto;
+3. recalcula `min/punto` con esos minutos;
+4. reordena el ranking de eficiencia si procede;
+5. expone `RMMinuteAudit` para detectar futuras desviaciones.
+
+Los minutos almacenados dentro de `app.js` pasan a ser únicamente un **fallback de compatibilidad** y dejan de ser la fuente estadística autoritativa.
 
 ## Motor de tres fuentes
 
@@ -85,10 +107,8 @@ Modelo estricto cuando existen tres notas:
 
 No se aplica corte de 45 minutos.
 
-## Regla de cierre
+## Estado de la migración del ranking
 
-La **cobertura multifuente queda cerrada**. La migración del ranking principal quedará cerrada cuando:
+La **cobertura multifuente** y la **reconciliación de minutos** están cerradas.
 
-1. los minutos acumulados estén reconciliados con la capa histórica;
-2. se defina explícitamente la política estadística para apariciones `SC`;
-3. cualquier diferencia relevante con el ranking legado esté explicada y trazable.
+Antes de sustituir definitivamente los puntos y la media del ranking legado solo queda fijar y documentar la política estadística para las siete micro-apariciones `SC` y comparar el ranking recalculado con el legado para explicar cualquier cambio relevante.
