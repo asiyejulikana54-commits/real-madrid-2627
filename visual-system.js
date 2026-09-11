@@ -66,6 +66,10 @@ function normalizeAccessibility(){
   document.querySelectorAll('button').forEach(b=>{if(!b.getAttribute('type'))b.setAttribute('type','button')});
   document.querySelectorAll('.card[onclick],button.card').forEach(el=>{if(!el.classList.contains('vs-interactive'))el.classList.add('vs-interactive')});
 }
+function loadDedupeLayer(){
+  if(!document.querySelector('link[data-ux-dedupe]')){const link=document.createElement('link');link.rel='stylesheet';link.href='ux-dedupe.css?v=1';link.dataset.uxDedupe='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-ux-dedupe]')){const script=document.createElement('script');script.src='ux-dedupe.js?v=1';script.dataset.uxDedupe='1';document.body.appendChild(script)}
+}
 function apply(){ensureCss();if(!document.body.classList.contains('rm-visual-system'))document.body.classList.add('rm-visual-system');normalizeSections();normalizeNav();normalizeHeadings();normalizeStates();normalizeAccessibility()}
 function schedule(){clearTimeout(timer);timer=setTimeout(apply,50)}
 function install(){
@@ -73,6 +77,7 @@ function install(){
   installed=true;ensureCss();apply();
   const previous=window.showSection;if(typeof previous==='function'){window.showSection=function(id){previous(id);setTimeout(apply,40)}}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+  loadDedupeLayer();
 }
 setTimeout(install,120);
 })();
