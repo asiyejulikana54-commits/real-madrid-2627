@@ -4,15 +4,15 @@ let installed=false,activeIndex=0,lastQuery='';
 const MAX_RECENT=6;
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function norm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
-function players(){try{return Array.isArray(window.players)?window.players:[]}catch{return []}}
-function sections(){try{return Array.isArray(window.sections)?window.sections:[]}catch{return []}}
+function playerList(){try{return typeof players!=='undefined'&&Array.isArray(players)?players:[]}catch{return []}}
+function sectionList(){try{return typeof sections!=='undefined'&&Array.isArray(sections)?sections:[]}catch{return []}}
 function display(p){return p?.short||p?.name||'—'}
 function readRecent(){try{const x=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');return Array.isArray(x)?x.slice(0,MAX_RECENT):[]}catch{return []}}
 function saveRecent(query){const q=String(query||'').trim();if(q.length<2)return;try{const next=[q,...readRecent().filter(x=>norm(x)!==norm(q))].slice(0,MAX_RECENT);localStorage.setItem(RECENT_KEY,JSON.stringify(next))}catch{}}
 function favoriteNames(){try{const api=window.RMPlayerExperience?.favorites?.();if(Array.isArray(api))return api}catch{}try{const raw=JSON.parse(localStorage.getItem('rm_player_favorites_v1')||'[]');return Array.isArray(raw)?raw:[]}catch{return []}}
 function recentPlayerNames(){try{const api=window.RMPlayerExperience?.recents?.();if(Array.isArray(api))return api}catch{}try{const raw=JSON.parse(localStorage.getItem('rm_player_recents_v1')||'[]');return Array.isArray(raw)?raw:[]}catch{return []}}
-function playerByText(text){const q=norm(text);if(!q)return null;const list=players();return list.find(p=>norm(p.name)===q||norm(p.short)===q)||list.find(p=>norm(p.name).startsWith(q)||norm(p.short).startsWith(q))||list.find(p=>norm(`${p.name} ${p.short||''}`).includes(q))||null}
-function sectionById(id){return sections().find(s=>s[0]===id)||null}
+function playerByText(text){const q=norm(text);if(!q)return null;const list=playerList();return list.find(p=>norm(p.name)===q||norm(p.short)===q)||list.find(p=>norm(p.name).startsWith(q)||norm(p.short).startsWith(q))||list.find(p=>norm(`${p.name} ${p.short||''}`).includes(q))||null}
+function sectionById(id){return sectionList().find(s=>s[0]===id)||null}
 function actionItems(){
   const defs=[
     ['prediccion','11','Abrir mi predicción','Revisa o completa tu XI para el próximo partido'],
@@ -29,7 +29,7 @@ function compareCommand(q){
   const a=playerByText(m[1]),b=playerByText(m[2]);if(!a||!b||a.name===b.name)return {invalid:true,a,b};
   return {type:'compare',id:`${a.name}|${b.name}`,icon:'VS',title:`${display(a)} vs ${display(b)}`,sub:'Abrir comparación directa',group:'COMANDO DETECTADO',a:a.name,b:b.name};
 }
-function playerItemsFor(names,group,limit=4){const set=new Set(names);return players().filter(p=>set.has(p.name)||set.has(p.short)).slice(0,limit).map(p=>({type:'player',id:p.name,icon:'◉',title:display(p),sub:`${p.pos} · ${p.role||'Ficha de jugador'}`,group}));}
+function playerItemsFor(names,group,limit=4){const set=new Set(names);return playerList().filter(p=>set.has(p.name)||set.has(p.short)).slice(0,limit).map(p=>({type:'player',id:p.name,icon:'◉',title:display(p),sub:`${p.pos} · ${p.role||'Ficha de jugador'}`,group}));}
 function queryItems(q){
   const query=norm(q);if(!query)return [];
   const out=[];const cmp=compareCommand(q);if(cmp&&!cmp.invalid)out.push(cmp);else if(cmp?.invalid)out.push({type:'hint',id:'compare-help',icon:'VS',title:'No encuentro los dos jugadores',sub:'Prueba: “comparar Güler con Brahim”',group:'COMANDO DETECTADO'});
@@ -41,12 +41,12 @@ function queryItems(q){
     {keys:['mi temporada','historial'],id:'mi-temporada',icon:'◎',title:'Abrir Mi temporada'}
   ];
   aliases.filter(x=>x.keys.some(k=>norm(k).includes(query)||query.includes(norm(k)))).forEach(x=>{if(document.getElementById(x.id)&&!out.some(y=>y.type==='section'&&y.id===x.id))out.push({type:'section',id:x.id,icon:x.icon,title:x.title,sub:sectionById(x.id)?.[4]||'',group:'ACCIONES'})});
-  sections().filter(s=>norm(`${s[2]} ${s[3]} ${s[4]}`).includes(query)).slice(0,6).forEach(s=>out.push({type:'section',id:s[0],icon:s[1],title:s[2],sub:s[4],group:'SECCIONES'}));
-  players().filter(p=>norm(`${p.name} ${p.short||''} ${p.pos} ${p.role||''}`).includes(query)).slice(0,8).forEach(p=>out.push({type:'player',id:p.name,icon:'◉',title:display(p),sub:`${p.pos} · ${p.role||'Ficha de jugador'}`,group:'JUGADORES'}));
+  sectionList().filter(s=>norm(`${s[2]} ${s[3]} ${s[4]}`).includes(query)).slice(0,6).forEach(s=>out.push({type:'section',id:s[0],icon:s[1],title:s[2],sub:s[4],group:'SECCIONES'}));
+  playerList().filter(p=>norm(`${p.name} ${p.short||''} ${p.pos} ${p.role||''}`).includes(query)).slice(0,8).forEach(p=>out.push({type:'player',id:p.name,icon:'◉',title:display(p),sub:`${p.pos} · ${p.role||'Ficha de jugador'}`,group:'JUGADORES'}));
   const seen=new Set();return out.filter(x=>{const key=`${x.type}:${x.id}`;if(seen.has(key))return false;seen.add(key);return true}).slice(0,15);
 }
 function emptyItems(){
-  const favs=playerItemsFor(favoriteNames(),'TUS FAVORITOS',4),recents=playerItemsFor(recentPlayerNames().filter(n=>!favoriteNames().includes(n)),'VISTOS RECIENTEMENTE',4);
+  const favNames=favoriteNames(),favs=playerItemsFor(favNames,'TUS FAVORITOS',4),recents=playerItemsFor(recentPlayerNames().filter(n=>!favNames.includes(n)),'VISTOS RECIENTEMENTE',4);
   const recentSearch=readRecent().map(q=>({type:'recent-query',id:q,icon:'↺',title:q,sub:'Repetir búsqueda',group:'BÚSQUEDAS RECIENTES'}));
   return [...actionItems(),...favs,...recents,...recentSearch];
 }
