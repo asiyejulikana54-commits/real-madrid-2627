@@ -43,6 +43,8 @@ jobs:
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
           grep -q "requestIdleCallback" community.js
+          grep -q "uxInstallRM" ux-cleanup.js
+          grep -q "Instalar RM 26/27" ux-cleanup.js
           if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js; then
             echo "No se permiten observadores globales en las capas de presentación"; exit 1;
           fi
@@ -53,9 +55,12 @@ jobs:
           node --check sw.js
           node -e "JSON.parse(require('fs').readFileSync('manifest.webmanifest','utf8')); console.log('manifest ok')"
           grep -q 'rel="manifest" href="manifest.webmanifest"' index.html
-          grep -q 'pwa.js?v=1' index.html
+          grep -q 'pwa.css?v=2' index.html
+          grep -q 'pwa.js?v=2' index.html
           grep -q 'community.js?v=3' index.html
-          grep -q 'ux-cleanup.js?v=5' index.html
+          grep -q 'ux-cleanup.js?v=6' index.html
+          grep -q 'window.RMPWA' pwa.js
+          grep -q 'showInstallGuide' pwa.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
