@@ -52,11 +52,15 @@ function loadEngagement(){
   if(!document.querySelector('link[data-public-engagement]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-engagement.css?v=3';link.dataset.publicEngagement='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-public-engagement]')){const script=document.createElement('script');script.src='public-engagement.js?v=3';script.dataset.publicEngagement='1';document.body.appendChild(script)}
 }
+function loadShareCards(){
+  if(!document.querySelector('link[data-share-cards]')){const link=document.createElement('link');link.rel='stylesheet';link.href='share-cards.css?v=1';link.dataset.shareCards='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-share-cards]')){const script=document.createElement('script');script.src='share-cards.js?v=1';script.dataset.shareCards='1';document.body.appendChild(script)}
+}
 function refreshPublicCopy(){injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio')}
 function install(){
   if(installed)return;
   if(!document.getElementById('inicio')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;publicMeta();document.body.classList.add('public-ready');refreshPublicCopy();loadEngagement();
+  installed=true;publicMeta();document.body.classList.add('public-ready');refreshPublicCopy();loadEngagement();loadShareCards();
   const base=showSection;showSection=function(id){base(id);updateHomeTopbar(id);setTimeout(improveCopy,0)};
   [250,800,1600].forEach(ms=>setTimeout(refreshPublicCopy,ms));
   document.addEventListener('rm-season-data-ready',()=>setTimeout(refreshPublicCopy,0),{once:true});
