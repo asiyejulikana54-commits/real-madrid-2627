@@ -33,6 +33,7 @@ jobs:
           node --check matchday.js
           node --check compare-pro.js
           node --check stats-pro.js
+          node --check match-history-pro.js
           node --check public-polish.js
           node --check public-engagement.js
           node --check share-cards.js
@@ -58,6 +59,9 @@ jobs:
           grep -q "stats-pro.js?v=1" public-polish.js
           grep -q "stats-pro.css?v=1" public-polish.js
           grep -q "loadStatsPro" public-polish.js
+          grep -q "match-history-pro.js?v=1" public-polish.js
+          grep -q "match-history-pro.css?v=1" public-polish.js
+          grep -q "loadMatchHistoryPro" public-polish.js
           grep -q "share-cards.js?v=2" public-polish.js
           grep -q "RMComparePro" compare-pro.js
           grep -q "VEREDICTO ACTUAL" compare-pro.js
@@ -70,6 +74,12 @@ jobs:
           grep -q "Power RM" stats-pro.js
           grep -q "Toda la muestra" stats-pro.js
           grep -q "SC no equivale a 0" stats-pro.js
+          grep -q "RMMatchHistoryPro" match-history-pro.js
+          grep -q "HISTORIAL PRO" match-history-pro.js
+          grep -q "MEJORES NOTAS" match-history-pro.js
+          grep -q "MÁS MINUTOS" match-history-pro.js
+          grep -q "Vs anterior" match-history-pro.js
+          grep -q "SC nunca equivale a 0" match-history-pro.js
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
           grep -q "requestIdleCallback" community.js
@@ -106,7 +116,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -137,7 +147,9 @@ jobs:
           grep -q 'compare-pro.css' sw.js
           grep -q 'stats-pro.js' sw.js
           grep -q 'stats-pro.css' sw.js
-          grep -q "rm2627-static-v11" sw.js
+          grep -q 'match-history-pro.js' sw.js
+          grep -q 'match-history-pro.css' sw.js
+          grep -q "rm2627-static-v12" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
