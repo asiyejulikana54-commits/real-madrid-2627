@@ -31,16 +31,19 @@ jobs:
         run: |
           node --check public-polish.js
           node --check public-engagement.js
+          node --check share-cards.js
           node --check ux-cleanup.js
           grep -q "public-engagement.js?v=3" public-polish.js
           grep -q "public-engagement.css?v=3" public-polish.js
+          grep -q "share-cards.js?v=1" public-polish.js
+          grep -q "share-cards.css?v=1" public-polish.js
           if grep -q "script.src='engagement.js" public-polish.js; then exit 1; fi
 
       - name: Bust public frontend cache
         run: |
-          sed -i 's/ux-cleanup.js?v=1/ux-cleanup.js?v=3/' index.html
-          sed -i 's/public-polish.css?v=1/public-polish.css?v=3/' ux-cleanup.js
-          sed -i 's/public-polish.js?v=2/public-polish.js?v=3/' ux-cleanup.js
+          sed -i 's/ux-cleanup.js?v=1/ux-cleanup.js?v=4/' index.html
+          sed -i 's/public-polish.css?v=1/public-polish.css?v=4/' ux-cleanup.js
+          sed -i 's/public-polish.js?v=2/public-polish.js?v=4/' ux-cleanup.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
