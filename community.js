@@ -94,3 +94,9 @@ if(!document.querySelector('link[data-analytics]')){
 if(!document.querySelector('script[data-analytics]')){
   const script=document.createElement('script');script.async=false;script.src='analytics.js?v=1';script.dataset.analytics='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-lineuplab]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='lineuplab.css?v=1';link.dataset.lineuplab='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-lineuplab]')){
+  const script=document.createElement('script');script.async=false;script.src='lineuplab.js?v=1';script.dataset.lineuplab='1';document.body.appendChild(script);
+}
