@@ -58,8 +58,9 @@ async function shareProfile(name){
 function addProfileActions(name){
   const tags=document.querySelector('#playerHubContent .player-sheet-tags');if(!tags)return;
   let top=document.querySelector('#playerHubContent .px-modal-top-actions');if(!top){top=document.createElement('div');top.className='px-modal-top-actions';tags.insertAdjacentElement('afterend',top)}
-  const active=isFavorite(name);top.innerHTML=`<button type="button" class="btn px-favorite-main${active?' active':''}" data-px-favorite>${active?'★ En favoritos':'☆ Añadir a favoritos'}</button><button type="button" class="btn px-profile-link" data-player-link>Compartir perfil</button>`;
-  top.querySelector('[data-px-favorite]')?.addEventListener('click',()=>toggleFavorite(name));top.querySelector('[data-player-link]')?.addEventListener('click',()=>shareProfile(name));
+  const active=isFavorite(name);top.innerHTML=`<button type="button" class="btn px-favorite-main${active?' active':''}" data-px-favorite>${active?'★ En favoritos':'☆ Añadir a favoritos'}</button>`;
+  top.querySelector('[data-px-favorite]')?.addEventListener('click',()=>toggleFavorite(name));
+  const actions=document.querySelector('#playerHubContent .player-sheet-actions');if(actions&&!actions.querySelector('[data-player-link]')){const share=document.createElement('button');share.type='button';share.className='btn px-profile-link';share.dataset.playerLink='1';share.textContent='Compartir perfil';share.addEventListener('click',()=>shareProfile(name));actions.appendChild(share)}
 }
 function addSeasonSummary(name){
   const rows=series(name),form=recent(name),trend=delta(name),{best,worst}=extremes(rows);const sample=document.querySelector('#playerHubContent .sample-card');if(!sample)return;
@@ -83,6 +84,7 @@ function bindRefreshes(){
   search?.addEventListener('input',()=>setTimeout(()=>{decorateCards();renderShelf()},0));filter?.addEventListener('change',()=>setTimeout(()=>{decorateCards();renderShelf()},0));
   document.addEventListener('rm-ranking-official-ready',()=>setTimeout(()=>{decorateCards();renderShelf();if(lastOpened)enhanceModal(lastOpened)},0));
   document.addEventListener('rm-season-data-ready',()=>setTimeout(()=>{if(lastOpened)enhanceModal(lastOpened)},0));
+  document.addEventListener('rm-modules-ready',()=>setTimeout(()=>{if(lastOpened)enhanceModal(lastOpened)},0));
 }
 function install(){
   if(installed)return;if(typeof players==='undefined'||typeof openPlayerHub!=='function'){setTimeout(install,100);return}installed=true;document.body.classList.add('player-experience-ready');hookPlayerHub();renderShelf();decorateCards();bindRefreshes();[250,900,1800].forEach(ms=>setTimeout(()=>{hookPlayerHub();renderShelf();decorateCards()},ms));
