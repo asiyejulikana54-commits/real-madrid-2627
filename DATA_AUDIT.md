@@ -1,115 +1,82 @@
 # Auditoría de datos · RM 26/27
 
-**Fecha de corte:** 11-09-2026
+**Fecha de corte:** 11-09-2026  
+**Arquitectura activa:** `season-data.js` v6
 
-## Estado de la base histórica
+## Estado final
 
-La fuente única `season-data.js` mantiene cinco partidos: Málaga, Real Sociedad, Espanyol, Betis e Inter.
+La auditoría estadística y de módulos derivados queda cerrada sobre los cinco partidos trabajados: Málaga, Real Sociedad, Espanyol, Betis e Inter.
 
-- Notas históricas FotMob confirmadas: **70**
-- Registros de minutos confirmados: **96**
-- Registros reconstruidos activos: **0**
-- Apariciones pendientes de clasificar por fuente: **0**
+La regla de arquitectura es ahora única:
 
-`SC · Sin calificación` significa que la fuente fue comprobada y no publicó una nota para esa aparición. No se interpreta como 0, ni como dato pendiente, ni se inventa una valoración.
+`datos por partido → season-data.js → agregado oficial → módulos derivados`
 
-## Cobertura multifuente cerrada
+No hay que volver a introducir manualmente una media, un Power, una forma o una jerarquía en otro archivo.
 
-Fuentes objetivo del modelo acumulado:
+## Cobertura multifuente
 
-- SofaScore: **75** valoraciones recuperadas
-- FotMob: **70** valoraciones recuperadas
-- StatMuse: **75** valoraciones recuperadas
+Fuentes de valoración:
+
+- SofaScore: **75** valoraciones publicadas
+- FotMob: **70** valoraciones publicadas
+- StatMuse: **75** valoraciones publicadas
 
 Sobre **77 apariciones con minutos > 0**:
 
-- **70** tienen las tres fuentes con nota (`3/3`)
+- **70** tienen tres notas (`3/3`)
 - **5** tienen dos notas + una fuente `SC`
 - **2** tienen las tres fuentes `SC`
-- **0** apariciones quedan pendientes de comprobar
+- **0** quedan pendientes de comprobar
 
-En total están resueltos los **231 estados fuente-aparición** posibles (77 × 3): 220 con valoración y 11 como `SC`.
+Están resueltos los **231 estados fuente-aparición** posibles: **220 valoraciones + 11 SC**.
 
-## Casos cerrados como SC
+`SC · Sin calificación` significa que la fuente fue comprobada y no publicó nota. Nunca equivale a cero.
 
-### Málaga
+## Casos SC
 
-- Arda Güler — 3': SofaScore 7,6 + StatMuse 8,9; FotMob `SC`.
+- Málaga · Arda Güler 3': SofaScore 7,6 + StatMuse 8,9 + FotMob SC.
+- Real Sociedad · Diomande 6': SofaScore 6,6 + StatMuse 6,7 + FotMob SC.
+- Real Sociedad · Carlos Espí 4': SofaScore 6,4 + StatMuse 6,6 + FotMob SC.
+- Betis · Álvaro Carreras 2': SofaScore 6,9 + StatMuse 7,0 + FotMob SC.
+- Betis · Carlos Espí 8': SofaScore 6,4 + StatMuse 6,9 + FotMob SC.
+- Inter · Álvaro Carreras 3': SC en las tres fuentes.
+- Inter · Carlos Espí 1': SC en las tres fuentes.
 
-### Real Sociedad
+## Política oficial
 
-- Diomande — 6': SofaScore 6,6 + StatMuse 6,7; FotMob `SC`.
-- Carlos Espí — 4': SofaScore 6,4 + StatMuse 6,6; FotMob `SC`.
+1. **3/3:** media aritmética de SofaScore + FotMob + StatMuse.
+2. **2 + SC:** media aritmética de las dos notas publicadas.
+3. **3 SC:** conserva minutos, pero no genera nota ni aporte.
+4. **Aporte de partido:** `nota oficial × minutos / 90`.
+5. **Media acumulada:** `puntos × 90 / minutos con valoración`.
+6. **Min/punto:** `todos los minutos jugados / puntos`.
+7. No existe corte de 45 minutos ni otro mínimo de participación.
 
-### Betis
+## Minutos reconciliados
 
-- Álvaro Carreras — 2': SofaScore 6,9 + StatMuse 7,0; FotMob `SC`.
-- Carlos Espí — 8': SofaScore 6,4 + StatMuse 6,9; FotMob `SC`.
+La comparación del acumulado legado con los minutos partido a partido quedó cerrada:
 
-### Inter
+- 19 jugadores comprobados
+- 17 coincidencias exactas
+- 2 correcciones
+- total legado: **4.950 min**
+- total histórico central: **4.950 min**
+- cada partido suma **990 min**
 
-- Álvaro Carreras — 3': SofaScore `SC`, FotMob `SC`, StatMuse `SC`.
-- Carlos Espí — 1': SofaScore `SC`, FotMob `SC`, StatMuse `SC`.
+Correcciones:
 
-Las capturas directas aportadas el 11-09-2026 cerraron SofaScore de Real Sociedad y Espanyol y corrigieron Carlos Espí vs Espanyol a **7,8** en SofaScore. Las capturas posteriores cerraron Brahim vs Real Sociedad (**7,0 StatMuse**), Bernardo vs Betis (**6,8 StatMuse**), Carreras vs Betis (**7,0 StatMuse**), Espí vs Betis (**6,9 StatMuse**) y Güler vs Málaga (**7,6 SofaScore**).
+- Mbappé: **450 → 449 min**
+- Carlos Espí: **22 → 23 min**
 
-## Política oficial para SC
+Era el mismo minuto del Inter reasignado correctamente: Mbappé 89' y Espí 1'.
 
-La política estadística queda fijada de forma definitiva:
+## Ranking oficial
 
-1. **3 notas publicadas:** media aritmética de SofaScore + FotMob + StatMuse.
-2. **2 notas + 1 SC:** media aritmética de las dos notas que sí fueron publicadas.
-3. **3 SC:** la aparición conserva sus minutos oficiales, pero no genera nota ni aporte.
-4. La **media acumulada** usa solo los minutos de apariciones con al menos una valoración publicada.
-5. `min/punto` usa **todos los minutos jugados**, incluidos los minutos de una aparición 3 SC.
-6. No existe corte mínimo de 45 minutos ni ningún otro umbral de participación.
+`minute-sync.js` v4 ya no recalcula una metodología paralela. Consume directamente `season-data.js.aggregatePlayer()` y vuelca esos resultados sobre el antiguo `efficiencyRanking`, que queda únicamente como fallback de arranque.
 
-Así se evita tratar un `SC` como cero y, al mismo tiempo, los minutos realmente jugados siguen formando parte de la eficiencia temporal del futbolista.
+El orden oficial permanece:
 
-## Evidencia directa y conflictos
-
-Cuando existe una captura directa del partido conservada en el proyecto, esa evidencia prevalece sobre perfiles agregados o resúmenes posteriores si aparece un conflicto.
-
-La auditoría ha servido para corregir valoraciones y minutajes reconstruidos anteriores. Los cambios verificados se incorporan a `season-data.js` y cualquier reconstrucción incompatible se descarta.
-
-## Minutos acumulados: reconciliación cerrada
-
-La comparación jugador por jugador entre el antiguo `efficiencyRanking` y la suma de los minutos confirmados de los cinco partidos ha quedado cerrada.
-
-- Jugadores del ranking comprobados: **19**
-- Coincidencias exactas: **17/19**
-- Diferencias reales: **2**
-- Total antiguo del ranking: **4.950 minutos**
-- Total histórico central: **4.950 minutos**
-- Total por partido: **990 minutos** (11 × 90) en cada uno de los cinco encuentros
-
-Las dos diferencias eran el mismo minuto del Inter asignado de forma distinta:
-
-- **Mbappé:** 450 → **449 minutos**. Inter queda confirmado en 89'.
-- **Carlos Espí:** 22 → **23 minutos**. Inter queda confirmado en 1'.
-
-Por tanto, no existía una discrepancia de convención global ni minutos perdidos: el total de equipo ya era correcto y solo había que reasignar un minuto entre ambos jugadores.
-
-## Ranking oficial migrado
-
-Desde el 11-09-2026, el ranking principal deja de usar los puntos heredados de `app.js` como fuente autoritativa. `minute-sync.js` aplica el modelo oficial cuando `RMSeasonData` está disponible:
-
-- suma los minutos históricos confirmados;
-- calcula la nota de cada aparición según la política 3/3, 2+SC o 3SC;
-- calcula `aporte = nota × minutos / 90`;
-- calcula la media acumulada con minutos valorados;
-- calcula `min/punto` con todos los minutos jugados;
-- sustituye en memoria los puntos, la media y la eficiencia del ranking legado;
-- reordena el ranking;
-- expone `RMRankingMigration` y `RMMinuteAudit` para poder auditar cualquier cambio futuro.
-
-Los datos escritos dentro de `app.js` quedan como **fallback de compatibilidad**; la fuente oficial en ejecución es `season-data.js` + la política de migración.
-
-### Comparación de posiciones
-
-La migración no produce ningún cambio de posición respecto al ranking legado ya reconciliado:
-
-| # | Jugador | Media oficial | Min/punto oficial |
+| # | Jugador | Media | Min/punto |
 |---:|---|---:|---:|
 | 1 | Arda Güler | 8,20 | 10,97 |
 | 2 | Bellingham | 8,14 | 11,06 |
@@ -131,23 +98,73 @@ La migración no produce ningún cambio de posición respecto al ranking legado 
 | 18 | Diomande | 6,56 | 13,72 |
 | 19 | Tchouaméni | 6,40 | 14,06 |
 
-`*` La media de Espí y Carreras excluye de su denominador la micro-aparición del Inter con 3 SC; sus minutos sí cuentan en `min/punto`.
+`*` En Carreras y Espí la media excluye la micro-aparición del Inter con 3 SC; esos minutos sí cuentan en eficiencia.
 
-## Lectura del cambio frente al legado
+## Serie temporal oficial
 
-La migración cambia ligeramente varias medias y aportes, porque ahora las tres fuentes están centralizadas y las micro-apariciones SC tienen una regla explícita. Sin embargo, **el orden completo 1–19 permanece exactamente igual**, por lo que no aparece ninguna anomalía estructural ni salto artificial de jerarquía.
+Desde `season-data.js` v6, las funciones activas son:
 
-Los cambios más visibles de media son:
+- `officialRatingEntry()`
+- `ratingSeries()`
+- `recentRating()`
+- `ratingDelta()`
+- `aggregatePlayer()`
+- `aggregateRanking()`
 
-- Álvaro Carreras: aproximadamente 6,51 → **6,89**.
-- Carlos Espí: aproximadamente 6,97 → **7,24** en minutos valorados.
-- Diomande: aproximadamente 6,50 → **6,56**.
-- Tchouaméni: aproximadamente 6,30 → **6,40**.
+La forma reciente **ya no usa FotMob de manera aislada**. Usa la misma nota oficial multifuente que el ranking.
 
-El resto de jugadores se mueve solo unas centésimas.
+`ratingEntry()` se conserva únicamente como acceso de bajo nivel a la nota FotMob original para procedencia/auditoría.
 
-## Estado final
+## Auditoría de módulos derivados
 
-La **cobertura multifuente**, la **clasificación de SC**, la **reconciliación de minutos** y la **migración del ranking principal** están cerradas.
+### Power RM — correcto
 
-A partir de este punto, cualquier nuevo partido debe añadirse primero a `season-data.js`. El ranking, Power, fichas, comparadores y módulos derivados deben consumir esa fuente central y no volver a mantener acumulados independientes.
+Consume media y minutos oficiales. No mantiene notas propias.
+
+### Laboratorio XI — correcto
+
+Consume media, minutos, Power y min/punto oficiales. Solo cambia ponderaciones y optimización posicional.
+
+### Radar — correcto
+
+Media, Power, minutos y eficiencia salen del ranking oficial. Forma reciente sale de `recentRating()` oficial. Comunidad es una señal independiente.
+
+### Centro de Inteligencia — correcto
+
+Power/muestra proceden del ranking oficial; subidas y forma usan `ratingDelta()`/`recentRating()` oficiales; el XI por datos comparte las métricas del Laboratorio.
+
+### Evolución — corregido
+
+Era uno de los restos reales de la metodología antigua: leía directamente `ratingEntry()` (FotMob). Ahora usa `officialRatingEntry()` y muestra `3/3`, `2+SC` y `SC`.
+
+Top 5 temporal, movimientos y matriz ya usan la serie oficial.
+
+### Historial de jugador — corregido
+
+La gráfica de las fichas también usaba FotMob como serie temporal. Ahora gráfica, tabla y resumen consumen la nota oficial multifuente.
+
+### Jerarquías — corregido
+
+El cálculo ya apuntaba a `recentRating()`, pero la explicación metodológica seguía describiendo la capa antigua. Queda alineada con la forma oficial y con la cobertura 3/3 / 2+SC.
+
+## Orden de carga
+
+`index.html` fija ahora este orden:
+
+1. `app.js` — estructura + fallback
+2. `season-data.js?v=6` — fuente oficial
+3. `minute-sync.js?v=4` — migración del ranking
+4. `community.js?v=2` — interfaz y carga de módulos derivados
+5. `ux-cleanup.js`
+
+Esto evita que Power, Laboratorio u otros módulos calculen constantes sobre el ranking legado antes de que se aplique la migración.
+
+## Resultado
+
+La cadena estadística activa queda unificada:
+
+`season-data.js → ranking oficial → Power / fichas / Evolución / Radar / Laboratorio / Inteligencia / Jerarquías`
+
+Para un nuevo partido solo deben incorporarse en `season-data.js` los minutos, las notas publicadas y los SC comprobados. El resto se recalcula automáticamente.
+
+Para detalles técnicos por módulo, consultar `DERIVED_MODULE_AUDIT.md`.
