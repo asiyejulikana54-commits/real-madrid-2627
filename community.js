@@ -119,5 +119,5 @@ if(!document.querySelector('link[data-hierarchy]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='hierarchy.css?v=1';link.dataset.hierarchy='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-hierarchy]')){
-  const script=document.createElement('script');script.async=false;script.src='hierarchy.js?v=1';script.dataset.hierarchy='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='hierarchy.js?v=2';script.dataset.hierarchy='1';document.body.appendChild(script);
 }
