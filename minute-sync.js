@@ -1,5 +1,6 @@
 (()=>{
 const AUDIT_DATE='2026-09-11';
+const CHRONOLOGY_IDS=Object.freeze(['espanyol','real-sociedad','malaga','betis','inter']);
 const POLICY=Object.freeze({
   full:'3 notas publicadas → media aritmética de SofaScore + FotMob + StatMuse.',
   partial:'2 notas + 1 SC → media aritmética de las 2 notas publicadas.',
@@ -7,6 +8,30 @@ const POLICY=Object.freeze({
   efficiency:'Min/punto usa todos los minutos jugados; la media usa solo minutos valorados.',
   cutoff:'Sin corte mínimo de minutos.'
 });
+function applyChronologyFix(){
+  const data=window.RMSeasonData;if(!data?.matches?.length)return false;
+  const original=[...data.matches],byId=new Map(original.map(m=>[m.id,m]));
+  if(!CHRONOLOGY_IDS.every(id=>byId.has(id)))return false;
+  const known=new Set(CHRONOLOGY_IDS),ordered=[...CHRONOLOGY_IDS.map(id=>byId.get(id)),...original.filter(m=>!known.has(m.id))];
+  const ratingSeries=(player,{through=ordered.length-1}={})=>ordered.slice(0,through+1).map(match=>({match,entry:data.officialRatingEntry(match.id,player)})).filter(row=>row.entry&&row.entry.value!==null);
+  const recentRating=(player,n=3,opts={})=>{const rows=ratingSeries(player,opts).slice(-n);return rows.length?{value:rows.reduce((s,r)=>s+r.entry.value,0)/rows.length,n:rows.length,rows}:null};
+  const ratingDelta=(player,opts={})=>{const rows=ratingSeries(player,opts);if(rows.length<2)return null;const a=rows.at(-2),b=rows.at(-1);return {previous:a.entry.value,current:b.entry.value,delta:b.entry.value-a.entry.value,previousMatch:a.match,currentMatch:b.match,n:rows.length}};
+  const aggregatePlayer=player=>{const agg=data.aggregatePlayer(player),position=new Map(ordered.map((m,i)=>[m.id,i])),rows=[...(agg.matches||[])].sort((a,b)=>(position.get(a.match?.id)??999)-(position.get(b.match?.id)??999));return Object.freeze({...agg,matches:Object.freeze(rows)})};
+  const chronology=Object.freeze({version:2,corrected:true,order:Object.freeze([...CHRONOLOGY_IDS]),labels:Object.freeze(ordered.slice(0,CHRONOLOGY_IDS.length).map(m=>m.label)),note:'Cronología corregida: Espanyol fue el primer partido del seguimiento y Málaga el tercero.'});
+  window.RMSeasonData=Object.freeze({...data,matches:Object.freeze(ordered),ratingSeries,recentRating,ratingDelta,aggregatePlayer,chronology});
+  try{
+    if(typeof matches!=='undefined'&&Array.isArray(matches)){
+      const key=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const legacyByName=new Map(matches.map(m=>[key(m.rival),m])),legacyOrdered=ordered.map(m=>legacyByName.get(key(m.label))).filter(Boolean),chosen=new Set(legacyOrdered),rest=matches.filter(m=>!chosen.has(m));
+      matches.splice(0,matches.length,...legacyOrdered,...rest);
+      const espanyol=legacyByName.get('espanyol');if(espanyol&&/Cuarto partido/i.test(espanyol.note||''))espanyol.note='Primera jornada del seguimiento histórico. Valoraciones y minutos incorporados al análisis multifuente.';
+    }
+  }catch{}
+  window.RMChronologyCorrection=chronology;
+  document.dispatchEvent(new CustomEvent('rm-season-order-corrected',{detail:chronology}));
+  return true;
+}
+applyChronologyFix();
 function canonical(name){return window.RMSeasonData?.canonical?window.RMSeasonData.canonical(name):name}
 function powerValue(rating,minutes){
   if(!Number.isFinite(rating)||!Number.isFinite(minutes))return null;
