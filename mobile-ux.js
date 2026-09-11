@@ -28,7 +28,8 @@ function robustNavigate(id){
 function hardenNav(){
   const nav=document.querySelector('.mobile-nav');if(!nav)return;
   nav.setAttribute('aria-label','Navegación principal');
-  nav.querySelectorAll('button').forEach(btn=>{btn.type='button';btn.draggable=false;if(btn.dataset.section&&!btn.getAttribute('aria-label'))btn.setAttribute('aria-label',btn.textContent.trim())});
+  nav.style.userSelect='none';nav.style.webkitUserSelect='none';nav.style.webkitTouchCallout='none';nav.style.touchAction='manipulation';nav.style.zIndex='90';nav.style.isolation='isolate';
+  nav.querySelectorAll('button').forEach(btn=>{btn.type='button';btn.draggable=false;btn.style.userSelect='none';btn.style.webkitUserSelect='none';btn.style.webkitTouchCallout='none';btn.style.touchAction='manipulation';[...btn.children].forEach(child=>child.style.pointerEvents='none');if(btn.dataset.section&&!btn.getAttribute('aria-label'))btn.setAttribute('aria-label',btn.textContent.trim())});
   if(nav.dataset.touchHardened)return;nav.dataset.touchHardened='1';
   const blockSelection=e=>{if(e.target.closest?.('.mobile-nav'))e.preventDefault()};
   nav.addEventListener('selectstart',blockSelection);nav.addEventListener('contextmenu',blockSelection);nav.addEventListener('dragstart',blockSelection);
