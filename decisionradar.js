@@ -1,0 +1,106 @@
+(()=>{
+const RADAR_SECTION=['radar','◈','Radar','Radar de decisiones','Cara a cara por media, Power, minutos, eficiencia, forma y comunidad.'];
+let insertAt=sections.findIndex(s=>s[0]==='comparador');
+if(!sections.some(s=>s[0]==='radar'))sections.splice(Math.max(0,insertAt),0,RADAR_SECTION);
+
+const R_PRESETS=[
+  {id:'ld',label:'Lateral derecho',a:'Dumfries',b:'Trent Alexander-Arnold',note:'Explosividad y presencia física frente a construcción y creatividad interior.'},
+  {id:'central',label:'Central',a:'Konaté',b:'Rüdiger',note:'Continuidad y muestra acumulada frente a experiencia y rendimiento por minuto.'},
+  {id:'li',label:'Lateral izquierdo',a:'Álvaro Carreras',b:'Cucurella',note:'Eficiencia de muestra corta frente a continuidad y peso de minutos.'},
+  {id:'banda',label:'Banda derecha',a:'Diomande',b:'Brahim Díaz',note:'Amplitud y profundidad frente a asociación y juego interior.'}
+];
+const R_HISTORY={
+  malaga:{'Bellingham':8.8,'Mbappé':8.7,'Trent Alexander-Arnold':8.5,'Vini Jr.':8.3,'Camavinga':7.8,'Cucurella':7.7,'Huijsen':7.5,'Diomande':6.6},
+  'real-sociedad':{'Mbappé':9.8,'Bellingham':9.0,'Vini Jr.':8.6,'Arda Güler':8.2,'Valverde':8.1,'Huijsen':7.8},
+  espanyol:{'Arda Güler':8.6,'Bellingham':8.3,'Valverde':8.1,'Konaté':7.7,'Mbappé':7.4,'Diomande':6.0},
+  betis:{'Vini Jr.':7.8,'Arda Güler':7.5,'Huijsen':7.5,'Bellingham':7.4,'Cucurella':6.8,'Mbappé':6.7,'Courtois':6.7,'Valverde':6.6,'Konaté':6.6,'Dumfries':6.6,'Camavinga':6.1},
+  inter:{}
+};
+const R_MATCH_ORDER=['malaga','real-sociedad','espanyol','betis','inter'];
+let radarA='Dumfries',radarB='Trent Alexander-Arnold',radarCommunity=null,radarPolls=null,radarLoading=false;
+
+function rEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function rPlayer(name){return players.find(p=>p.name===name)}
+function rMetric(name){const p=rPlayer(name);return p?metricFor(p):null}
+function rRating(name){return currentRating(rMetric(name))}
+function rPower(name){const m=rMetric(name),rating=rRating(name);if(!m||rating===null)return null;const sample=Math.min(m.minutes,450)/450;return rating*(.75+.25*sample)}
+function rRecent(name){const vals=R_MATCH_ORDER.map(id=>R_HISTORY[id]?.[name]).filter(v=>typeof v==='number');const last=vals.slice(-3);return last.length?{value:last.reduce((a,b)=>a+b,0)/last.length,n:last.length}:null}
+function rGlobalCommunity(name){
+  if(!radarCommunity?.slotShares)return null;let best=null;
+  for(const rows of Object.values(radarCommunity.slotShares))for(const row of rows||[])if(row.name===name){const value=typeof row.globalPercentage==='number'?row.globalPercentage:row.percentage;if(best===null||value>best)best=value}
+  return best;
+}
+function rDirectPoll(a,b){
+  const poll=(radarPolls?.polls||[]).find(p=>{const labels=(p.options||[]).map(o=>o.label);return labels.includes(displayName(a))&&labels.includes(displayName(b))||labels.includes(a)&&labels.includes(b)});
+  if(!poll||!poll.total)return null;
+  const find=name=>poll.options.find(o=>o.label===name||o.label===displayName(name));
+  const A=find(a),B=find(b);return A&&B?{a:A.percentage,b:B.percentage,total:poll.total,source:'Encuesta directa'}:null;
+}
+function rCommunityPair(a,b){
+  const direct=rDirectPoll(a,b);if(direct)return direct;
+  const A=rGlobalCommunity(a),B=rGlobalCommunity(b);if(A===null&&B===null)return null;
+  return {a:A??0,b:B??0,total:radarCommunity?.totalPredictions||0,source:'XI de la comunidad'};
+}
+function cmpHigher(a,b){if(a===null||a===undefined||b===null||b===undefined)return null;if(Math.abs(a-b)<.0001)return 0;return a>b?1:-1}
+function cmpLower(a,b){if(a===null||a===undefined||b===null||b===undefined)return null;if(Math.abs(a-b)<.0001)return 0;return a<b?1:-1}
+function rCriteria(a,b){
+  const ma=rMetric(a),mb=rMetric(b),ra=rRating(a),rb=rRating(b),pa=rPower(a),pb=rPower(b),fa=rRecent(a),fb=rRecent(b),community=rCommunityPair(a,b);
+  return [
+    {id:'rating',label:'Media actual',a:ra,b:rb,winner:cmpHigher(ra,rb),fmt:v=>v===null?'—':v.toFixed(2),note:'Media acumulada del panel'},
+    {id:'power',label:'Power RM',a:pa,b:pb,winner:cmpHigher(pa,pb),fmt:v=>v===null?'—':v.toFixed(2),note:'Rendimiento ajustado por muestra'},
+    {id:'minutes',label:'Minutos',a:ma?.minutes??null,b:mb?.minutes??null,winner:cmpHigher(ma?.minutes??null,mb?.minutes??null),fmt:v=>v===null?'—':`${v}'`,note:'Peso competitivo acumulado'},
+    {id:'eff',label:'Eficiencia',a:ma?.minPerPoint??null,b:mb?.minPerPoint??null,winner:cmpLower(ma?.minPerPoint??null,mb?.minPerPoint??null),fmt:v=>v===null?'—':v.toFixed(2),note:'Menor min/punto gana'},
+    {id:'form',label:'Forma reciente',a:fa?.value??null,b:fb?.value??null,winner:cmpHigher(fa?.value??null,fb?.value??null),fmt:v=>v===null?'—':v.toFixed(2),note:`Últimas notas confirmadas · ${fa?.n||0}/${fb?.n||0}`},
+    {id:'community',label:'Comunidad',a:community?.a??null,b:community?.b??null,winner:cmpHigher(community?.a??null,community?.b??null),fmt:v=>v===null?'—':`${v.toFixed(1)}%`,note:community?`${community.source} · ${community.total} voto${community.total===1?'':'s'}`:'Sin votos comparables'}
+  ];
+}
+function rScore(criteria){let a=0,b=0,ties=0,pending=0;criteria.forEach(c=>{if(c.winner===1)a++;else if(c.winner===-1)b++;else if(c.winner===0)ties++;else pending++});return {a,b,ties,pending}}
+function rWinnerText(score,a,b){if(score.a>score.b)return `${displayName(a)} gana ${score.a}–${score.b}`;if(score.b>score.a)return `${displayName(b)} gana ${score.b}–${score.a}`;return `Empate ${score.a}–${score.b}`}
+function playerOption(name){const p=rPlayer(name);return `<option value="${rEsc(name)}">${rEsc(p?.short||p?.name||name)} · ${p?.pos||''}</option>`}
+function ensureRadar(){
+  if(document.getElementById('radar'))return;
+  const section=document.createElement('section');section.id='radar';section.className='section';
+  const comparator=document.getElementById('comparador');if(comparator)comparator.insertAdjacentElement('beforebegin',section);else document.querySelector('main')?.appendChild(section);
+  const active=document.querySelector('.section.active')?.id||'inicio';document.getElementById('navDesktop').innerHTML=navHtml(false);document.getElementById('navMobile').innerHTML=navHtml(true);document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===active));
+}
+function presetForPair(a,b){return R_PRESETS.find(p=>(p.a===a&&p.b===b)||(p.a===b&&p.b===a))}
+function metricRow(c,a,b){
+  const state=c.winner===1?'a':c.winner===-1?'b':c.winner===0?'tie':'pending';
+  return `<div class="radar-metric ${state}"><div class="radar-value left ${c.winner===1?'win':''}"><b>${c.fmt(c.a)}</b><small>${rEsc(displayName(a))}</small></div><div class="radar-metric-center"><strong>${rEsc(c.label)}</strong><span>${rEsc(c.note)}</span>${c.winner===null?'<em>PENDIENTE</em>':c.winner===0?'<em>EMPATE</em>':`<em>${c.winner===1?'←':'→'} PUNTO</em>`}</div><div class="radar-value right ${c.winner===-1?'win':''}"><b>${c.fmt(c.b)}</b><small>${rEsc(displayName(b))}</small></div></div>`;
+}
+function miniProfile(name){const p=rPlayer(name),m=rMetric(name),rating=rRating(name),power=rPower(name),form=rRecent(name);return `<button class="radar-player-card" onclick="openPlayerHub('${name.replace(/'/g,"\\'")}')"><div class="avatar">${initials(p?.short||name)}</div><div><h3>${rEsc(p?.short||name)}</h3><p>${rEsc(p?.role||'')}</p></div><div class="radar-mini"><span><b>${rating===null?'—':rating.toFixed(2)}</b><small>Media</small></span><span><b>${power===null?'—':power.toFixed(2)}</b><small>Power</small></span><span><b>${m?.minutes??'—'}</b><small>Min</small></span><span><b>${form?form.value.toFixed(2):'—'}</b><small>Forma</small></span></div></button>`}
+function renderRadar(){
+  const section=document.getElementById('radar');if(!section)return;const criteria=rCriteria(radarA,radarB),score=rScore(criteria),preset=presetForPair(radarA,radarB);
+  const winner=score.a>score.b?radarA:score.b>score.a?radarB:null;
+  section.innerHTML=`
+    <div class="section-head"><div><h2>Radar de decisiones</h2><p>Convierte nuestros debates de plantilla en un cara a cara medible con seis criterios independientes.</p></div><button class="btn" onclick="refreshDecisionRadar()">Actualizar comunidad</button></div>
+    <div class="radar-presets">${R_PRESETS.map(p=>`<button class="${preset?.id===p.id?'active':''}" onclick="selectRadarPreset('${p.id}')"><span>${rEsc(p.label)}</span><b>${rEsc(displayName(p.a))} vs ${rEsc(displayName(p.b))}</b></button>`).join('')}</div>
+    <div class="card radar-custom"><div><div class="eyebrow">COMPARACIÓN LIBRE</div><h3>Elige cualquier pareja de la plantilla</h3></div><div class="radar-selects"><select class="select" id="radarSelectA" onchange="setRadarPlayers(this.value,null)">${players.map(p=>playerOption(p.name)).join('')}</select><span>VS</span><select class="select" id="radarSelectB" onchange="setRadarPlayers(null,this.value)">${players.map(p=>playerOption(p.name)).join('')}</select></div></div>
+    <div class="radar-scoreboard card"><div class="radar-score-name"><span>${rEsc(displayName(radarA))}</span><b>${score.a}</b></div><div class="radar-verdict"><div class="eyebrow">MARCADOR DEL RADAR</div><h2>${rEsc(rWinnerText(score,radarA,radarB))}</h2><p>${preset?rEsc(preset.note):'Comparación libre de los seis indicadores.'}</p><div>${score.ties?`<span class="tag">${score.ties} empate${score.ties===1?'':'s'}</span>`:''}${score.pending?`<span class="tag gold">${score.pending} pendiente${score.pending===1?'':'s'}</span>`:''}</div></div><div class="radar-score-name right"><span>${rEsc(displayName(radarB))}</span><b>${score.b}</b></div></div>
+    <div class="radar-player-grid">${miniProfile(radarA)}${miniProfile(radarB)}</div>
+    <div class="card radar-metrics"><div class="section-head" style="margin-top:0"><div><h2>Los 6 asaltos</h2><p>Cada criterio vale un punto. Los empates y datos pendientes no regalan ventaja.</p></div></div>${criteria.map(c=>metricRow(c,radarA,radarB)).join('')}</div>
+    <div class="radar-summary-grid">
+      <div class="card"><div class="eyebrow">DECISIÓN POR DATOS</div><h3>${winner?`${rEsc(displayName(winner))} sale por delante`:'No hay ganador claro'}</h3><p>${winner?`Gana ${Math.max(score.a,score.b)} de los ${6-score.pending} criterios disponibles.`:'El duelo queda equilibrado con los datos actuales.'}</p></div>
+      <div class="card"><div class="eyebrow">CÓMO LEERLO</div><h3>No sustituye el contexto táctico</h3><p>El Radar ordena la evidencia. Rival, descanso, complementariedad y plan de partido pueden justificar elegir al jugador que pierde el marcador.</p></div>
+      <div class="card"><div class="eyebrow">COMUNIDAD</div><h3>${radarLoading?'Actualizando…':radarCommunity||radarPolls?'Datos conectados':'Sin conexión todavía'}</h3><p>Cuando el duelo coincide con una encuesta rápida usamos ese voto directo; si no, recurrimos al porcentaje global de elección en el XI comunitario.</p></div>
+    </div>
+    <div class="radar-actions"><button class="btn primary" onclick="radarToComparator()">Abrir en Comparador</button><button class="btn" onclick="showSection('laboratorio')">Contrastar con Laboratorio XI</button></div>
+    <div class="radar-integrity"><b>Marcador transparente</b><span>Media, Power, minutos y eficiencia salen del acumulado actual. Forma reciente usa solo notas históricas confirmadas. Comunidad depende de votos reales. Si falta información, el criterio aparece pendiente y no altera el marcador.</span></div>`;
+  const sa=document.getElementById('radarSelectA'),sb=document.getElementById('radarSelectB');if(sa)sa.value=radarA;if(sb)sb.value=radarB;
+}
+window.selectRadarPreset=function(id){const p=R_PRESETS.find(x=>x.id===id);if(!p)return;radarA=p.a;radarB=p.b;renderRadar()};
+window.setRadarPlayers=function(a,b){if(a)radarA=a;if(b)radarB=b;if(radarA===radarB){const alt=players.find(p=>p.name!==radarA);if(b)radarA=alt?.name||radarA;else radarB=alt?.name||radarB}renderRadar()};
+window.radarToComparator=function(){showSection('comparador');const A=document.getElementById('compareA'),B=document.getElementById('compareB');if(A)A.value=radarA;if(B)B.value=radarB;if(typeof renderCompare==='function')renderCompare()};
+window.refreshDecisionRadar=async function(){
+  if(radarLoading)return;radarLoading=true;renderRadar();
+  try{
+    const pid=typeof getParticipantId==='function'?getParticipantId():'';
+    const [c,p]=await Promise.all([
+      fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch(`/.netlify/functions/matchday?participantId=${encodeURIComponent(pid)}`,{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);radarCommunity=c;radarPolls=p;
+  }finally{radarLoading=false;renderRadar()}
+};
+function install(){if(typeof sections==='undefined'||typeof players==='undefined'||typeof metricFor!=='function'){setTimeout(install,100);return}ensureRadar();renderRadar();refreshDecisionRadar()}
+install();
+})();
