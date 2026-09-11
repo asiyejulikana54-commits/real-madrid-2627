@@ -34,6 +34,7 @@ const TEXT_REPLACEMENTS=new Map([
 ]);
 let timer=null,installed=false;
 
+function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
 function ensureCss(){
   if(document.querySelector('link[data-visual-system]'))return;
   const link=document.createElement('link');link.rel='stylesheet';link.href='visual-system.css?v=1';link.dataset.visualSystem='1';document.head.appendChild(link);
@@ -45,35 +46,27 @@ function normalizeSections(){
 function normalizeNav(){
   document.querySelectorAll('[data-section]').forEach(btn=>{
     const meta=NAV_META[btn.dataset.section];if(!meta)return;
-    const desktopIcon=btn.querySelector(':scope > span');if(desktopIcon)desktopIcon.textContent=meta.icon;
-    const desktopLabel=btn.querySelector(':scope > em');if(desktopLabel)desktopLabel.textContent=meta.label;
-    if(btn.closest('.mobile-nav')){const icon=btn.querySelector(':scope > b');const label=btn.querySelector(':scope > small');if(icon)icon.textContent=meta.icon;if(label)label.textContent=meta.label==='Power RM'?'Datos':meta.label}
-    if(btn.closest('.ux-sheet-groups')){const icon=btn.querySelector(':scope > span');const label=btn.querySelector(':scope > b');if(icon)icon.textContent=meta.icon;if(label)label.textContent=meta.label}
+    setText(btn.querySelector(':scope > span'),meta.icon);
+    setText(btn.querySelector(':scope > em'),meta.label);
+    if(btn.closest('.mobile-nav')){setText(btn.querySelector(':scope > b'),meta.icon);setText(btn.querySelector(':scope > small'),meta.label==='Power RM'?'Datos':meta.label)}
+    if(btn.closest('.ux-sheet-groups')){setText(btn.querySelector(':scope > span'),meta.icon);setText(btn.querySelector(':scope > b'),meta.label)}
   });
 }
 function normalizeHeadings(){
-  document.querySelectorAll('h1,h2,h3,.eyebrow,.label,.history-mobile-label').forEach(el=>{const replacement=TEXT_REPLACEMENTS.get(el.textContent.trim());if(replacement!==undefined)el.textContent=replacement});
-  const active=document.querySelector('.section.active')?.id,meta=NAV_META[active];if(meta){const title=document.getElementById('pageTitle');if(title)title.textContent=meta.title}
+  document.querySelectorAll('h1,h2,h3,.eyebrow,.label,.history-mobile-label').forEach(el=>{const replacement=TEXT_REPLACEMENTS.get(el.textContent.trim());if(replacement!==undefined)setText(el,replacement)});
+  const active=document.querySelector('.section.active')?.id,meta=NAV_META[active];if(meta)setText(document.getElementById('pageTitle'),meta.title)
 }
 function classifyText(el){
   const text=(el.textContent||'').trim().toLowerCase();
-  el.classList.remove('vs-success','vs-warn','vs-info','vs-danger','vs-neutral');
-  if(/cerrad|error|baja|cae|▼|alerta|fallo/.test(text))el.classList.add('vs-danger');
-  else if(/abiert|conectad|complet|guardad|analizad|titular claro|▲|mejora/.test(text))el.classList.add('vs-success');
-  else if(/pendiente|esperando|muestra corta|duelo|posible|parcial/.test(text))el.classList.add('vs-warn');
-  else if(/nuevo|rotación|información|ranking actual/.test(text))el.classList.add('vs-info');
-  else el.classList.add('vs-neutral');
+  const next=/cerrad|error|baja|cae|▼|alerta|fallo/.test(text)?'vs-danger':/abiert|conectad|complet|guardad|analizad|titular claro|▲|mejora/.test(text)?'vs-success':/pendiente|esperando|muestra corta|duelo|posible|parcial/.test(text)?'vs-warn':/nuevo|rotación|información|ranking actual/.test(text)?'vs-info':'vs-neutral';
+  ['vs-success','vs-warn','vs-info','vs-danger','vs-neutral'].forEach(c=>{if(c!==next&&el.classList.contains(c))el.classList.remove(c)});if(!el.classList.contains(next))el.classList.add(next)
 }
-function normalizeStates(){
-  document.querySelectorAll('.pill,.tag,.status,.power-level,.h-tier,.intel-status b,.history-pending,.result-pending>b').forEach(classifyText);
-}
+function normalizeStates(){document.querySelectorAll('.pill,.tag,.status,.power-level,.h-tier,.intel-status b,.history-pending,.result-pending>b').forEach(classifyText)}
 function normalizeAccessibility(){
   document.querySelectorAll('button').forEach(b=>{if(!b.getAttribute('type'))b.setAttribute('type','button')});
-  document.querySelectorAll('.card[onclick],button.card').forEach(el=>el.classList.add('vs-interactive'));
+  document.querySelectorAll('.card[onclick],button.card').forEach(el=>{if(!el.classList.contains('vs-interactive'))el.classList.add('vs-interactive')});
 }
-function apply(){
-  ensureCss();document.body.classList.add('rm-visual-system');normalizeSections();normalizeNav();normalizeHeadings();normalizeStates();normalizeAccessibility();
-}
+function apply(){ensureCss();if(!document.body.classList.contains('rm-visual-system'))document.body.classList.add('rm-visual-system');normalizeSections();normalizeNav();normalizeHeadings();normalizeStates();normalizeAccessibility()}
 function schedule(){clearTimeout(timer);timer=setTimeout(apply,50)}
 function install(){
   if(installed)return;if(typeof sections==='undefined'||!document.body.classList.contains('ux-refined')){setTimeout(install,100);return}
