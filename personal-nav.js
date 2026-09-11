@@ -18,7 +18,10 @@ function injectDesktop(){
 }
 function refresh(){injectMore();injectDesktop()}
 function install(){
-  if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')){setTimeout(install,100);return}installed=true;refresh();document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
+  if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){setTimeout(install,100);return}
+  installed=true;refresh();
+  const base=showSection;showSection=function(id){base(id);setTimeout(refresh,0)};
+  document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 setTimeout(install,90);
 })();
