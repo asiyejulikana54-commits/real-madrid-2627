@@ -27,6 +27,14 @@ jobs:
       - name: Validate season update flow
         run: node scripts/validate-season-update.cjs
 
+      - name: Validate public frontend
+        run: |
+          node --check public-polish.js
+          node --check ux-cleanup.js
+
+      - name: Bust public frontend cache
+        run: sed -i 's/ux-cleanup.js?v=1/ux-cleanup.js?v=2/' index.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
