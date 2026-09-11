@@ -12,9 +12,10 @@ const RATINGS={
 'malaga':parse('Courtois=7|Rüdiger=7.3|Huijsen=7.5|Cucurella=7.7|Valverde=7|Bernardo Silva=5.9|Camavinga=7.8|Bellingham=8.8|Brahim Díaz=7|Mbappé=8.7|Vini Jr.=8.3|Trent Alexander-Arnold=8.5|Diomande=6.6',fm),
 'real-sociedad':parse('Courtois=6.9|Dumfries=7|Konaté=6.9|Huijsen=7.8|Cucurella=6.8|Álvaro Carreras=6.6|Valverde=8.1|Bernardo Silva=7.8|Camavinga=6.3|Bellingham=9|Arda Güler=8.2|Brahim Díaz=6.6|Mbappé=9.8|Vini Jr.=8.6',fm),
 'espanyol':parse('Courtois=6.4|Dumfries=7.3|Konaté=7.7|Huijsen=7.1|Cucurella=6.7|Álvaro Carreras=7.4|Valverde=8.1|Bernardo Silva=7|Camavinga=6.4|Bellingham=8.3|Arda Güler=8.6|Mbappé=7.4|Vini Jr.=7.2|Trent Alexander-Arnold=6.3|Diomande=6.4|Carlos Espí=7.5',fm),
-'betis':parse('Courtois=6.7|Dumfries=6.6|Konaté=6.6|Huijsen=7.5|Cucurella=6.8|Valverde=6.6|Bernardo Silva=6.4|Camavinga=6.1|Bellingham=7.4|Arda Güler=7.5|Mbappé=6.7|Vini Jr.=7.8|Trent Alexander-Arnold=6.6|Diomande=6.2',fm),
+'betis':parse('Courtois=6.7|Dumfrries=6.6',fm),
 'inter':parse('Courtois=7.5|Dumfries=6.7|Konaté=6.9|Huijsen=7.4|Cucurella=7.2|Valverde=8.1|Bellingham=7.6|Brahim Díaz=8.3|Mbappé=8.4|Vini Jr.=7.3|Trent Alexander-Arnold=7|Diomande=5.9|Tchouaméni=6',fm)
 };
+RATINGS.betis=parse('Courtois=6.7|Dumfries=6.6|Konaté=6.6|Huijsen=7.5|Cucurella=6.8|Valverde=6.6|Bernardo Silva=6.4|Camavinga=6.1|Bellingham=7.4|Arda Güler=7.5|Mbappé=6.7|Vini Jr.=7.8|Trent Alexander-Arnold=6.6|Diomande=6.2',fm);
 const MINUTES={
 'malaga':parse('Courtois=90|Lunin=0|Dumfries=0|Konaté=0|Rüdiger=90|Huijsen=90|Cucurella=90|Álvaro Carreras=0|Valverde=77|Bernardo Silva=13|Camavinga=90|Bellingham=87|Arda Güler=3|Brahim Díaz=65|Mbappé=90|Vini Jr.=90|Trent Alexander-Arnold=90|Diomande=25|Carlos Espí=0',fm),
 'real-sociedad':parse('Courtois=90|Lunin=0|Dumfries=90|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=45|Álvaro Carreras=45|Valverde=90|Bernardo Silva=86|Camavinga=12|Bellingham=78|Arda Güler=78|Brahim Díaz=12|Mbappé=90|Vini Jr.=84|Trent Alexander-Arnold=0|Diomande=6|Carlos Espí=4',fm),
@@ -27,8 +28,8 @@ MINUTES.inter['Camavinga']=rec(0,'UEFA · sanción','confirmed','Sancionado para
 MINUTES.inter['Bernardo Silva']=rec(0,'UEFA · sanción','confirmed','Sancionado para Real Madrid-Inter.');
 const SOFASCORE={
 'malaga':parse('Courtois=6.8|Rüdiger=7.5|Huijsen=7.1|Cucurella=7.3|Valverde=7.1|Bernardo Silva=6.5|Camavinga=6.9|Bellingham=8.5|Brahim Díaz=6.6|Mbappé=9.1|Vini Jr.=7.4|Trent Alexander-Arnold=7.9|Diomande=7',ss),
-'real-sociedad':parse('Dumfries=6.1|Konaté=7.3|Huijsen=7.3|Álvaro Carreras=6.2|Bellingham=9|Mbappé=10|Vini Jr.=7.8',ss),
-'espanyol':parse('Carlos Espí=8.3',ss),
+'real-sociedad':parse('Courtois=6.6|Dumfries=6.1|Konaté=7.3|Huijsen=7.3|Cucurella=6.9|Álvaro Carreras=6.2|Valverde=7.7|Bernardo Silva=7|Camavinga=6.8|Bellingham=9|Arda Güler=7.4|Brahim Díaz=6.6|Mbappé=10|Vini Jr.=7.8|Diomande=6.6|Carlos Espí=6.4',ss),
+'espanyol':parse('Courtois=6.5|Dumfries=6.6|Konaté=7.2|Huijsen=7|Cucurella=6.9|Álvaro Carreras=6.8|Valverde=7.3|Bernardo Silva=6.2|Camavinga=6.6|Bellingham=8.1|Arda Güler=8|Mbappé=6.4|Vini Jr.=7|Trent Alexander-Arnold=7|Diomande=6.5|Carlos Espí=7.8',ss),
 'betis':parse('Courtois=6.7|Dumfries=6.6|Konaté=6.5|Huijsen=7.7|Cucurella=6.8|Álvaro Carreras=6.9|Valverde=6.7|Bernardo Silva=6.6|Camavinga=6.8|Bellingham=7.1|Arda Güler=7.4|Mbappé=6|Vini Jr.=7|Trent Alexander-Arnold=6.5|Diomande=6.5|Carlos Espí=6.4',ss),
 'inter':parse('Courtois=6.8|Dumfries=6.4|Konaté=7|Huijsen=6.9|Cucurella=7|Valverde=8.4|Bellingham=6.9|Brahim Díaz=8.2|Mbappé=7.7|Vini Jr.=7.2|Trent Alexander-Arnold=6.7|Diomande=6.5|Tchouaméni=6.6',ss)
 };
