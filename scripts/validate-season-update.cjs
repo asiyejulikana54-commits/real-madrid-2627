@@ -71,5 +71,18 @@ if(/MutationObserver\s*\(/.test(historyJs))failures.push('Historial PRO usa Muta
 if(!historyCss.includes('.mhp-compare-score')||!historyCss.includes('.mhp-strict-change')||!historyCss.includes('.cov-33'))failures.push('faltan estilos estructurales del Historial PRO mejorado');
 if(!sw.includes("'match-history-pro.js'")||!sw.includes("'match-history-pro.css'"))failures.push('Historial PRO no está incluido en la PWA');
 
+// NAVEGACIÓN MÓVIL: valida recuperación, accesibilidad y refresco de capas PRO.
+const mobileUx=fs.readFileSync(path.join(root,'mobile-ux.js'),'utf8');
+const predictionPro=fs.readFileSync(path.join(root,'prediction-pro.js'),'utf8');
+try{new vm.Script(mobileUx,{filename:'mobile-ux.js'})}catch(error){failures.push(`Mobile UX no compila: ${error.message}`)}
+try{new vm.Script(predictionPro,{filename:'prediction-pro.js'})}catch(error){failures.push(`Predicción PRO no compila: ${error.message}`)}
+if(!mobileUx.includes('refreshActiveModule')||!mobileUx.includes('MODULE_APIS'))failures.push('Mobile UX no refresca la capa PRO activa tras navegación recuperada');
+if(!mobileUx.includes("setAttribute('aria-current','page')"))failures.push('Mobile UX no sincroniza aria-current en la navegación recuperada');
+if(!mobileUx.includes("u.searchParams.delete('match')")||!mobileUx.includes("u.searchParams.delete('player')"))failures.push('Mobile UX no limpia deep-links de secciones anteriores');
+if(!mobileUx.includes('rm-mobile-nav-fallback'))failures.push('Mobile UX no emite el evento de recuperación');
+if(!mobileUx.includes('RMMobileUX'))failures.push('Mobile UX no expone API de diagnóstico');
+if(!predictionPro.includes("addEventListener('rm-mobile-nav-fallback',render)"))failures.push('Predicción PRO no sincroniza su estado visual tras fallback móvil');
+if(/MutationObserver\s*\(/.test(mobileUx)||/MutationObserver\s*\(/.test(predictionPro))failures.push('la recuperación móvil introduce MutationObserver');
+
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO + Historial PRO validados`);
+console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO + Historial PRO + navegación móvil validados`);
