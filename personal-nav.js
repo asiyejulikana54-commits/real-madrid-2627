@@ -1,6 +1,10 @@
 (()=>{
 let installed=false;
-function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, media, récords y logros personales.</small></button>'}
+function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, favoritos, actividad y progreso personal.</small></button>'}
+function loadPersonalSeasonPro(){
+  if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
+}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
   const firstGroup=sheet.querySelector('.ux-sheet-groups section>div');if(firstGroup&&!sheet.querySelector('[data-section="mi-temporada"]'))firstGroup.insertAdjacentHTML('afterbegin',personalButton());
@@ -20,7 +24,8 @@ function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){setTimeout(install,100);return}
   installed=true;refresh();
-  const base=showSection;showSection=function(id){base(id);setTimeout(refresh,0)};
+  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0)};
+  if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 setTimeout(install,90);
