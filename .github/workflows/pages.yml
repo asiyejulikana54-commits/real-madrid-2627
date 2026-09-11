@@ -38,6 +38,7 @@ jobs:
           node --check lineup-pro.js
           node --check evolution-pro.js
           node --check decisionradar.js
+          node --check hierarchy.js
           node --check accessibility.js
           node --check command-palette.js
           node --check public-polish.js
@@ -123,6 +124,13 @@ jobs:
           grep -q "backendAvailable" decisionradar.js
           grep -q "radar-decision" decisionradar.css
           grep -q "radar-confidence" decisionradar.css
+          grep -q "RMHierarchyPro" hierarchy.js
+          grep -q "JERARQUÍAS PRO" hierarchy.js
+          grep -q "confianza de muestra" hierarchy.js
+          grep -q "hierarchyToRadar" hierarchy.js
+          grep -q "hierarchyToCompare" hierarchy.js
+          grep -q "h-position-status" hierarchy.css
+          grep -q "h-confidence" hierarchy.css
           grep -q "RMAccessibility" accessibility.js
           grep -q "a11ySkip" accessibility.js
           grep -q "aria-live" accessibility.js
@@ -175,7 +183,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js accessibility.js command-palette.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js accessibility.js command-palette.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -220,10 +228,12 @@ jobs:
           grep -q 'command-palette.css' sw.js
           grep -q 'decisionradar.js' sw.js
           grep -q 'decisionradar.css' sw.js
+          grep -q 'hierarchy.js' sw.js
+          grep -q 'hierarchy.css' sw.js
           grep -q 'mobile-ux.js' sw.js
           grep -q 'mobile-ux.css' sw.js
           grep -q 'ux-dedupe.js' sw.js
-          grep -q "rm2627-static-v18" sw.js
+          grep -q "rm2627-static-v19" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
