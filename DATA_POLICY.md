@@ -2,35 +2,55 @@
 
 ## Fuente única
 
-Los datos históricos de partido a partido viven en `season-data.js`. Historial, Evolución, Radar, Jerarquías y Centro de Inteligencia deben leer esa fuente y no mantener copias propias de notas o minutos.
+Los datos históricos partido a partido viven en `season-data.js`. Historial, Evolución, Radar, Jerarquías y Centro de Inteligencia deben leer esa fuente y no mantener copias propias de notas o minutos.
 
-Los datos acumulados actuales de rendimiento (media, minutos, aporte, min/punto y Power derivado) siguen partiendo de la base acumulada del panel en `app.js`. Esa base ya es única para las pantallas actuales.
+La base acumulada que todavía usa `app.js` queda **congelada como legado** hasta completar la auditoría multifuente y reconciliar el criterio de minutos. No se recalcula silenciosamente con una cobertura desigual.
 
-## Estados
+## Estados de fiabilidad
 
-- **confirmed**: el dato está respaldado por una fuente identificable y ha sido comprobado de forma explícita. Puede entrar en forma, tendencias, jerarquías y decisiones.
-- **reconstructed**: el valor existía o fue reconstruido durante el seguimiento, pero falta volver a comprobarlo contra una fuente externa suficientemente clara. Puede mostrarse con `≈`, pero no debe alterar forma, jerarquías ni el asalto de forma del Radar.
-- **pending**: no existe un valor suficientemente fiable. Se muestra como pendiente y nunca se estima automáticamente.
+- **confirmed**: dato respaldado por una fuente identificable y comprobado de forma explícita.
+- **reconstructed**: valor existente en el seguimiento pero pendiente de contrastar. Puede mostrarse con `≈`, pero no influye en forma, jerarquías ni decisiones.
+- **pending**: dato no disponible con suficiente fiabilidad. Nunca se estima automáticamente.
 
-## Reglas de cálculo
+## Serie histórica de forma
 
-1. La **forma reciente** utiliza únicamente ratings `confirmed`.
-2. La **jerarquía posicional** puede usar Power/minutos acumulados actuales y forma histórica confirmada. Si falta forma, su peso se redistribuye entre señales disponibles.
-3. El **Radar** no concede un punto de forma si uno de los dos jugadores no tiene una forma confirmada comparable.
-4. El **Centro de Inteligencia** calcula subidas y bajadas solo con ratings históricos confirmados.
-5. Los datos `reconstructed` pueden verse en Historial/Evolución para facilitar la auditoría, siempre identificados con `≈` o una etiqueta equivalente.
-6. Nunca se rellena un hueco por promedio, estimación o inferencia silenciosa.
-7. Un dato reconstruido **no se convierte automáticamente en confirmado por coincidir con lo esperado**: debe existir evidencia externa o una fuente original recuperada.
-8. Si la comprobación externa contradice la reconstrucción, prevalece la fuente comprobada y se corrige el valor antes de marcarlo `confirmed`.
+La curva histórica y la forma reciente siguen usando **FotMob** como serie homogénea partido a partido. Esto evita mezclar escalas distintas dentro de una misma trayectoria temporal.
 
-## Fuentes históricas
+Los minutos históricos usan una capa autoritativa de FotMob y, cuando procede, UEFA para ausencias/sanciones. **No se promedian minutos de varias webs**. Si dos fuentes difieren por uno o dos minutos, se investiga y se conserva un único criterio antes de actualizar el acumulado.
 
-Para la serie de notas partido a partido se prioriza **FotMob**, de forma que la curva histórica mantenga una metodología homogénea. Los minutos también pueden confirmarse desde la ficha de partido/jugador cuando la fuente los muestra de forma explícita.
+## Modelo acumulado objetivo · 3 fuentes
 
-La media acumulada principal del panel sigue siendo un dato distinto: combina las fuentes definidas para el ranking general y no debe confundirse con la serie histórica FotMob.
+La valoración general definitiva del panel combinará **SofaScore + FotMob + StatMuse** con el mismo peso, pero solo se considerará un partido **3/3 completo** cuando estén confirmadas las tres notas.
 
-## Actualización de un dato
+Fórmulas:
 
-Cuando se recupera una fuente fiable, se edita únicamente `season-data.js`: se comprueba el valor, se corrige si hace falta, se registra la procedencia y se cambia `status` de `reconstructed` a `confirmed` cuando corresponda. El resto de la web debe recalcularse sin duplicar el cambio en otros archivos.
+- `nota_combinada = (SofaScore + FotMob + StatMuse) / 3`
+- `aporte_partido = nota_combinada × minutos / 90`
+- `puntos_totales = suma(aporte_partido)`
+- `media_acumulada = puntos_totales × 90 / minutos_totales_incluidos`
+- `min_por_punto = minutos_totales_incluidos / puntos_totales`
 
-Si una fuente solo permite confirmar una parte del registro —por ejemplo minutos pero no nota— se confirma únicamente esa parte y el resto permanece pendiente o reconstruido.
+El modelo actual es **sin corte de 45 minutos**: una aparición corta puede aportar, siempre que disponga de la cobertura de fuentes requerida para el cálculo que se esté mostrando.
+
+Una aparición `2/3` o `1/3` puede mostrarse para auditoría, pero **no puede etiquetarse como media completa de 3 fuentes**. Las funciones de `season-data.js` permiten inspeccionar esos parciales sin mezclarlos con el ranking definitivo.
+
+## Ranking principal congelado
+
+El `efficiencyRanking` actual de `app.js` no se sustituirá hasta que se cumplan dos condiciones:
+
+1. cobertura de fuentes suficientemente cerrada para que la comparación sea homogénea;
+2. reconciliación de los minutos históricos con los minutos acumulados oficiales ya utilizados por el panel.
+
+Hasta entonces, Power RM, media acumulada, puntos y min/punto que dependan de esa tabla siguen representando el corte legado ya publicado en el proyecto. La nueva capa multifuente es una **auditoría preparada**, no una sustitución parcial.
+
+## Metodología anterior
+
+La hoja antigua de **50% SofaScore + 50% FotMob y solo partidos de 45+ minutos** se conserva como fotografía histórica del proyecto, pero queda **superada** por el modelo objetivo de tres fuentes sin corte de minutos.
+
+## Prioridad de evidencias
+
+Cuando haya conflicto, se prioriza la evidencia más cercana al partido y más explícita. Una captura directa de la ficha del encuentro prevalece sobre una ficha agregada posterior o un resumen editorial. Si una comprobación contradice un valor previo, se corrige el dato; no se fuerza a coincidir con la reconstrucción.
+
+## Actualización
+
+Cuando se recupera un dato nuevo, se modifica una sola vez en `season-data.js`, con su procedencia. El resto de módulos deben recalcularse a partir de esa fuente. Nunca se rellena un hueco por promedio, inferencia o aproximación silenciosa.
