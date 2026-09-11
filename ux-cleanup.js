@@ -26,11 +26,6 @@ function desktopNav(){
     return `<div class="ux-nav-group"><div class="ux-nav-label">${group.label}</div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><em>${s[2]}</em></button>`).join('')}</div>`;
   }).join('');
 }
-function mobileNav(){
-  const direct=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="showSection('${x.id]}')"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
-  return `${direct}<button class="ux-more-tab" id="uxMoreTab" onclick="openUxMore()"><b>☰</b><small>Más</small></button>`;
-}
-
 function renderNavs(){
   const desk=document.getElementById('navDesktop'),mobile=document.getElementById('navMobile');
   if(desk)desk.innerHTML=desktopNav();
@@ -74,8 +69,7 @@ function simplifyHero(){
   details.innerHTML=`<summary><span>${uxEsc(title)}</span><b>Ver debates</b></summary>`;
   const list=box.querySelector('.focus-list');if(list)details.appendChild(list);
   box.replaceWith(details);
-  const setState=()=>{if(window.innerWidth>780)details.open=true;else if(!details.dataset.mobileTouched)details.open=false};
-  details.addEventListener('toggle',()=>{if(window.innerWidth<=780)details.dataset.mobileTouched='1'});setState();
+  if(window.innerWidth>780)details.open=true;
 }
 
 function simplifyHome(){
@@ -105,7 +99,7 @@ function install(){
   const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id)};
   renderNavs();
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
-  const observer=new MutationObserver(()=>{cleanDenseCards()});observer.observe(document.querySelector('main'),{childList:true,subtree:true});
+  const observer=new MutationObserver(()=>cleanDenseCards());observer.observe(document.querySelector('main'),{childList:true,subtree:true});
 }
 setTimeout(install,80);
 })();
