@@ -66,11 +66,16 @@ function apply(){
   Object.keys(PURPOSES).forEach(addPurpose);cleanHome();cleanPower();cleanComparator();cleanRadar();cleanEvolution();cleanHierarchy();cleanCommunity();cleanMvp();addHomeMap();
 }
 function schedule(){clearTimeout(timer);timer=setTimeout(apply,60)}
+function loadMobileLayer(){
+  if(!document.querySelector('link[data-mobile-ux]')){const link=document.createElement('link');link.rel='stylesheet';link.href='mobile-ux.css?v=1';link.dataset.mobileUx='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-mobile-ux]')){const script=document.createElement('script');script.async=false;script.src='mobile-ux.js?v=1';script.dataset.mobileUx='1';document.body.appendChild(script)}
+}
 function install(){
   if(installed)return;if(!document.body.classList.contains('rm-visual-system')||typeof showSection!=='function'){setTimeout(install,100);return}
   installed=true;addClass(document.body,'ux-deduped');apply();
   const previous=window.showSection;window.showSection=function(id){previous(id);setTimeout(apply,50)};
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+  loadMobileLayer();
 }
 setTimeout(install,140);
 })();
