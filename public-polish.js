@@ -48,14 +48,16 @@ function improveCopy(){
     const home=document.getElementById('inicio');if(home){const d=document.createElement('p');d.id='publicDisclaimer';d.className='public-disclaimer';d.innerHTML='<b>RM 26/27</b> es un proyecto independiente y no oficial. Las valoraciones se combinan a partir de las fuentes indicadas en la metodología.';home.appendChild(d)}
   }
 }
+function loadEngagement(){
+  if(!document.querySelector('link[data-engagement]')){const link=document.createElement('link');link.rel='stylesheet';link.href='engagement.css?v=1';link.dataset.engagement='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-engagement]')){const script=document.createElement('script');script.src='engagement.js?v=1';script.dataset.engagement='1';document.body.appendChild(script)}
+}
 function refreshPublicCopy(){injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio')}
 function install(){
   if(installed)return;
   if(!document.getElementById('inicio')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;publicMeta();document.body.classList.add('public-ready');refreshPublicCopy();
+  installed=true;publicMeta();document.body.classList.add('public-ready');refreshPublicCopy();loadEngagement();
   const base=showSection;showSection=function(id){base(id);updateHomeTopbar(id);setTimeout(improveCopy,0)};
-  // Refrescos controlados para módulos que terminan de montarse después. No usamos
-  // MutationObserver aquí: podía reaccionar a sus propias escrituras y bloquear el hilo principal.
   [250,800,1600].forEach(ms=>setTimeout(refreshPublicCopy,ms));
   document.addEventListener('rm-season-data-ready',()=>setTimeout(refreshPublicCopy,0),{once:true});
 }
