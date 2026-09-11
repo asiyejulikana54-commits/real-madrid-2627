@@ -7,6 +7,7 @@ document.getElementById('navMobile').innerHTML=navHtml(true);
 const participantStorageKey='rm_community_participant_id';
 function getParticipantId(){let id=localStorage.getItem(participantStorageKey);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);localStorage.setItem(participantStorageKey,id)}return id}
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
+function communityBackendAvailable(){return /^https?:$/.test(location.protocol)&&!location.hostname.endsWith('github.io')}
 
 const baseShowSection=showSection;
 showSection=function(id){baseShowSection(id);if(id==='comunidad')loadCommunity()};
@@ -26,7 +27,10 @@ savePrediction=async function(){
   if(new Set(values).size!==11){toast('No puedes repetir jugadores');return}
   if(alias.length<2){toast('Pon un apodo de al menos 2 caracteres');return}
   baseSavePrediction();
-  const btn=document.getElementById('savePredictionBtn');btn.disabled=true;btn.textContent='Publicando…';
+  const btn=document.getElementById('savePredictionBtn');btn.disabled=true;btn.textContent=communityBackendAvailable()?'Publicando…':'Guardando…';
+  if(!communityBackendAvailable()){
+    toast('Predicción guardada en tu móvil');btn.textContent='Publicar predicción';btn.disabled=predictionIsClosed();document.dispatchEvent(new CustomEvent('rm-local-prediction-updated'));return;
+  }
   try{
     const response=await fetch('/.netlify/functions/community-v2',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
     const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||`Error ${response.status}`);
@@ -39,6 +43,12 @@ document.getElementById('savePredictionBtn').textContent='Publicar predicción';
 const resultBox=document.getElementById('predictionResult');if(resultBox)resultBox.innerHTML=resultBox.innerHTML.replace('Guardar predicción','Publicar predicción');
 
 let communityCache=window.RMCommunityData||null;
+function renderCommunityUnavailable(){
+  const total=document.getElementById('communityTotal');if(total)total.textContent='—';
+  const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">La comunidad en vivo se activará cuando esta versión esté conectada al backend. Tu predicción local sigue funcionando.</div>';
+  const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo en espera</b><span>GitHub Pages funciona como versión pública de verificación sin llamar a las funciones de Netlify.</span></div>';
+  const board=document.getElementById('communityLeaderboard');if(board)board.innerHTML='<div class="result-pending"><b>Ranking comunitario no cargado</b><span>Se mostrará en la versión conectada.</span></div>';
+}
 function renderCommunityPitch(popularXI,total){
   const pitch=document.getElementById('communityPitch');if(!pitch)return;
   if(!total){pitch.innerHTML='<div class="community-loading">Todavía no hay pronósticos. Sé el primero desde “Predicción”.</div>';return}
@@ -61,9 +71,10 @@ function renderCommunity(data){
   board.innerHTML=`<div class="leaderboard-head"><span>#</span><span>Usuario</span><span>Aciertos</span><span>Partidos</span><span>Plenos</span></div>${data.leaderboard.map((u,i)=>`<div class="leaderboard-row ${u.participantId===getParticipantId()?'me':''}"><b>${i+1}</b><span>${escapeHtml(u.alias)}${u.participantId===getParticipantId()?' <small>(tú)</small>':''}</span><strong>${u.hits}<small>/${u.possible}</small></strong><span>${u.scoredMatches}</span><span>${u.perfect}</span></div>`).join('')}`
 }
 async function loadCommunity(force=false){
-  if(communityCache&&!force){renderCommunity(communityCache);return}
-  try{const response=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}))}
-  catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>'}
+  if(communityCache&&!force){renderCommunity(communityCache);return communityCache}
+  if(!communityBackendAvailable()){renderCommunityUnavailable();return null}
+  try{const response=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}));return data}
+  catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>';return null}
 }
 document.addEventListener('rm-community-updated',event=>{if(event.detail){communityCache=event.detail;window.RMCommunityData=event.detail;if(document.getElementById('comunidad')?.classList.contains('active'))renderCommunity(event.detail)}});
 
@@ -99,7 +110,7 @@ async function loadDeferredModules(){
 }
 async function loadCriticalModules(){
   await afterFirstPaint();
-  await loadModule({script:'matchday.js?v=2',scriptKey:'matchday'});
+  await loadModule({script:'matchday.js?v=3',scriptKey:'matchday'});
   await loadModule({css:'playerhub.css?v=2',cssKey:'playerhub',script:'playerhub.js?v=2',scriptKey:'playerhub'});
   await loadModule({css:'player-experience.css?v=1',cssKey:'player-experience',script:'player-experience.js?v=1',scriptKey:'player-experience'});
   document.dispatchEvent(new CustomEvent('rm-critical-modules-ready'));
