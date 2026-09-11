@@ -80,6 +80,12 @@ jobs:
           grep -q "MÁS MINUTOS" match-history-pro.js
           grep -q "Vs anterior" match-history-pro.js
           grep -q "SC nunca equivale a 0" match-history-pro.js
+          grep -q "robustNavigate" mobile-ux.js
+          grep -q "directActivate" mobile-ux.js
+          grep -q "selectstart" mobile-ux.js
+          grep -q "touchAction='manipulation'" mobile-ux.js
+          grep -q "mobile-ux.js?v=3" ux-dedupe.js
+          grep -q "ux-dedupe.js?v=3" visual-system.js
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
           grep -q "requestIdleCallback" community.js
@@ -149,7 +155,10 @@ jobs:
           grep -q 'stats-pro.css' sw.js
           grep -q 'match-history-pro.js' sw.js
           grep -q 'match-history-pro.css' sw.js
-          grep -q "rm2627-static-v12" sw.js
+          grep -q 'mobile-ux.js' sw.js
+          grep -q 'mobile-ux.css' sw.js
+          grep -q 'ux-dedupe.js' sw.js
+          grep -q "rm2627-static-v13" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
