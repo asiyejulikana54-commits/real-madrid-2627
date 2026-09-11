@@ -7,57 +7,70 @@ const MATCHES=Object.freeze([
   {id:'inter',label:'Inter',short:'INT',comp:'Champions'}
 ]);
 const ALIASES=Object.freeze({
-  'Vinícius Jr.':'Vini Jr.','Vini':'Vini Jr.','Trent':'Trent Alexander-Arnold','Güler':'Arda Güler',
-  'Brahim':'Brahim Díaz','Carreras':'Álvaro Carreras','Diomandé':'Diomande','Espí':'Carlos Espí','Bernardo':'Bernardo Silva'
+  'Vinícius Jr.':'Vini Jr.','Vinícius Júnior':'Vini Jr.','Vini':'Vini Jr.','Trent':'Trent Alexander-Arnold','Güler':'Arda Güler',
+  'Brahim':'Brahim Díaz','Carreras':'Álvaro Carreras','Alvaro Carreras':'Álvaro Carreras','Diomandé':'Diomande','Yan Diomande':'Diomande',
+  'Espí':'Carlos Espí','Bernardo':'Bernardo Silva','Antonio Rüdiger':'Rüdiger','Aurélien Tchouaméni':'Tchouaméni'
 });
 const rec=(value,source,status='confirmed',note='')=>Object.freeze({value,source,status,note});
+const fm=value=>rec(value,'FotMob · ficha de jugador','confirmed','Verificado en la ficha pública de FotMob el 11-09-2026.');
+const reconstructed=(value,note)=>rec(value,'Proyecto RM 26/27','reconstructed',note||'Pendiente de comprobación contra una fuente externa.');
 const DATA={
   malaga:{ratings:{
-    'Bellingham':rec(8.8,'FotMob'),'Mbappé':rec(8.7,'FotMob'),'Trent Alexander-Arnold':rec(8.5,'FotMob'),
-    'Vini Jr.':rec(8.3,'FotMob'),'Camavinga':rec(7.8,'FotMob'),'Cucurella':rec(7.7,'FotMob'),'Huijsen':rec(7.5,'FotMob'),
-    'Diomande':rec(6.6,'FotMob','reconstructed','Valor usado anteriormente en el proyecto; falta recuperar la evidencia original.')
-  },minutes:{'Diomande':rec(25,'Reconstrucción del proyecto','reconstructed','Minutaje pendiente de comprobación contra fuente primaria.')}},
-  'real-sociedad':{ratings:{
-    'Mbappé':rec(9.8,'FotMob'),'Bellingham':rec(9.0,'FotMob'),'Vini Jr.':rec(8.6,'FotMob'),
-    'Arda Güler':rec(8.2,'FotMob'),'Valverde':rec(8.1,'FotMob'),'Huijsen':rec(7.8,'FotMob')
-  },minutes:{}},
-  espanyol:{ratings:{
-    'Arda Güler':rec(8.6,'FotMob'),'Bellingham':rec(8.3,'FotMob'),'Valverde':rec(8.1,'FotMob'),
-    'Konaté':rec(7.7,'FotMob'),'Mbappé':rec(7.4,'FotMob'),
-    'Diomande':rec(6.0,'FotMob','reconstructed','Valor usado anteriormente en el proyecto; falta recuperar la evidencia original.')
-  },minutes:{}},
-  betis:{ratings:{
-    'Vini Jr.':rec(7.8,'FotMob','reconstructed'),'Arda Güler':rec(7.5,'FotMob','reconstructed'),
-    'Huijsen':rec(7.5,'FotMob','reconstructed'),'Bellingham':rec(7.4,'FotMob','reconstructed'),
-    'Cucurella':rec(6.8,'FotMob','reconstructed'),'Mbappé':rec(6.7,'FotMob','reconstructed'),
-    'Courtois':rec(6.7,'FotMob','reconstructed'),'Valverde':rec(6.6,'FotMob','reconstructed'),
-    'Konaté':rec(6.6,'FotMob','reconstructed'),'Dumfries':rec(6.6,'FotMob','reconstructed'),
-    'Camavinga':rec(6.1,'FotMob','reconstructed')
+    'Courtois':fm(7.0),'Rüdiger':fm(7.3),'Huijsen':fm(7.5),'Cucurella':fm(7.7),
+    'Valverde':fm(7.0),'Bernardo Silva':fm(5.9),'Camavinga':fm(7.8),'Bellingham':fm(8.8),
+    'Brahim Díaz':fm(7.0),'Arda Güler':undefined,'Mbappé':fm(8.7),'Vini Jr.':fm(8.3),
+    'Trent Alexander-Arnold':fm(8.5),'Diomande':fm(6.6)
   },minutes:{
-    'Courtois':rec(90,'Reconstrucción del proyecto','reconstructed'),'Huijsen':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Mbappé':rec(90,'Reconstrucción del proyecto','reconstructed'),'Vini Jr.':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Bellingham':rec(90,'Reconstrucción del proyecto','reconstructed'),'Konaté':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Cucurella':rec(90,'Reconstrucción del proyecto','reconstructed'),'Valverde':rec(82,'Reconstrucción del proyecto','reconstructed'),
-    'Dumfries':rec(64,'Reconstrucción del proyecto','reconstructed'),'Arda Güler':rec(64,'Reconstrucción del proyecto','reconstructed'),
-    'Camavinga':rec(64,'Reconstrucción del proyecto','reconstructed'),'Bernardo Silva':rec(26,'Reconstrucción del proyecto','reconstructed'),
-    'Trent Alexander-Arnold':rec(26,'Reconstrucción del proyecto','reconstructed'),'Diomande':rec(26,'Reconstrucción del proyecto','reconstructed'),
-    'Carlos Espí':rec(8,'Reconstrucción del proyecto','reconstructed'),'Álvaro Carreras':rec(2,'Reconstrucción del proyecto','reconstructed'),
-    'Rüdiger':rec(0,'Reconstrucción del proyecto','reconstructed'),'Brahim Díaz':rec(0,'Reconstrucción del proyecto','reconstructed'),
-    'Lunin':rec(0,'Reconstrucción del proyecto','reconstructed')
+    'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(0),'Konaté':fm(0),'Rüdiger':fm(90),'Huijsen':fm(90),
+    'Cucurella':fm(90),'Álvaro Carreras':fm(0),'Valverde':fm(77),'Bernardo Silva':fm(13),'Camavinga':fm(90),
+    'Bellingham':fm(87),'Arda Güler':fm(3),'Brahim Díaz':fm(65),'Mbappé':fm(90),'Vini Jr.':fm(90),
+    'Trent Alexander-Arnold':fm(90),'Diomande':fm(25),'Carlos Espí':fm(0)
   }},
-  inter:{ratings:{},minutes:{
-    'Courtois':rec(90,'Reconstrucción del proyecto','reconstructed'),'Huijsen':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Mbappé':rec(90,'Reconstrucción del proyecto','reconstructed'),'Valverde':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Bellingham':rec(90,'Reconstrucción del proyecto','reconstructed'),'Konaté':rec(90,'Reconstrucción del proyecto','reconstructed'),
-    'Dumfries':rec(90,'Reconstrucción del proyecto','reconstructed'),'Cucurella':rec(88,'Reconstrucción del proyecto','reconstructed'),
-    'Vini Jr.':rec(87,'Reconstrucción del proyecto','reconstructed'),'Trent Alexander-Arnold':rec(79,'Reconstrucción del proyecto','reconstructed'),
-    'Brahim Díaz':rec(79,'Reconstrucción del proyecto','reconstructed'),'Diomande':rec(11,'Reconstrucción del proyecto','reconstructed'),
-    'Tchouaméni':rec(11,'Reconstrucción del proyecto','reconstructed'),'Álvaro Carreras':rec(3,'Reconstrucción del proyecto','reconstructed'),
-    'Arda Güler':rec(0,'Reconstrucción del proyecto','reconstructed'),'Camavinga':rec(0,'Reconstrucción del proyecto','reconstructed'),
-    'Bernardo Silva':rec(0,'Reconstrucción del proyecto','reconstructed'),'Carlos Espí':rec(0,'Reconstrucción del proyecto','reconstructed'),
-    'Rüdiger':rec(0,'Reconstrucción del proyecto','reconstructed'),'Lunin':rec(0,'Reconstrucción del proyecto','reconstructed')
+  'real-sociedad':{ratings:{
+    'Courtois':fm(6.9),'Dumfries':fm(7.0),'Konaté':fm(6.9),'Huijsen':fm(7.8),'Cucurella':fm(6.8),
+    'Álvaro Carreras':fm(6.6),'Valverde':fm(8.1),'Bernardo Silva':fm(7.8),'Camavinga':fm(6.3),
+    'Bellingham':fm(9.0),'Arda Güler':fm(8.2),'Brahim Díaz':fm(6.6),'Mbappé':fm(9.8),'Vini Jr.':fm(8.6)
+  },minutes:{
+    'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(90),'Konaté':fm(90),'Rüdiger':fm(0),'Huijsen':fm(90),
+    'Cucurella':fm(45),'Álvaro Carreras':fm(45),'Valverde':fm(90),'Bernardo Silva':fm(86),'Camavinga':fm(12),
+    'Bellingham':fm(78),'Arda Güler':fm(78),'Brahim Díaz':fm(12),'Mbappé':fm(90),'Vini Jr.':fm(84),
+    'Trent Alexander-Arnold':fm(0),'Diomande':fm(6),'Carlos Espí':fm(4)
+  }},
+  espanyol:{ratings:{
+    'Courtois':fm(6.4),'Dumfries':fm(7.3),'Konaté':fm(7.7),'Huijsen':fm(7.1),'Cucurella':fm(6.7),
+    'Álvaro Carreras':fm(7.4),'Valverde':fm(8.1),'Bernardo Silva':fm(7.0),'Camavinga':fm(6.4),
+    'Bellingham':fm(8.3),'Arda Güler':fm(8.6),'Mbappé':fm(7.4),'Vini Jr.':fm(7.2),
+    'Trent Alexander-Arnold':fm(6.3),'Diomande':fm(6.4),'Carlos Espí':fm(7.5)
+  },minutes:{
+    'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(80),'Konaté':fm(90),'Rüdiger':fm(0),'Huijsen':fm(90),
+    'Cucurella':fm(26),'Álvaro Carreras':fm(64),'Valverde':fm(90),'Bernardo Silva':fm(80),'Camavinga':fm(10),
+    'Bellingham':fm(80),'Arda Güler':fm(64),'Brahim Díaz':fm(0),'Mbappé':fm(90),'Vini Jr.':fm(90),
+    'Trent Alexander-Arnold':fm(10),'Diomande':fm(26),'Carlos Espí':fm(10)
+  }},
+  betis:{ratings:{
+    'Courtois':fm(6.7),'Dumfries':fm(6.6),'Konaté':fm(6.6),'Huijsen':fm(7.5),'Cucurella':fm(6.8),
+    'Valverde':fm(6.6),'Bernardo Silva':fm(6.4),'Camavinga':fm(6.1),'Bellingham':fm(7.4),
+    'Arda Güler':fm(7.5),'Mbappé':fm(6.7),'Vini Jr.':fm(7.8),'Trent Alexander-Arnold':fm(6.6),'Diomande':fm(6.2)
+  },minutes:{
+    'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(64),'Konaté':fm(90),'Rüdiger':fm(0),'Huijsen':fm(90),
+    'Cucurella':fm(88),'Álvaro Carreras':fm(2),'Valverde':fm(82),'Bernardo Silva':fm(26),'Camavinga':fm(64),
+    'Bellingham':fm(90),'Arda Güler':fm(64),'Brahim Díaz':fm(0),'Mbappé':fm(90),'Vini Jr.':fm(90),
+    'Trent Alexander-Arnold':fm(26),'Diomande':fm(26),'Carlos Espí':fm(8)
+  }},
+  inter:{ratings:{
+    'Courtois':fm(7.5),'Dumfries':fm(6.7),'Konaté':fm(6.9),'Huijsen':fm(7.4),'Cucurella':fm(7.2),
+    'Valverde':fm(8.1),'Bellingham':fm(7.6),'Brahim Díaz':fm(8.3),'Mbappé':fm(8.4),'Vini Jr.':fm(7.3),
+    'Trent Alexander-Arnold':fm(7.0),'Diomande':fm(5.9),'Tchouaméni':fm(6.0)
+  },minutes:{
+    'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(90),'Konaté':fm(90),'Rüdiger':fm(0),'Huijsen':fm(90),
+    'Cucurella':fm(90),'Álvaro Carreras':fm(3),'Valverde':fm(90),'Bellingham':fm(90),'Brahim Díaz':fm(79),
+    'Mbappé':fm(89),'Vini Jr.':fm(87),'Trent Alexander-Arnold':fm(79),'Diomande':fm(11),'Tchouaméni':fm(11),'Carlos Espí':fm(1),
+    'Arda Güler':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.'),
+    'Camavinga':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.'),
+    'Bernardo Silva':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.')
   }}
 };
+for(const match of Object.values(DATA))for(const kind of ['ratings','minutes'])for(const [key,row] of Object.entries(match[kind]||{}))if(row===undefined)delete match[kind][key];
 function canonical(name){return ALIASES[name]||name}
 function entry(kind,matchId,player,{includeReconstructed=false}={}){
   const bucket=DATA[matchId]?.[kind];if(!bucket)return null;const row=bucket[canonical(player)]||null;
@@ -85,6 +98,6 @@ function audit(){
   return out;
 }
 function statusLabel(status){return status==='confirmed'?'Confirmado':status==='reconstructed'?'Reconstruido':'Pendiente'}
-window.RMSeasonData=Object.freeze({version:1,matches:MATCHES,canonical,ratingEntry,minuteEntry,rating,minutes,ratingSeries,recentRating,ratingDelta,audit,statusLabel});
-document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:1}}));
+window.RMSeasonData=Object.freeze({version:2,matches:MATCHES,canonical,ratingEntry,minuteEntry,rating,minutes,ratingSeries,recentRating,ratingDelta,audit,statusLabel});
+document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:2}}));
 })();
