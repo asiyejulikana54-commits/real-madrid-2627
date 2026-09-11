@@ -54,10 +54,14 @@ jobs:
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
           grep -q "requestIdleCallback" community.js
-          grep -q "matchday.js?v=2" community.js
+          grep -q "matchday.js?v=3" community.js
+          grep -q "communityBackendAvailable" community.js
           grep -q "RMMatchdayCenter" matchday.js
           grep -q "function phase" matchday.js
           grep -q "backendAvailable" matchday.js
+          grep -q "matchday.css?v=3" matchday.js
+          grep -q "DUDAS CLAVE" matchday.js
+          grep -q "rm_matchday_seen_phase_v1" matchday.js
           grep -q "COMPARACIÓN CON EL XI REAL" matchday.js
           grep -q "ANÁLISIS INCORPORADO" matchday.js
           grep -q "playerhub.js?v=2" community.js
@@ -110,12 +114,13 @@ jobs:
           grep -q 'personal-home.css' sw.js
           grep -q 'matchday.js' sw.js
           grep -q 'matchday.css' sw.js
+          grep -q "rm2627-static-v9" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
       - name: Bust public experience cache
         run: |
-          sed -i 's/community.js?v=3/community.js?v=5/' index.html
+          sed -i 's/community.js?v=3/community.js?v=6/' index.html
           sed -i 's/ux-cleanup.js?v=7/ux-cleanup.js?v=8/' index.html
 
       - name: Configure Pages
