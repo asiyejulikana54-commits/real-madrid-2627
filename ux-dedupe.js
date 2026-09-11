@@ -13,6 +13,8 @@ const PURPOSES={
 };
 let installed=false,timer=null;
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
+function addClass(el,name){if(el&&!el.classList.contains(name))el.classList.add(name)}
 function addPurpose(id){
   const section=document.getElementById(id),cfg=PURPOSES[id];if(!section||!cfg||section.querySelector(':scope > .ux-purpose'))return;
   const guide=document.createElement('div');guide.className='ux-purpose';
@@ -21,19 +23,19 @@ function addPurpose(id){
 }
 function cleanHome(){
   const more=document.getElementById('uxHomeMore');if(!more)return;
-  ['powerHome','hierarchyHome','homeVsCommunity'].forEach(id=>document.getElementById(id)?.classList.add('ux-duplicate-home'));
-  const rating=document.getElementById('ratingBars');if(rating)rating.closest('.card')?.classList.add('ux-duplicate-home');
-  const generic=[...document.querySelectorAll('#uxHomeMore .grid.cols-4')].find(g=>g.querySelector('.kpi'));if(generic)generic.classList.add('ux-duplicate-home');
-  const summary=more.querySelector(':scope > summary');if(summary){const a=summary.querySelector('span'),b=summary.querySelector('b');if(a)a.textContent='Notas del proyecto';if(b)b.textContent='Bloc táctico y ajustes guardados en este dispositivo'}
+  ['powerHome','hierarchyHome','homeVsCommunity'].forEach(id=>addClass(document.getElementById(id),'ux-duplicate-home'));
+  const rating=document.getElementById('ratingBars');if(rating)addClass(rating.closest('.card'),'ux-duplicate-home');
+  const generic=[...document.querySelectorAll('#uxHomeMore .grid.cols-4')].find(g=>g.querySelector('.kpi'));if(generic)addClass(generic,'ux-duplicate-home');
+  const summary=more.querySelector(':scope > summary');if(summary){setText(summary.querySelector('span'),'Notas del proyecto');setText(summary.querySelector('b'),'Bloc táctico y ajustes guardados en este dispositivo')}
 }
 function cleanPower(){
-  const s=document.getElementById('power');if(!s)return;s.classList.add('ux-power-deduped');
-  const ranking=s.querySelector('.ux-power-ranking');if(ranking&&!ranking.dataset.dedupe){ranking.dataset.dedupe='1';ranking.open=false;const title=ranking.querySelector(':scope > summary b');if(title)title.textContent='Ranking Power completo';const sub=ranking.querySelector(':scope > summary span');if(sub)sub.textContent='Puesto, jugador, Power y nivel'}
+  const s=document.getElementById('power');if(!s)return;addClass(s,'ux-power-deduped');
+  const ranking=s.querySelector('.ux-power-ranking');if(ranking&&!ranking.dataset.dedupe){ranking.dataset.dedupe='1';ranking.open=false;setText(ranking.querySelector(':scope > summary b'),'Ranking Power completo');setText(ranking.querySelector(':scope > summary span'),'Puesto, jugador, Power y nivel')}
 }
 function cleanComparator(){
-  const s=document.getElementById('comparador');if(!s)return;s.classList.add('ux-comparator-deduped');
-  const firstHead=s.querySelector(':scope > .section-head');if(firstHead){const h=firstHead.querySelector('h2'),p=firstHead.querySelector('p');if(h)h.textContent='Comparación rápida';if(p)p.textContent='Dos jugadores, una lectura directa. Para decidir un puesto con más contexto, usa Radar.'}
-  [...s.querySelectorAll(':scope > .section-head')].forEach(head=>{if(head.textContent.includes('Comparaciones que seguimos')){head.classList.add('ux-duplicate-block');const next=head.nextElementSibling;if(next?.classList.contains('grid'))next.classList.add('ux-duplicate-block')}});
+  const s=document.getElementById('comparador');if(!s)return;addClass(s,'ux-comparator-deduped');
+  const firstHead=s.querySelector(':scope > .section-head');if(firstHead){setText(firstHead.querySelector('h2'),'Comparación rápida');setText(firstHead.querySelector('p'),'Dos jugadores, una lectura directa. Para decidir un puesto con más contexto, usa Radar.')}
+  [...s.querySelectorAll(':scope > .section-head')].forEach(head=>{if(head.textContent.includes('Comparaciones que seguimos')){addClass(head,'ux-duplicate-block');const next=head.nextElementSibling;if(next?.classList.contains('grid'))addClass(next,'ux-duplicate-block')}});
 }
 function cleanRadar(){
   const s=document.getElementById('radar');if(!s)return;
@@ -41,20 +43,18 @@ function cleanRadar(){
     const d=document.createElement('details');d.className='ux-panel-details ux-radar-profiles';d.innerHTML='<summary><div><b>Fichas de los dos jugadores</b><span>Media, Power, minutos y forma</span></div><strong>+</strong></summary>';
     profiles.replaceWith(d);d.appendChild(profiles);
   }
-  const summaries=s.querySelector('.radar-summary-grid');if(summaries)summaries.classList.add('ux-radar-secondary');
+  addClass(s.querySelector('.radar-summary-grid'),'ux-radar-secondary');
 }
 function cleanEvolution(){
-  const s=document.getElementById('evolucion');if(!s)return;s.classList.add('ux-evolution-deduped');
-  const matrix=s.querySelector('.a-matrix-card');if(matrix){const head=matrix.querySelector('h2');if(head)head.textContent='Histórico de notas'}
+  const s=document.getElementById('evolucion');if(!s)return;addClass(s,'ux-evolution-deduped');
+  const matrix=s.querySelector('.a-matrix-card');if(matrix)setText(matrix.querySelector('h2'),'Histórico de notas');
 }
-function cleanHierarchy(){document.getElementById('jerarquias')?.classList.add('ux-hierarchy-deduped')}
+function cleanHierarchy(){addClass(document.getElementById('jerarquias'),'ux-hierarchy-deduped')}
 function cleanCommunity(){
-  const s=document.getElementById('comunidad');if(!s)return;s.classList.add('ux-community-deduped');
-  const head=s.querySelector(':scope > .section-head p');if(head)head.textContent='Predicciones de alineación y ranking de aciertos. El mejor jugador de cada partido se vota en MVP.';
+  const s=document.getElementById('comunidad');if(!s)return;addClass(s,'ux-community-deduped');
+  setText(s.querySelector(':scope > .section-head p'),'Predicciones de alineación y ranking de aciertos. El mejor jugador de cada partido se vota en MVP.');
 }
-function cleanMvp(){
-  const s=document.getElementById('mvp');if(!s)return;s.classList.add('ux-mvp-deduped');
-}
+function cleanMvp(){addClass(document.getElementById('mvp'),'ux-mvp-deduped')}
 function addHomeMap(){
   const intel=document.getElementById('intelligenceHome'),home=document.getElementById('inicio');if(!home||!intel||document.getElementById('uxHomeRoutes'))return;
   const routes=document.createElement('div');routes.id='uxHomeRoutes';routes.className='ux-home-routes';
@@ -68,7 +68,7 @@ function apply(){
 function schedule(){clearTimeout(timer);timer=setTimeout(apply,60)}
 function install(){
   if(installed)return;if(!document.body.classList.contains('rm-visual-system')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;document.body.classList.add('ux-deduped');apply();
+  installed=true;addClass(document.body,'ux-deduped');apply();
   const previous=window.showSection;window.showSection=function(id){previous(id);setTimeout(apply,50)};
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 }
