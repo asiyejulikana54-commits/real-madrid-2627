@@ -31,6 +31,14 @@ if(!Number.isFinite(courtoisAgg.minPerPoint)||Math.abs(courtoisAgg.minPerPoint-c
 const root=path.join(__dirname,'..');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 
+// CRONOLOGÍA: Espanyol J1, Real Sociedad J2, Málaga J3.
+const minuteSync=fs.readFileSync(path.join(root,'minute-sync.js'),'utf8');
+try{new vm.Script(minuteSync,{filename:'minute-sync.js'})}catch(error){failures.push(`Minute sync no compila: ${error.message}`)}
+if(!minuteSync.includes("['espanyol','real-sociedad','malaga','betis','inter']"))failures.push('la cronología corregida no fija Espanyol 1º y Málaga 3º');
+if(!minuteSync.includes('applyChronologyFix')||!minuteSync.includes('rm-season-order-corrected'))failures.push('falta aplicar y anunciar la corrección cronológica');
+if(!minuteSync.includes('ratingSeries')||!minuteSync.includes('recentRating')||!minuteSync.includes('ratingDelta'))failures.push('la corrección cronológica no alcanza forma/evolución');
+if(!minuteSync.includes('Primera jornada del seguimiento histórico'))failures.push('la copia histórica de Espanyol sigue tratándolo como cuarto partido');
+
 // MVP PRO: valida que la capa compile, sea local-first y esté disponible offline.
 const mvpJs=fs.readFileSync(path.join(root,'mvp.js'),'utf8');
 const mvpCss=fs.readFileSync(path.join(root,'mvp.css'),'utf8');
@@ -85,4 +93,4 @@ if(!predictionPro.includes("addEventListener('rm-mobile-nav-fallback',render)"))
 if(/MutationObserver\s*\(/.test(mobileUx)||/MutationObserver\s*\(/.test(predictionPro))failures.push('la recuperación móvil introduce MutationObserver');
 
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO + Historial PRO + navegación móvil validados`);
+console.log(`Season update smoke test: OK · ${data.matches.length} partidos · cronología Espanyol→Real Sociedad→Málaga validada · MVP PRO + Eficiencia PRO + Historial PRO + navegación móvil validados`);
