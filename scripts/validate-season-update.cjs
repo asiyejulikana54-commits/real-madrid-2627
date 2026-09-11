@@ -58,5 +58,18 @@ if(!efficiencyCss.includes('.efp-row')||!efficiencyCss.includes('.efp-sample')||
 if(!polish.includes('loadEfficiencyPro')||!polish.includes('efficiency-pro.js?v=1')||!polish.includes('efficiency-pro.css?v=1'))failures.push('Eficiencia PRO no está integrada en la experiencia pública');
 if(!sw.includes("'efficiency-pro.js'")||!sw.includes("'efficiency-pro.css'"))failures.push('Eficiencia PRO no está incluida en la PWA');
 
+// HISTORIAL PRO: valida comparaciones estrictas, fechas date-only y PWA.
+const historyJs=fs.readFileSync(path.join(root,'match-history-pro.js'),'utf8');
+const historyCss=fs.readFileSync(path.join(root,'match-history-pro.css'),'utf8');
+try{new vm.Script(historyJs,{filename:'match-history-pro.js'})}catch(error){failures.push(`Historial PRO no compila: ${error.message}`)}
+if(!historyJs.includes('RMMatchHistoryPro'))failures.push('Historial PRO no expone su API pública');
+if(!historyJs.includes('COMPARADOR DE PARTIDOS')||!historyJs.includes('COMPARACIÓN ESTRICTA'))failures.push('Historial PRO no incluye el comparador estricto entre jornadas');
+if(!historyJs.includes('parseDateOnly')||!historyJs.includes("match(/^(\\d{4})-(\\d{2})-(\\d{2})$/)"))failures.push('Historial PRO no protege fechas YYYY-MM-DD frente a desplazamientos horarios');
+if(!historyJs.includes('No se salta ninguna jornada buscando una nota anterior'))failures.push('Historial PRO no documenta la comparación inmediata de calendario');
+if(!historyJs.includes('SC nunca equivale a 0'))failures.push('Historial PRO no protege la semántica de SC');
+if(/MutationObserver\s*\(/.test(historyJs))failures.push('Historial PRO usa MutationObserver');
+if(!historyCss.includes('.mhp-compare-score')||!historyCss.includes('.mhp-strict-change')||!historyCss.includes('.cov-33'))failures.push('faltan estilos estructurales del Historial PRO mejorado');
+if(!sw.includes("'match-history-pro.js'")||!sw.includes("'match-history-pro.css'"))failures.push('Historial PRO no está incluido en la PWA');
+
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO validados`);
+console.log(`Season update smoke test: OK · ${data.matches.length} partidos · entrada única conectada · MVP PRO + Eficiencia PRO + Historial PRO validados`);
