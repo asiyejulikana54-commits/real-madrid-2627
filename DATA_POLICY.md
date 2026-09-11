@@ -8,8 +8,8 @@ Los datos acumulados actuales de rendimiento (media, minutos, aporte, min/punto 
 
 ## Estados
 
-- **confirmed**: el dato y su procedencia han sido recuperados de forma explícita en el proyecto. Puede entrar en forma, tendencias, jerarquías y decisiones.
-- **reconstructed**: el valor existía o fue reconstruido durante el seguimiento, pero falta volver a comprobar la evidencia original. Puede mostrarse con `≈`, pero no debe alterar forma, jerarquías ni el asalto de forma del Radar.
+- **confirmed**: el dato está respaldado por una fuente identificable y ha sido comprobado de forma explícita. Puede entrar en forma, tendencias, jerarquías y decisiones.
+- **reconstructed**: el valor existía o fue reconstruido durante el seguimiento, pero falta volver a comprobarlo contra una fuente externa suficientemente clara. Puede mostrarse con `≈`, pero no debe alterar forma, jerarquías ni el asalto de forma del Radar.
 - **pending**: no existe un valor suficientemente fiable. Se muestra como pendiente y nunca se estima automáticamente.
 
 ## Reglas de cálculo
@@ -20,7 +20,17 @@ Los datos acumulados actuales de rendimiento (media, minutos, aporte, min/punto 
 4. El **Centro de Inteligencia** calcula subidas y bajadas solo con ratings históricos confirmados.
 5. Los datos `reconstructed` pueden verse en Historial/Evolución para facilitar la auditoría, siempre identificados con `≈` o una etiqueta equivalente.
 6. Nunca se rellena un hueco por promedio, estimación o inferencia silenciosa.
+7. Un dato reconstruido **no se convierte automáticamente en confirmado por coincidir con lo esperado**: debe existir evidencia externa o una fuente original recuperada.
+8. Si la comprobación externa contradice la reconstrucción, prevalece la fuente comprobada y se corrige el valor antes de marcarlo `confirmed`.
+
+## Fuentes históricas
+
+Para la serie de notas partido a partido se prioriza **FotMob**, de forma que la curva histórica mantenga una metodología homogénea. Los minutos también pueden confirmarse desde la ficha de partido/jugador cuando la fuente los muestra de forma explícita.
+
+La media acumulada principal del panel sigue siendo un dato distinto: combina las fuentes definidas para el ranking general y no debe confundirse con la serie histórica FotMob.
 
 ## Actualización de un dato
 
-Cuando se recupere la fuente original, se edita únicamente `season-data.js`: se corrige el valor si hace falta, se deja constancia de la fuente y se cambia `status` de `reconstructed` a `confirmed`. El resto de la web debe recalcularse sin duplicar el cambio en otros archivos.
+Cuando se recupera una fuente fiable, se edita únicamente `season-data.js`: se comprueba el valor, se corrige si hace falta, se registra la procedencia y se cambia `status` de `reconstructed` a `confirmed` cuando corresponda. El resto de la web debe recalcularse sin duplicar el cambio en otros archivos.
+
+Si una fuente solo permite confirmar una parte del registro —por ejemplo minutos pero no nota— se confirma únicamente esa parte y el resto permanece pendiente o reconstruido.
