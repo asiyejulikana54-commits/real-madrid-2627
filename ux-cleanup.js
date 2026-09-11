@@ -92,6 +92,10 @@ function cleanDenseCards(){
   document.querySelectorAll('.section-head p').forEach(p=>p.classList.add('ux-support-copy'));
   document.querySelectorAll('.card').forEach(c=>c.classList.add('ux-card'));
 }
+function loadRefineLayer(){
+  if(!document.querySelector('link[data-ux-refine]')){const link=document.createElement('link');link.rel='stylesheet';link.href='ux-refine.css?v=1';link.dataset.uxRefine='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-ux-refine]')){const script=document.createElement('script');script.src='ux-refine.js?v=1';script.dataset.uxRefine='1';document.body.appendChild(script)}
+}
 
 function install(){
   if(uxInstalled)return;
@@ -101,6 +105,7 @@ function install(){
   renderNavs();
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
   const observer=new MutationObserver(()=>cleanDenseCards());observer.observe(document.querySelector('main'),{childList:true,subtree:true});
+  loadRefineLayer();
 }
 setTimeout(install,80);
 })();
