@@ -1,0 +1,63 @@
+:root{
+  --bg:#07111b;--bg2:#0a1624;--card:#0d1b2a;--card2:#122338;--text:#f3f6f9;--muted:#8fa1b5;--line:#203248;
+  --gold:#d7b65a;--blue:#6aa8ee;--green:#58c991;--red:#e8737c;--amber:#d9a85f;
+  --surface-0:#07111b;--surface-1:#0b1725;--surface-2:#0f1d2d;--surface-3:#14263a;
+  --radius:15px;--radius-sm:11px;--shadow:0 10px 28px rgba(0,0,0,.18);
+}
+body.rm-visual-system{background:radial-gradient(circle at 84% 4%,rgba(39,72,112,.22),transparent 26%),linear-gradient(180deg,#07111b,#050b12 70%);font-feature-settings:"tnum" 1,"ss01" 1;-webkit-font-smoothing:antialiased}
+.rm-visual-system h1,.rm-visual-system h2,.rm-visual-system h3,.rm-visual-system b,.rm-visual-system strong{letter-spacing:-.018em}.rm-visual-system h1{font-weight:850}.rm-visual-system h2{font-weight:820}.rm-visual-system h3{font-weight:790}.rm-visual-system p{line-height:1.5}.rm-visual-system .muted,.rm-visual-system .sub{color:var(--muted)}
+.rm-visual-system .eyebrow{color:var(--gold);font-size:9px;line-height:1.2;letter-spacing:.14em;font-weight:850}.rm-visual-system .section-head h2{font-size:19px}.rm-visual-system .section-head p{color:var(--muted);font-size:11px;max-width:720px}
+
+/* Superficies */
+.rm-visual-system .card,.rm-visual-system .radar-player-card,.rm-visual-system .a-match-tabs button,.rm-visual-system .h-mode button,.rm-visual-system .intel-signal,.rm-visual-system .intel-decisions>button,.rm-visual-system .h-home-grid>button,.rm-visual-system .power-home-list button,.rm-visual-system .ux-sheet-groups button{background:var(--surface-2);border-color:var(--line);box-shadow:none}
+.rm-visual-system .card{border-radius:var(--radius)}.rm-visual-system .card:hover{border-color:#29405a}.rm-visual-system .hero{background:linear-gradient(145deg,#102239,#0a1725);box-shadow:var(--shadow)}
+.rm-visual-system .focus-box,.rm-visual-system .sample-card,.rm-visual-system .formula-example,.rm-visual-system .prediction-rules,.rm-visual-system .player-metrics>div,.rm-visual-system .player-info-grid>div,.rm-visual-system .history-summary>div,.rm-visual-system .intel-xi-summary>div,.rm-visual-system .intel-community-signals>div{background:var(--surface-1);border-color:var(--line)}
+
+/* Botones, controles y pestañas */
+.rm-visual-system .btn{min-height:36px;border-radius:10px;border-color:var(--line);background:var(--surface-2);font-size:11px;font-weight:800;transition:border-color .15s,background .15s,transform .15s}.rm-visual-system .btn:hover{border-color:#3a526e;background:var(--surface-3)}.rm-visual-system .btn:active{transform:translateY(1px)}.rm-visual-system .btn.primary{background:var(--gold);border-color:var(--gold);color:#111820}.rm-visual-system .btn.primary:hover{background:#e0c26d;border-color:#e0c26d}
+.rm-visual-system .input,.rm-visual-system .select,.rm-visual-system textarea,.rm-visual-system .slot select{background:var(--surface-1);border-color:var(--line);border-radius:10px;color:var(--text)}.rm-visual-system .input:focus,.rm-visual-system .select:focus,.rm-visual-system textarea:focus,.rm-visual-system .slot select:focus{border-color:rgba(215,182,90,.68);box-shadow:0 0 0 3px rgba(215,182,90,.08);outline:none}
+.rm-visual-system .ux-data-tabs{background:var(--surface-1);border-color:var(--line)}.rm-visual-system .ux-data-tabs button{color:var(--muted)}.rm-visual-system .ux-data-tabs button.active{background:rgba(215,182,90,.1);color:var(--gold);border-color:rgba(215,182,90,.34)}
+.rm-visual-system .a-match-tabs button.active,.rm-visual-system .radar-presets button.active,.rm-visual-system .h-mode button.active{background:rgba(215,182,90,.09);border-color:rgba(215,182,90,.55);color:var(--gold)}
+
+/* Etiquetas y estados: una sola paleta */
+.rm-visual-system .pill,.rm-visual-system .tag,.rm-visual-system .h-tier{background:rgba(255,255,255,.025);border-color:var(--line);color:#bac6d3}
+.rm-visual-system .tag.green,.rm-visual-system .pill.open,.rm-visual-system .vs-success,.rm-visual-system .intel-status .on,.rm-visual-system .mvp-selected,.rm-visual-system .a-up,.rm-visual-system .h-tier.clear,.rm-visual-system .h-legend .clear{color:var(--green)!important;border-color:rgba(88,201,145,.28)!important;background:rgba(88,201,145,.07)!important}
+.rm-visual-system .tag.gold,.rm-visual-system .vs-warn,.rm-visual-system .intel-status .wait,.rm-visual-system .h-tier.edge,.rm-visual-system .h-legend .edge{color:var(--gold)!important;border-color:rgba(215,182,90,.3)!important;background:rgba(215,182,90,.07)!important}
+.rm-visual-system .tag.blue,.rm-visual-system .vs-info,.rm-visual-system .a-new,.rm-visual-system .h-tier.duel,.rm-visual-system .h-legend .duel,.rm-visual-system .h-tier.rotation,.rm-visual-system .h-legend .rotation{color:var(--blue)!important;border-color:rgba(106,168,238,.28)!important;background:rgba(106,168,238,.065)!important}
+.rm-visual-system .tag.red,.rm-visual-system .pill.closed,.rm-visual-system .vs-danger,.rm-visual-system .a-down{color:var(--red)!important;border-color:rgba(232,115,124,.28)!important;background:rgba(232,115,124,.065)!important}.rm-visual-system .vs-neutral,.rm-visual-system .h-tier.depth,.rm-visual-system .h-legend .depth{color:var(--muted)!important}
+.rm-visual-system .status{color:var(--green)}
+
+/* Números y KPIs */
+.rm-visual-system .kpi .value,.rm-visual-system .intel-signal>strong,.rm-visual-system .power-podium-card strong,.rm-visual-system .radar-score-name b,.rm-visual-system .history-summary b,.rm-visual-system .h-kpis b,.rm-visual-system .a-match-kpis b{font-variant-numeric:tabular-nums;font-weight:850;letter-spacing:-.045em}.rm-visual-system .score,.rm-visual-system .power-row>strong,.rm-visual-system .a-table-row>strong,.rm-visual-system .a-matrix-row>strong,.rm-visual-system .history-match-row strong{color:var(--gold)}
+
+/* Tablas */
+.rm-visual-system .table-wrap,.rm-visual-system .history-table-card,.rm-visual-system .a-match-table-card,.rm-visual-system .a-table-wrap,.rm-visual-system .a-matrix-card{border-color:var(--line);background:var(--surface-1)}
+.rm-visual-system th,.rm-visual-system .power-head,.rm-visual-system .a-table-head,.rm-visual-system .a-matrix-head,.rm-visual-system .history-table-head,.rm-visual-system .h-board-head{background:#0e1d2d;color:#8799ad;border-color:var(--line);font-size:9px;letter-spacing:.075em;font-weight:800}
+.rm-visual-system td,.rm-visual-system .power-row,.rm-visual-system .a-table-row,.rm-visual-system .a-matrix-row,.rm-visual-system .history-match-row,.rm-visual-system .mvp-season-row{border-color:rgba(115,139,164,.12)}
+.rm-visual-system tbody tr:hover,.rm-visual-system .power-row:hover,.rm-visual-system .a-table-row:hover,.rm-visual-system .a-matrix-row:hover{background:rgba(106,168,238,.035)}
+
+/* Gráficos y barras: oro=rendimiento, azul=muestra/comunidad, verde=mejora */
+.rm-visual-system .bar i,.rm-visual-system .history-line{background:var(--gold);stroke:var(--gold)}.rm-visual-system .history-dot{fill:var(--gold);stroke:var(--surface-1)}.rm-visual-system .sample-track i{background:var(--blue)}.rm-visual-system .mvp-track i,.rm-visual-system .poll-bar i{background:var(--blue)}.rm-visual-system .history-gridline{stroke:rgba(143,161,181,.12)}.rm-visual-system .history-axis{fill:#75889e}.rm-visual-system .a-matrix-row .hot{background:rgba(88,201,145,.09);color:var(--green)}.rm-visual-system .a-matrix-row .good{background:rgba(106,168,238,.075);color:#94c3f5}.rm-visual-system .a-matrix-row .low{background:rgba(232,115,124,.055);color:#e9a2a8}
+
+/* Navegación */
+.rm-visual-system .sidebar{border-color:var(--line);background:rgba(6,14,23,.97)}.rm-visual-system .brand .crest{border-color:var(--gold);color:var(--gold);box-shadow:none}.rm-visual-system .ux-nav-label{color:#64778d}.rm-visual-system .nav .ux-nav-group button{color:#8fa1b5}.rm-visual-system .nav .ux-nav-group button:hover{background:#0e1c2c;color:#dce4ec}.rm-visual-system .nav .ux-nav-group button.active{background:#14263a;color:#fff;box-shadow:inset 2px 0 var(--gold)}.rm-visual-system .mobile-nav{border-color:var(--line);background:rgba(7,15,25,.96);box-shadow:0 10px 35px rgba(0,0,0,.3)}.rm-visual-system .mobile-nav button.active{background:#14263a;color:#fff}.rm-visual-system .mobile-nav button.active b{color:var(--gold)}
+
+/* Fichas y comparadores */
+.rm-visual-system .avatar{background:#13253a;border-color:#28415e;color:var(--gold)}.rm-visual-system .player-sheet{background:linear-gradient(180deg,#0d1c2c,#07111b);border-color:var(--line)}.rm-visual-system .ux-player-card{transition:border-color .15s,transform .15s,background .15s}.rm-visual-system .ux-player-card:hover{border-color:#334d69;background:#102033;transform:translateY(-1px)}.rm-visual-system .radar-scoreboard,.rm-visual-system .radar-player-card{background:var(--surface-1)}.rm-visual-system .radar-value.win b,.rm-visual-system .radar-metric.a .radar-metric-center em,.rm-visual-system .radar-metric.b .radar-metric-center em{color:var(--gold)}
+
+/* Campos de fútbol */
+.rm-visual-system .pitch,.rm-visual-system .intel-xi-pitch{background:linear-gradient(180deg,#0c5238,#09442f);border-color:rgba(212,226,220,.16);box-shadow:none}.rm-visual-system .intel-xi-pitch>div,.rm-visual-system .slot select{background:rgba(5,17,14,.88);border-color:rgba(226,238,233,.18)}
+
+/* Desplegables */
+.rm-visual-system .ux-home-more,.rm-visual-system .ux-panel-details,.rm-visual-system .ux-player-section,.rm-visual-system .ux-intel-more{background:rgba(10,22,36,.72);border-color:var(--line)}.rm-visual-system .ux-home-more>summary,.rm-visual-system .ux-panel-details>summary,.rm-visual-system .ux-player-section>summary,.rm-visual-system .ux-intel-more>summary{color:#dce4ec}.rm-visual-system details>summary strong{color:var(--gold)}
+
+/* Avisos metodológicos */
+.rm-visual-system .a-integrity,.rm-visual-system .h-integrity,.rm-visual-system .history-integrity,.rm-visual-system .radar-integrity{border:1px solid rgba(106,168,238,.18);background:rgba(106,168,238,.035);color:#cbd6e1}.rm-visual-system .a-integrity span,.rm-visual-system .h-integrity span,.rm-visual-system .history-integrity span,.rm-visual-system .radar-integrity span{color:var(--muted)}
+
+/* Ritmo visual */
+.rm-visual-system .section-head{margin-top:20px}.rm-visual-system .grid,.rm-visual-system .intel-signal-grid,.rm-visual-system .intel-decisions,.rm-visual-system .h-position-grid,.rm-visual-system .mvp-match-grid,.rm-visual-system .radar-player-grid{gap:10px}.rm-visual-system .card{padding:15px}.rm-visual-system .player-toolbar{margin-bottom:12px}.rm-visual-system .tags{gap:5px}.rm-visual-system .tag{font-size:8.5px}.rm-visual-system .pill{font-size:9px}
+
+@media(max-width:780px){
+  .rm-visual-system .card{padding:13px}.rm-visual-system .section-head h2{font-size:18px}.rm-visual-system .section-head p{font-size:10px}.rm-visual-system .eyebrow{font-size:8px}.rm-visual-system .btn{min-height:34px}.rm-visual-system .player-sheet{border-radius:18px 18px 0 0}.rm-visual-system .ux-data-tabs{top:0}.rm-visual-system .intel-signal>strong{font-size:24px}.rm-visual-system .radar-score-name b{font-size:34px}
+}
+@media(prefers-reduced-motion:reduce){.rm-visual-system *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
