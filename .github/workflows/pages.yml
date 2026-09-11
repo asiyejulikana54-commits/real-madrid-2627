@@ -24,6 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate season update flow
+        run: node scripts/validate-season-update.cjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
