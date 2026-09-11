@@ -112,3 +112,9 @@ if(!document.querySelector('link[data-intelligence]')){
 if(!document.querySelector('script[data-intelligence]')){
   const script=document.createElement('script');script.async=false;script.src='intelligence.js?v=1';script.dataset.intelligence='1';document.body.appendChild(script);
 }
+if(!document.querySelector('link[data-hierarchy]')){
+  const link=document.createElement('link');link.rel='stylesheet';link.href='hierarchy.css?v=1';link.dataset.hierarchy='1';document.head.appendChild(link);
+}
+if(!document.querySelector('script[data-hierarchy]')){
+  const script=document.createElement('script');script.async=false;script.src='hierarchy.js?v=1';script.dataset.hierarchy='1';document.body.appendChild(script);
+}
