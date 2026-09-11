@@ -29,23 +29,35 @@ jobs:
 
       - name: Validate public frontend
         run: |
+          node --check community.js
           node --check public-polish.js
           node --check public-engagement.js
           node --check share-cards.js
           node --check ux-cleanup.js
+          node --check ux-refine.js
+          node --check visual-system.js
+          node --check ux-dedupe.js
+          node --check mobile-ux.js
           grep -q "public-engagement.js?v=3" public-polish.js
-          grep -q "public-engagement.css?v=3" public-polish.js
           grep -q "share-cards.js?v=2" public-polish.js
-          grep -q "share-cards.css?v=2" public-polish.js
           grep -q "predictionResultCard" share-cards.js
           grep -q "drawQr" share-cards.js
-          if grep -q "script.src='engagement.js" public-polish.js; then exit 1; fi
+          grep -q "requestIdleCallback" community.js
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js; then
+            echo "No se permiten observadores globales en las capas de presentación"; exit 1;
+          fi
 
-      - name: Bust public frontend cache
+      - name: Validate PWA
         run: |
-          sed -i 's/ux-cleanup.js?v=1/ux-cleanup.js?v=5/' index.html
-          sed -i 's/public-polish.css?v=1/public-polish.css?v=5/' ux-cleanup.js
-          sed -i 's/public-polish.js?v=2/public-polish.js?v=5/' ux-cleanup.js
+          node --check pwa.js
+          node --check sw.js
+          node -e "JSON.parse(require('fs').readFileSync('manifest.webmanifest','utf8')); console.log('manifest ok')"
+          grep -q 'rel="manifest" href="manifest.webmanifest"' index.html
+          grep -q 'pwa.js?v=1' index.html
+          grep -q 'community.js?v=3' index.html
+          grep -q 'ux-cleanup.js?v=5' index.html
+          grep -q 'app-icon.svg' manifest.webmanifest
+          grep -q '/.netlify/functions/' sw.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
