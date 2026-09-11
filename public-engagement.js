@@ -25,16 +25,30 @@ function powerRows(){
 function playerMoment(){
   const data=season();if(!data)return null;
   return playerList().map(p=>{
-    const recent=data.recentRating(p.name,3),delta=data.ratingDelta(p.name);
-    return recent&&recent.n>=2?{player:p,recent,delta}:null;
-  }).filter(Boolean).sort((a,b)=>b.recent.value-a.recent.value||b.recent.n-a.recent.n)[0]||null;
+    const recent=data.recentRating(p.name,3),delta=data.ratingDelta(p.name),metric=ranking().find(r=>canonical(r.name)===canonical(p.name));
+    const minutes=metric?.minutes||0;
+    return recent&&recent.n>=2&&minutes>=90?{player:p,recent,delta,minutes}:null;
+  }).filter(Boolean).sort((a,b)=>b.recent.value-a.recent.value||b.recent.n-a.recent.n||b.minutes-a.minutes)[0]||null;
+}
+function communitySummary(){
+  if(!communityData)return {total:0,fixed:null};
+  let fixed=null;
+  for(const rows of Object.values(communityData.slotShares||{})){
+    for(const row of rows||[]){
+      const pct=Number.isFinite(row.globalPercentage)?row.globalPercentage:row.percentage;
+      if(!fixed||pct>fixed.percentage)fixed={name:canonical(row.name),percentage:pct};
+    }
+  }
+  return {total:communityData.totalPredictions||0,fixed};
 }
 function currentSnapshot(){
-  const data=season(),powers=powerRows(),rank=ranking();
+  const data=season(),powers=powerRows(),rank=ranking(),moment=playerMoment(),community=communitySummary();
   return {
     at:Date.now(),matchCount:data?.matches?.length||0,latestMatch:data?.matches?.at?.(-1)?.id||null,
     latestLabel:data?.matches?.at?.(-1)?.label||null,powerLeader:powers[0]?.name||null,
-    efficiencyLeader:canonical(rank[0]?.name||''),top5:rank.slice(0,5).map(x=>canonical(x.name))
+    efficiencyLeader:canonical(rank[0]?.name||''),formLeader:moment?canonical(moment.player.name):null,
+    top5:rank.slice(0,5).map(x=>canonical(x.name)),communityTotal:community.total,
+    communityFixed:community.fixed?.name||null,communityFixedPct:community.fixed?.percentage||0
   };
 }
 function changeItems(){
@@ -49,14 +63,17 @@ function changeItems(){
   if(now.matchCount>prev.matchCount)items.push(`Nuevo partido analizado: ${now.latestLabel||'última jornada'}.`);
   if(now.powerLeader&&prev.powerLeader&&now.powerLeader!==prev.powerLeader)items.push(`Nuevo líder de Power: ${display(now.powerLeader)}.`);
   if(now.efficiencyLeader&&prev.efficiencyLeader&&now.efficiencyLeader!==prev.efficiencyLeader)items.push(`Nuevo líder de eficiencia: ${display(now.efficiencyLeader)}.`);
+  if(now.formLeader&&prev.formLeader&&now.formLeader!==prev.formLeader)items.push(`${display(now.formLeader)} pasa a ser el jugador más en forma.`);
   const moved=now.top5.filter((name,i)=>prev.top5?.[i]&&prev.top5[i]!==name).length;
   if(moved)items.push(`${moved} cambio${moved===1?'':'s'} dentro del Top 5 de eficiencia.`);
-  if(!items.length)items.push('No hay cambios estructurales en los rankings desde tu última visita.');
+  const voteDelta=(now.communityTotal||0)-(prev.communityTotal||0);
+  if(voteDelta>0)items.push(`+${voteDelta} nuevo${voteDelta===1?'':'s'} pronóstico${voteDelta===1?'':'s'} en la comunidad.`);
+  if(now.communityFixed&&prev.communityFixed&&now.communityFixed!==prev.communityFixed)items.push(`${display(now.communityFixed)} es ahora el jugador más fijo de la comunidad.`);
+  else if(now.communityFixed&&prev.communityFixed===now.communityFixed&&Math.abs((now.communityFixedPct||0)-(prev.communityFixedPct||0))>=5)items.push(`${display(now.communityFixed)} está ahora en el ${now.communityFixedPct}% de los XI.`);
+  if(!items.length)items.push('No hay cambios importantes en rankings o comunidad desde tu última visita.');
   return {items,first:false,now};
 }
-function saveSnapshot(snapshot){
-  try{localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snapshot))}catch{}
-}
+function saveSnapshot(snapshot){try{localStorage.setItem(SNAPSHOT_KEY,JSON.stringify(snapshot))}catch{}}
 
 function stageInfo(){
   const data=season(),latest=data?.matches?.at?.(-1)?.id||'';
@@ -73,26 +90,21 @@ function stageHtml(){const s=stageInfo();return `<button class="pulse-card pulse
 function momentHtml(){
   const m=playerMoment();if(!m)return `<div class="pulse-card"><span class="pulse-eyebrow">FORMA</span><b>Calculando jugador del momento…</b></div>`;
   const delta=m.delta?.delta,deltaText=Number.isFinite(delta)?`${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)} en su última nota`:`${m.recent.n} partidos con nota`;
-  return `<button class="pulse-card pulse-player" data-player="${esc(m.player.name)}"><span class="pulse-eyebrow">JUGADOR DEL MOMENTO</span><div class="pulse-player-score"><b>${esc(display(m.player.name))}</b><em>${fmt(m.recent.value)}</em></div><small>Media de forma en sus últimos ${m.recent.n} partidos.</small><strong>${esc(deltaText)} →</strong></button>`;
+  return `<button class="pulse-card pulse-player" data-player="${esc(m.player.name)}"><span class="pulse-eyebrow">JUGADOR DEL MOMENTO</span><div class="pulse-player-score"><b>${esc(display(m.player.name))}</b><em>${fmt(m.recent.value)}</em></div><small>Media de forma en sus últimos ${m.recent.n} partidos · mínimo 90 minutos de muestra.</small><strong>${esc(deltaText)} →</strong></button>`;
 }
 function fallbackDuel(){return `<div class="pulse-card pulse-duel"><span class="pulse-eyebrow">DUELO RÁPIDO</span><b>¿Dumfries o Trent?</b><small>Uno de los debates del lateral derecho para el próximo XI.</small><button class="pulse-mini-action" data-go="partido">Votar en encuestas →</button></div>`}
 function duelHtml(){
   const polls=pollData?.polls||[];
-  const available=polls.filter(p=>Array.isArray(p.options)&&p.options.length>=2);
+  const available=polls.filter(p=>Array.isArray(p.options)&&p.options.length===2);
   if(!available.length)return fallbackDuel();
   const poll=[...available].sort((a,b)=>{
     const am=Math.abs((a.options[0]?.percentage||0)-(a.options[1]?.percentage||0));
     const bm=Math.abs((b.options[0]?.percentage||0)-(b.options[1]?.percentage||0));return am-bm;
   })[0];
-  const opts=poll.options.slice(0,2);
+  const opts=poll.options;
   return `<div class="pulse-card pulse-duel"><span class="pulse-eyebrow">DUELO RÁPIDO</span><b>${esc(poll.question)}</b><small>${poll.total||0} voto${poll.total===1?'':'s'} · toca una opción</small><div class="pulse-votes">${opts.map(o=>`<button class="${poll.selected===o.label?'selected':''}" data-poll="${esc(poll.id)}" data-option="${esc(o.label)}"><span>${esc(o.label)}</span><strong>${o.percentage||0}%</strong></button>`).join('')}</div></div>`;
 }
-function debate(data){
-  let best=null;for(const [slot,rows] of Object.entries(data?.slotShares||{})){
-    if(!rows||rows.length<2)continue;const margin=Math.abs(rows[0].percentage-rows[1].percentage);
-    if(!best||margin<best.margin)best={slot,margin,a:rows[0],b:rows[1]};
-  }return best;
-}
+function debate(data){let best=null;for(const [slot,rows] of Object.entries(data?.slotShares||{})){if(!rows||rows.length<2)continue;const margin=Math.abs(rows[0].percentage-rows[1].percentage);if(!best||margin<best.margin)best={slot,margin,a:rows[0],b:rows[1]}}return best}
 function unanimous(data){let best=null;for(const rows of Object.values(data?.slotShares||{})){if(rows?.[0]&&(!best||rows[0].percentage>best.percentage))best=rows[0]}return best}
 function communityHtml(){
   if(!communityData)return `<button class="pulse-card pulse-community" data-go="comunidad"><span class="pulse-eyebrow">COMUNIDAD</span><b>Descubre qué XI está eligiendo la gente</b><small>Predicciones, porcentajes y debates por posición.</small><strong>Ver comunidad →</strong></button>`;
@@ -109,8 +121,7 @@ function bind(root){
   root.querySelectorAll('[data-player]').forEach(el=>el.addEventListener('click',()=>{try{if(typeof openPlayerHub==='function')openPlayerHub(el.dataset.player);else go('plantilla')}catch{go('plantilla')}}));
   root.querySelectorAll('[data-poll]').forEach(btn=>btn.addEventListener('click',async e=>{
     e.stopPropagation();if(typeof voteQuickPoll!=='function'){go('partido');return}
-    btn.disabled=true;
-    try{await voteQuickPoll(btn.dataset.poll,btn.dataset.option);await fetchPolls(true)}finally{btn.disabled=false}
+    btn.disabled=true;try{await voteQuickPoll(btn.dataset.poll,btn.dataset.option);await fetchPolls(true)}finally{btn.disabled=false}
   }));
 }
 function render(){
