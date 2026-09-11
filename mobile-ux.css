@@ -1,0 +1,211 @@
+/* Capa móvil final: una mano, menos altura y cero ruido innecesario */
+@media(max-width:780px){
+  html{scroll-padding-top:10px}
+  body.mobile-ux main{padding:10px 10px calc(82px + env(safe-area-inset-bottom))}
+  body.mobile-ux .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 11px;padding:3px 2px}
+  body.mobile-ux .topbar>div:first-child{min-width:0}
+  body.mobile-ux .topbar .eyebrow{font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ux .topbar h1{font-size:22px;line-height:1.05;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ux .topbar .sub{display:none!important}
+  body.mobile-ux .topbar .actions{display:block!important;width:auto!important}
+  body.mobile-ux .topbar .actions>*:not(.ux-top-more){display:none!important}
+  body.mobile-ux .topbar .ux-top-more{display:grid!important;place-items:center;width:42px!important;height:42px!important;min-height:42px!important;padding:0!important;border-radius:12px!important}
+
+  body.mobile-ux .section-head{align-items:flex-start;margin:14px 0 8px;gap:8px}
+  body.mobile-ux .section-head h2{font-size:18px;line-height:1.12}
+  body.mobile-ux .section-head p{display:none}
+  body.mobile-ux .section-head>.pill{flex:0 0 auto}
+  body.mobile-ux .card{padding:12px;border-radius:13px}
+  body.mobile-ux .btn,body.mobile-ux .input,body.mobile-ux .select,body.mobile-ux textarea,body.mobile-ux button.poll-vote{min-height:42px}
+  body.mobile-ux button,body.mobile-ux summary{-webkit-tap-highlight-color:transparent}
+
+  /* Barra inferior: siempre estable y compatible con safe area */
+  body.mobile-ux .mobile-nav{left:7px;right:7px;bottom:max(7px,env(safe-area-inset-bottom));height:58px;padding:4px;border-radius:16px;gap:2px;overflow:visible}
+  body.mobile-ux .mobile-nav button{min-width:0;min-height:48px;padding:5px 2px;border-radius:11px;display:grid;place-items:center;align-content:center;gap:1px}
+  body.mobile-ux .mobile-nav button b{font-size:16px;line-height:1}
+  body.mobile-ux .mobile-nav button small{font-size:7.5px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+  /* Menú Más: se usa como directorio, no como página larga */
+  body.mobile-ux .ux-sheet-panel{width:100vw;max-width:none;padding:12px 12px calc(20px + env(safe-area-inset-bottom));border-left:0}
+  body.mobile-ux .ux-sheet-head{position:sticky;top:-12px;z-index:3;background:#081421;padding:12px 2px 10px;margin-bottom:4px}
+  body.mobile-ux .ux-sheet-groups{gap:12px}
+  body.mobile-ux .ux-sheet-groups section>div{grid-template-columns:1fr 1fr!important;gap:6px}
+  body.mobile-ux .ux-sheet-groups button{min-height:58px;padding:9px;grid-template-columns:18px 1fr;gap:1px 6px}
+  body.mobile-ux .ux-sheet-groups button>b{font-size:10px}
+  body.mobile-ux .ux-sheet-groups button>small{display:none}
+
+  /* Portada */
+  body.mobile-ux #inicio .hero{padding:13px;gap:10px;background:linear-gradient(145deg,#102239,#091725)}
+  body.mobile-ux #inicio .hero:after{display:none}
+  body.mobile-ux #inicio .match-title{font-size:28px;margin:8px 0;line-height:1}
+  body.mobile-ux #inicio .match-meta{gap:4px}
+  body.mobile-ux #inicio .match-meta .pill{padding:5px 7px;font-size:7.5px}
+  body.mobile-ux #inicio .next-match>.actions{margin-top:12px!important}
+  body.mobile-ux #inicio .next-match>.actions .btn{width:100%;min-height:42px}
+  body.mobile-ux #inicio .next-match>.actions .btn:not(.primary){display:none}
+  body.mobile-ux #inicio .ux-focus{margin-top:1px}
+  body.mobile-ux #intelligenceHome .intel-head{padding:12px 0 7px}
+  body.mobile-ux #intelligenceHome .intel-head h2{font-size:18px;margin:3px 0}
+  body.mobile-ux #intelligenceHome .intel-signal-grid{grid-template-columns:1fr 1fr!important;gap:6px!important}
+  body.mobile-ux #intelligenceHome .intel-signal{min-height:90px!important;padding:9px!important;border-radius:12px}
+  body.mobile-ux #intelligenceHome .intel-signal span{font-size:7.5px}
+  body.mobile-ux #intelligenceHome .intel-signal>b{font-size:13px}
+  body.mobile-ux #intelligenceHome .intel-signal>strong{font-size:18px}
+  body.mobile-ux #intelligenceHome .intel-signal small{display:none}
+  body.mobile-ux #intelligenceHome .intel-decisions-head{margin-top:10px}
+  body.mobile-ux #intelligenceHome .intel-decisions-head p{display:none}
+  body.mobile-ux #intelligenceHome .intel-decisions>button{min-height:62px;padding:9px}
+  body.mobile-ux .ux-home-routes{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow:visible;margin-top:8px}
+  body.mobile-ux .ux-home-routes button{justify-content:center;min-height:38px;padding:7px 8px;border-radius:10px;white-space:nowrap}
+
+  /* Plantilla: buscar y filtrar sin perderlos al bajar */
+  body.mobile-ux #plantilla .player-toolbar{position:sticky;top:0;z-index:8;display:grid;grid-template-columns:minmax(0,1fr) 116px;gap:6px;margin:0 -2px 9px;padding:6px 2px;background:rgba(7,17,27,.94);backdrop-filter:blur(12px)}
+  body.mobile-ux #plantilla .player-toolbar .input,body.mobile-ux #plantilla .player-toolbar .select{min-width:0;width:100%;padding:9px}
+  body.mobile-ux #playersGrid{grid-template-columns:1fr 1fr!important;gap:7px!important}
+  body.mobile-ux #playersGrid .ux-player-card{padding:9px!important;gap:5px}
+  body.mobile-ux #playersGrid .ux-player-card .ux-player-top span{font-size:7.5px;max-width:58%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ux #playersGrid .ux-player-card .ux-player-top b{font-size:8px;white-space:nowrap}
+  body.mobile-ux #playersGrid .ux-player-card h3{font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ux #playersGrid .ux-player-card>p{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:10px}
+  body.mobile-ux #playersGrid .ux-player-numbers{gap:4px}
+  body.mobile-ux #playersGrid .ux-player-numbers span{padding:5px}
+  body.mobile-ux #playersGrid .ux-player-numbers small{font-size:6.5px}
+  body.mobile-ux #playersGrid .ux-player-numbers b{font-size:11px}
+  body.mobile-ux #playersGrid .ux-player-foot{font-size:8px;padding-top:5px}
+
+  /* Ficha: bottom sheet real */
+  body.mobile-ux .player-sheet{height:94dvh!important;width:100%!important;padding:18px 11px calc(18px + env(safe-area-inset-bottom))!important;border-radius:18px 18px 0 0!important}
+  body.mobile-ux .player-sheet:before{content:"";display:block;width:34px;height:4px;border-radius:99px;background:#53677d;margin:-9px auto 10px}
+  body.mobile-ux .player-close{position:sticky;float:right;top:0;z-index:5;width:38px;height:38px;border-radius:50%;background:rgba(7,17,27,.9);font-size:28px}
+  body.mobile-ux .player-sheet-head{padding-right:4px!important}
+  body.mobile-ux .ux-player-quick{grid-template-columns:1fr 1fr;gap:5px;margin:10px 0 8px}
+  body.mobile-ux .ux-player-quick>div{padding:8px}
+  body.mobile-ux .ux-player-section>summary,body.mobile-ux .ux-panel-details>summary{min-height:44px;padding:10px 11px}
+  body.mobile-ux .player-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  body.mobile-ux .player-sheet-actions .btn{width:100%}
+
+  /* Pestañas de datos: ancladas mientras se consulta una tabla */
+  body.mobile-ux .ux-data-tabs{position:sticky;top:0;z-index:9;margin:0 0 8px;padding:4px;background:rgba(7,17,27,.95);backdrop-filter:blur(12px);border-radius:12px}
+  body.mobile-ux .ux-data-tabs button{min-height:38px;padding:5px 2px}
+  body.mobile-ux .ux-purpose{padding:8px 9px;margin:6px 0 9px;gap:5px}
+  body.mobile-ux .ux-purpose p{font-size:8.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  body.mobile-ux .ux-purpose>div:last-child{gap:10px;scrollbar-width:none}
+  body.mobile-ux .ux-purpose button{min-height:28px;font-size:8px}
+
+  /* Estadísticas: solo jugador + media + eficiencia en teléfonos pequeños */
+  body.mobile-ux #estadisticas .ux-main-table{border-radius:12px;overflow:hidden}
+  body.mobile-ux #estadisticas table{table-layout:fixed}
+  body.mobile-ux #estadisticas th,body.mobile-ux #estadisticas td{padding:9px 6px!important;font-size:10px!important}
+  body.mobile-ux #estadisticas th:first-child,body.mobile-ux #estadisticas td:first-child{width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body.mobile-ux #estadisticas td.score{font-size:12px!important}
+
+  /* Evolución: jornadas con swipe y tabla compacta */
+  body.mobile-ux #evolucion .a-match-tabs{display:flex!important;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:8px 0}
+  body.mobile-ux #evolucion .a-match-tabs button{flex:0 0 92px;scroll-snap-align:start;min-height:48px;padding:8px}
+  body.mobile-ux #evolucion .a-match-tabs button span{font-size:11px}
+  body.mobile-ux #evolucion .a-match-tabs button small{font-size:7px}
+  body.mobile-ux #evolucion .a-match-kpis{gap:6px}
+  body.mobile-ux #evolucion .a-match-kpis .card{padding:8px!important;min-height:70px}
+  body.mobile-ux #evolucion .a-match-kpis span,body.mobile-ux #evolucion .a-match-kpis small{font-size:7.5px}
+  body.mobile-ux #evolucion .a-table-head,body.mobile-ux #evolucion .a-table-row{grid-template-columns:23px minmax(95px,1fr) 42px 42px!important;gap:4px!important}
+  body.mobile-ux #evolucion .a-table-row{min-height:42px}
+
+  /* Radar: duelo primero, contexto después */
+  body.mobile-ux #radar .radar-presets{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:8px 0}
+  body.mobile-ux #radar .radar-presets button{flex:0 0 145px;scroll-snap-align:start;min-height:52px;padding:8px}
+  body.mobile-ux #radar .radar-custom{padding:10px;gap:7px}
+  body.mobile-ux #radar .radar-custom>div:first-child h3{display:none}
+  body.mobile-ux #radar .radar-selects{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:4px}
+  body.mobile-ux #radar .radar-selects .select{min-width:0;width:100%;padding:7px 5px;font-size:9px}
+  body.mobile-ux #radar .radar-scoreboard{grid-template-columns:1fr 1.2fr 1fr;gap:5px;padding:10px;margin-top:8px}
+  body.mobile-ux #radar .radar-score-name span{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ux #radar .radar-score-name b{font-size:31px}
+  body.mobile-ux #radar .radar-verdict .eyebrow{font-size:6.5px}
+  body.mobile-ux #radar .radar-verdict h2{font-size:13px;line-height:1.15;margin:3px 0}
+  body.mobile-ux #radar .radar-verdict p{display:none}
+  body.mobile-ux #radar .radar-metrics{padding:10px}
+  body.mobile-ux #radar .radar-metric{grid-template-columns:.72fr 1.25fr .72fr;gap:4px;padding:9px 0}
+  body.mobile-ux #radar .radar-value b{font-size:14px}
+  body.mobile-ux #radar .radar-value small{font-size:6.5px}
+  body.mobile-ux #radar .radar-metric-center strong{font-size:9px}
+  body.mobile-ux #radar .radar-metric-center span{display:none}
+  body.mobile-ux #radar .radar-metric-center em{font-size:6.5px}
+  body.mobile-ux #radar .radar-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+  /* Laboratorio: el once manda */
+  body.mobile-ux #laboratorio .lab-controls,body.mobile-ux #laboratorio .lab-method{gap:9px}
+  body.mobile-ux #laboratorio .lab-criteria{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-top:6px}
+  body.mobile-ux #laboratorio .lab-criteria button{flex:0 0 106px;scroll-snap-align:start;min-height:52px;padding:8px}
+  body.mobile-ux #laboratorio .lab-filter{grid-template-columns:1fr;gap:4px}
+  body.mobile-ux #laboratorio .lab-method{padding:10px}
+  body.mobile-ux #laboratorio .lab-method p{font-size:9px;line-height:1.35}
+  body.mobile-ux #laboratorio .lab-layout{gap:8px;margin-top:8px}
+  body.mobile-ux #laboratorio .lab-pitch{min-height:430px;border-radius:14px}
+  body.mobile-ux #laboratorio .lab-slot{width:88px;max-width:29%;padding:5px 3px;border-radius:9px}
+  body.mobile-ux #laboratorio .lab-slot b{font-size:8.5px}
+  body.mobile-ux #laboratorio .lab-side{gap:8px}
+  body.mobile-ux #laboratorio .lab-overlap>div{padding:9px}
+  body.mobile-ux #laboratorio .lab-overlap b{font-size:19px}
+  body.mobile-ux #laboratorio .lab-actions{grid-template-columns:1fr 1fr;gap:6px}
+  body.mobile-ux #laboratorio .lab-actions .btn{width:100%}
+
+  /* Partido */
+  body.mobile-ux #partido .matchday-scoreboard{padding:14px}
+  body.mobile-ux #partido .matchday-scoreboard h2{font-size:30px;margin:6px 0}
+  body.mobile-ux #partido .countdown-card{padding:12px;gap:5px}
+  body.mobile-ux #partido .countdown-card .clock{font-size:29px}
+  body.mobile-ux #partido .matchday-grid{gap:8px;margin-top:8px}
+  body.mobile-ux #partido .our-xi-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  body.mobile-ux #partido .our-xi-chips span{flex:0 0 auto;font-size:8px;padding:5px 7px}
+  body.mobile-ux #partido .quick-polls{gap:7px}
+  body.mobile-ux #partido .quick-poll{padding:10px;border-radius:12px}
+  body.mobile-ux #partido .quick-poll p{font-size:8px;margin-bottom:7px}
+  body.mobile-ux #partido .poll-options{gap:5px}
+  body.mobile-ux #partido .poll-vote{padding:8px 9px}
+
+  /* Comunidad / MVP */
+  body.mobile-ux #comunidad .community-kpis{grid-template-columns:1fr 1fr!important;gap:6px}
+  body.mobile-ux #comunidad .community-kpis .card{min-height:86px;padding:9px}
+  body.mobile-ux #comunidad .community-kpis .value{font-size:20px}
+  body.mobile-ux #comunidad .community-kpis .hint{font-size:7.5px}
+  body.mobile-ux #mvp .mvp-hero{gap:8px}
+  body.mobile-ux #mvp .mvp-hero-stat{gap:6px}
+  body.mobile-ux #mvp .mvp-hero-stat>div{padding:9px}
+  body.mobile-ux #mvp .mvp-match-grid{gap:8px}
+
+  /* Predicción y Constructor: campo primero, acciones claras */
+  body.mobile-ux #prediccion .prediction-hero{gap:8px;padding:11px}
+  body.mobile-ux #prediccion .prediction-hero h2{font-size:18px}
+  body.mobile-ux #prediccion .prediction-rules{padding:9px 10px;gap:2px}
+  body.mobile-ux #prediccion .pitch-wrap,body.mobile-ux #once .pitch-wrap{gap:8px}
+  body.mobile-ux #prediccion .pitch,body.mobile-ux #once .pitch{min-height:470px;border-radius:14px}
+  body.mobile-ux #prediccion .slot,body.mobile-ux #once .slot{width:84px}
+  body.mobile-ux #prediccion .slot select,body.mobile-ux #once .slot select{font-size:8.5px;padding:7px 3px}
+  body.mobile-ux #prediccion .lineup-side,body.mobile-ux #once .lineup-side{padding:11px}
+  body.mobile-ux #prediccion .prediction-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  body.mobile-ux #prediccion .prediction-actions .btn{width:100%;padding:8px}
+  body.mobile-ux #prediccion .prediction-actions .btn:first-child{grid-column:1/-1}
+  body.mobile-ux #once .lineup-side>.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  body.mobile-ux #once .lineup-side>.actions .btn{width:100%}
+
+  /* Secundarios plegados por mobile-ux.js */
+  body.mobile-ux .mobile-secondary{margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface-1);overflow:hidden}
+  body.mobile-ux .mobile-secondary>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:9px 11px;font-size:10px;font-weight:850;cursor:pointer}
+  body.mobile-ux .mobile-secondary>summary::-webkit-details-marker{display:none}
+  body.mobile-ux .mobile-secondary>summary span{color:var(--muted);font-size:8px;font-weight:700}
+  body.mobile-ux .mobile-secondary>summary b{color:var(--gold);font-size:16px}
+  body.mobile-ux .mobile-secondary[open]>summary{border-bottom:1px solid var(--line)}
+  body.mobile-ux .mobile-secondary>.lab-bottom,body.mobile-ux .mobile-secondary>.h-board-card{margin:0!important;border:0!important;border-radius:0!important}
+
+  /* Todos los carruseles táctiles sin barra visible */
+  body.mobile-ux .a-match-tabs,body.mobile-ux .lab-criteria,body.mobile-ux .radar-presets,body.mobile-ux .our-xi-chips,body.mobile-ux .ux-purpose>div:last-child{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+}
+
+@media(max-width:390px){
+  body.mobile-ux .ux-sheet-groups section>div{grid-template-columns:1fr!important}
+  body.mobile-ux #playersGrid{gap:5px!important}
+  body.mobile-ux #playersGrid .ux-player-card{padding:8px!important}
+  body.mobile-ux #inicio .match-title{font-size:25px}
+  body.mobile-ux #radar .radar-presets button{flex-basis:132px}
+  body.mobile-ux #laboratorio .lab-slot{width:80px}
+}
