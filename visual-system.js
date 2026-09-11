@@ -34,6 +34,10 @@ const TEXT_REPLACEMENTS=new Map([
 ]);
 let timer=null,installed=false;
 
+function ensureCss(){
+  if(document.querySelector('link[data-visual-system]'))return;
+  const link=document.createElement('link');link.rel='stylesheet';link.href='visual-system.css?v=1';link.dataset.visualSystem='1';document.head.appendChild(link);
+}
 function normalizeSections(){
   if(typeof sections==='undefined')return;
   sections.forEach(s=>{const meta=NAV_META[s[0]];if(!meta)return;s[1]=meta.icon;s[2]=meta.label;s[3]=meta.title});
@@ -68,12 +72,12 @@ function normalizeAccessibility(){
   document.querySelectorAll('.card[onclick],button.card').forEach(el=>el.classList.add('vs-interactive'));
 }
 function apply(){
-  document.body.classList.add('rm-visual-system');normalizeSections();normalizeNav();normalizeHeadings();normalizeStates();normalizeAccessibility();
+  ensureCss();document.body.classList.add('rm-visual-system');normalizeSections();normalizeNav();normalizeHeadings();normalizeStates();normalizeAccessibility();
 }
 function schedule(){clearTimeout(timer);timer=setTimeout(apply,50)}
 function install(){
   if(installed)return;if(typeof sections==='undefined'||!document.body.classList.contains('ux-refined')){setTimeout(install,100);return}
-  installed=true;apply();
+  installed=true;ensureCss();apply();
   const previous=window.showSection;if(typeof previous==='function'){window.showSection=function(id){previous(id);setTimeout(apply,40)}}
   new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
 }
