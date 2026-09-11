@@ -98,7 +98,7 @@ function loadRefineLayer(){
 function loadVisualLayer(){if(document.querySelector('script[data-visual-system]'))return;const script=document.createElement('script');script.src='visual-system.js?v=2';script.dataset.visualSystem='1';document.body.appendChild(script)}
 function loadPublicLayer(){
   if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=5';link.dataset.publicPolish='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=5';script.dataset.publicPolish='1';document.body.appendChild(script)}
+  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=6';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
 
 function install(){
