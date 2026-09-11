@@ -5,25 +5,20 @@ function season(){return window.RMSeasonData}
 function matches(){return season()?.matches||[]}
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function display(p){return p?.short||p?.name||'—'}
+function playerList(){return typeof players==='undefined'?[]:players}
 function avg(values){return values.length?values.reduce((a,b)=>a+b,0)/values.length:null}
 function std(values){if(values.length<2)return null;const m=avg(values);return Math.sqrt(values.reduce((s,x)=>s+(x-m)*(x-m),0)/values.length)}
 function ratingEntry(name,matchId){try{return season()?.officialRatingEntry?.(matchId,name)||null}catch{return null}}
-function seriesFor(player){
-  return matches().map(m=>{const entry=ratingEntry(player.name,m.id);return {match:m,entry,value:Number.isFinite(entry?.value)?Number(entry.value):null}});
-}
-function ratedFor(player){return seriesFor(player).filter(x=>x.value!==null)}
-function momentum(values){
-  if(values.length>=4)return avg(values.slice(-2))-avg(values.slice(-4,-2));
-  if(values.length>=2)return values.at(-1)-values.at(-2);
-  return null;
-}
+function seriesFor(player){return matches().map(m=>{const entry=ratingEntry(player.name,m.id);return {match:m,entry,value:Number.isFinite(entry?.value)?Number(entry.value):null}})}
+function momentum(values){if(values.length>=4)return avg(values.slice(-2))-avg(values.slice(-4,-2));if(values.length>=2)return values.at(-1)-values.at(-2);return null}
 function streak7(values){let n=0;for(let i=values.length-1;i>=0;i--){if(values[i]>=7)n++;else break}return n}
 function statsFor(player){
   const series=seriesFor(player),rated=series.filter(x=>x.value!==null),values=rated.map(x=>x.value),latest=rated.at(-1)||null,previous=rated.at(-2)||null;
   const best=rated.length?[...rated].sort((a,b)=>b.value-a.value)[0]:null,worst=rated.length?[...rated].sort((a,b)=>a.value-b.value)[0]:null;
   return {player,series,rated,values,n:values.length,seasonAvg:avg(values),recentAvg:avg(values.slice(-3)),delta:latest&&previous?latest.value-previous.value:null,momentum:momentum(values),streak:streak7(values),consistency:std(values),best,worst,latest};
 }
-function allStats(){return (window.players||[]).map(statsFor).filter(x=>x.n>0)}
+function allStats(){return playerList().map(statsFor).filter(x=>x.n>0)}
+function jornadaDelta(stat){const s=stat.series;if(s.length<2)return null;const prev=s.at(-2),latest=s.at(-1);if(!prev||!latest||prev.value===null||latest.value===null)return null;return {prev,latest,delta:latest.value-prev.value}}
 function signed(v,digits=2){if(v===null||!Number.isFinite(v))return '—';return `${v>0?'+':''}${v.toFixed(digits)}`}
 function trendClass(v){return v===null?'flat':v>.049?'up':v<-.049?'down':'flat'}
 function sortRows(rows){
@@ -43,11 +38,17 @@ function sparkline(stat){
 }
 function leaderCards(rows){
   const recent=[...rows].filter(x=>x.n>=2).sort((a,b)=>(b.recentAvg??-99)-(a.recentAvg??-99))[0]||null;
-  const rises=[...rows].filter(x=>x.delta!==null).sort((a,b)=>b.delta-a.delta)[0]||null;
+  const jornada=rows.map(x=>({stat:x,pair:jornadaDelta(x)})).filter(x=>x.pair);
+  const rise=[...jornada].sort((a,b)=>b.pair.delta-a.pair.delta)[0]||null,fall=[...jornada].sort((a,b)=>a.pair.delta-b.pair.delta)[0]||null;
   const streak=[...rows].sort((a,b)=>b.streak-a.streak||(b.recentAvg??-99)-(a.recentAvg??-99))[0]||null;
   const stable=[...rows].filter(x=>x.n>=3&&x.consistency!==null).sort((a,b)=>a.consistency-b.consistency||(b.seasonAvg??-99)-(a.seasonAvg??-99))[0]||null;
-  const card=(kicker,item,value,sub,kind='')=>`<button class="ep-leader ${kind}" ${item?`onclick="openPlayerHub('${item.player.name.replace(/'/g,"\\'")}')"`:''}><span>${kicker}</span><b>${item?esc(display(item.player)):'—'}</b><strong>${item?value(item):'—'}</strong><small>${item?sub(item):'Sin muestra suficiente'}</small></button>`;
-  return `<div class="ep-leaders">${card('FORMA RECIENTE',recent,x=>x.recentAvg.toFixed(2),x=>`Media de sus últimas ${Math.min(3,x.n)} notas`,'good')}${card('MAYOR SUBIDA',rises,x=>signed(x.delta,1),x=>'Última nota vs anterior',rises?.delta>=0?'up':'down')}${card('RACHA 7+',streak,x=>`${x.streak}`,x=>'Apariciones puntuadas consecutivas ≥ 7,0','gold')}${card('MÁS ESTABLE',stable,x=>`±${x.consistency.toFixed(2)}`,x=>`${x.n} apariciones con nota`,'stable')}</div>`;
+  const card=(kicker,item,name,value,sub,kind='')=>`<button class="ep-leader ${kind}" ${item?`onclick="openPlayerHub('${name(item).replace(/'/g,"\\'")}')"`:''}><span>${kicker}</span><b>${item?esc(display(item.stat?.player||item.player)):'—'}</b><strong>${item?value(item):'—'}</strong><small>${item?sub(item):'Sin muestra suficiente'}</small></button>`;
+  return `<div class="ep-leaders">${card('FORMA RECIENTE',recent,x=>x.player.name,x=>x.recentAvg.toFixed(2),x=>`Media de sus últimas ${Math.min(3,x.n)} notas`,'good')}${card('MAYOR SUBIDA',rise,x=>x.stat.player.name,x=>signed(x.pair.delta,1),x=>`${esc(x.pair.prev.match.short)} → ${esc(x.pair.latest.match.short)}`,'up')}${card('MAYOR BAJADA',fall,x=>x.stat.player.name,x=>signed(x.pair.delta,1),x=>`${esc(x.pair.prev.match.short)} → ${esc(x.pair.latest.match.short)}`,'down')}${card('RACHA 7+',streak,x=>x.player.name,x=>`${x.streak}`,x=>'Apariciones puntuadas consecutivas ≥ 7,0','gold')}${card('MÁS ESTABLE',stable,x=>x.player.name,x=>`±${x.consistency.toFixed(2)}`,x=>`${x.n} apariciones con nota`,'stable')}</div>`;
+}
+function latestComparison(rows){
+  const ms=matches();if(ms.length<2)return '';
+  const prev=ms.at(-2),latest=ms.at(-1),comp=rows.map(stat=>({stat,pair:jornadaDelta(stat)})).filter(x=>x.pair).sort((a,b)=>b.pair.delta-a.pair.delta);
+  return `<section class="card ep-jornada"><div class="ep-jornada-head"><div><div class="eyebrow">ÚLTIMA JORNADA VS ANTERIOR</div><h3>${esc(prev.short)} → ${esc(latest.short)}</h3><p>Comparación exacta de las dos últimas jornadas. Solo entran jugadores con nota oficial en ambas.</p></div><span class="pill">${comp.length} comparables</span></div><div class="ep-jornada-list">${comp.length?comp.map(x=>`<button data-ep-jornada-player="${esc(x.stat.player.name)}"><span><b>${esc(display(x.stat.player))}</b><small>${x.stat.player.pos}</small></span><i>${x.pair.prev.value.toFixed(1)}</i><em>→</em><i>${x.pair.latest.value.toFixed(1)}</i><strong class="${trendClass(x.pair.delta)}">${signed(x.pair.delta,2)}</strong></button>`).join(''):'<div class="ep-empty">No hay jugadores con nota oficial en las dos últimas jornadas.</div>'}</div></section>`
 }
 function positionButtons(){return [['ALL','Todos'],['POR','POR'],['DEF','DEF'],['MED','MED'],['ATA','ATA']].map(([v,l])=>`<button class="${state.position===v?'active':''}" data-ep-pos="${v}">${l}</button>`).join('')}
 function rowHtml(s){
@@ -65,7 +66,7 @@ function summaryText(rows){
 }
 function bodyHtml(){
   const all=allStats(),rows=filteredRows();
-  return `<div class="ep-shell"><div class="ep-title"><div><div class="eyebrow">EVOLUCIÓN PRO</div><h2>Quién sube, quién cae y quién sostiene el nivel</h2><p>Forma reciente, Momentum, rachas y extremos calculados solo con las notas oficiales combinadas.</p></div><span class="pill">${matches().length} jornadas</span></div>${leaderCards(all)}<div class="card ep-explorer"><div class="ep-controls"><div class="ep-pos">${positionButtons()}</div><input id="epSearch" class="input" value="${esc(state.query)}" placeholder="Buscar jugador…"><select id="epMin" class="select"><option value="1" ${state.minRated===1?'selected':''}>1+ notas</option><option value="2" ${state.minRated===2?'selected':''}>2+ notas</option><option value="3" ${state.minRated===3?'selected':''}>3+ notas</option></select><select id="epSort" class="select"><option value="momentum" ${state.sort==='momentum'?'selected':''}>Ordenar: Momentum</option><option value="recent" ${state.sort==='recent'?'selected':''}>Ordenar: Forma</option><option value="season" ${state.sort==='season'?'selected':''}>Ordenar: Media</option><option value="streak" ${state.sort==='streak'?'selected':''}>Ordenar: Racha 7+</option></select></div><div class="ep-reading"><b>LECTURA ACTUAL</b><span>${esc(summaryText(rows))}</span><small>Momentum: últimas 2 notas vs 2 anteriores; con menos muestra, última vs anterior. Racha 7+: apariciones puntuadas consecutivas con nota ≥ 7,0.</small></div><div class="ep-list">${rows.length?rows.map(rowHtml).join(''):'<div class="ep-empty">No hay jugadores que cumplan estos filtros.</div>'}</div></div><div class="ep-integrity"><b>Cómo leerlo</b><span>La curva enseña solo partidos con valoración. <strong>SC no es cero</strong>; simplemente no crea un punto en la serie. “Forma” es la media de hasta las 3 últimas notas y “Media” mantiene toda la temporada disponible.</span></div></div>`;
+  return `<div class="ep-shell"><div class="ep-title"><div><div class="eyebrow">EVOLUCIÓN PRO</div><h2>Quién sube, quién cae y quién sostiene el nivel</h2><p>Forma reciente, Momentum, rachas y extremos calculados solo con las notas oficiales combinadas.</p></div><span class="pill">${matches().length} jornadas</span></div>${leaderCards(all)}${latestComparison(all)}<div class="card ep-explorer"><div class="ep-controls"><div class="ep-pos">${positionButtons()}</div><input id="epSearch" class="input" value="${esc(state.query)}" placeholder="Buscar jugador…"><select id="epMin" class="select"><option value="1" ${state.minRated===1?'selected':''}>1+ notas</option><option value="2" ${state.minRated===2?'selected':''}>2+ notas</option><option value="3" ${state.minRated===3?'selected':''}>3+ notas</option></select><select id="epSort" class="select"><option value="momentum" ${state.sort==='momentum'?'selected':''}>Ordenar: Momentum</option><option value="recent" ${state.sort==='recent'?'selected':''}>Ordenar: Forma</option><option value="season" ${state.sort==='season'?'selected':''}>Ordenar: Media</option><option value="streak" ${state.sort==='streak'?'selected':''}>Ordenar: Racha 7+</option></select></div><div class="ep-reading"><b>LECTURA ACTUAL</b><span>${esc(summaryText(rows))}</span><small>Momentum: últimas 2 notas vs 2 anteriores; con menos muestra, última vs anterior. Racha 7+: apariciones puntuadas consecutivas con nota ≥ 7,0.</small></div><div class="ep-list">${rows.length?rows.map(rowHtml).join(''):'<div class="ep-empty">No hay jugadores que cumplan estos filtros.</div>'}</div></div><div class="ep-integrity"><b>Cómo leerlo</b><span>La curva enseña solo partidos con valoración. <strong>SC no entra como 0</strong>; simplemente no crea un punto en la serie. “Forma” es la media de hasta las 3 últimas notas y “Media” mantiene toda la temporada disponible.</span></div></div>`;
 }
 function bind(root){
   root.querySelectorAll('[data-ep-pos]').forEach(btn=>btn.onclick=()=>{state.position=btn.dataset.epPos;mount()});
@@ -73,9 +74,10 @@ function bind(root){
   const min=root.querySelector('#epMin');if(min)min.onchange=e=>{state.minRated=Number(e.target.value)||1;mount()};
   const sort=root.querySelector('#epSort');if(sort)sort.onchange=e=>{state.sort=e.target.value;mount()};
   root.querySelectorAll('[data-ep-player]').forEach(btn=>btn.onclick=()=>window.openPlayerHub?.(btn.dataset.epPlayer));
+  root.querySelectorAll('[data-ep-jornada-player]').forEach(btn=>btn.onclick=()=>window.openPlayerHub?.(btn.dataset.epJornadaPlayer));
 }
 function mount(preserveFocus=true){
-  const section=document.getElementById('evolucion');if(!section||!season()||!Array.isArray(window.players))return;
+  const section=document.getElementById('evolucion');if(!section||!season()||typeof players==='undefined')return;
   let root=document.getElementById('evolutionProMount');if(!root){root=document.createElement('div');root.id='evolutionProMount';const head=section.querySelector(':scope > .section-head');if(head)head.insertAdjacentElement('afterend',root);else section.prepend(root)}
   const active=document.activeElement?.id,selection=active==='epSearch'?{start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd}:null;
   root.innerHTML=bodyHtml();bind(root);
