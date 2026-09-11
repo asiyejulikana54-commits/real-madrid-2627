@@ -53,8 +53,8 @@ function loadEngagement(){
   if(!document.querySelector('script[data-public-engagement]')){const script=document.createElement('script');script.src='public-engagement.js?v=3';script.dataset.publicEngagement='1';document.body.appendChild(script)}
 }
 function loadShareCards(){
-  if(!document.querySelector('link[data-share-cards]')){const link=document.createElement('link');link.rel='stylesheet';link.href='share-cards.css?v=1';link.dataset.shareCards='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-share-cards]')){const script=document.createElement('script');script.src='share-cards.js?v=1';script.dataset.shareCards='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-share-cards]')){const link=document.createElement('link');link.rel='stylesheet';link.href='share-cards.css?v=2';link.dataset.shareCards='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-share-cards]')){const script=document.createElement('script');script.src='share-cards.js?v=2';script.dataset.shareCards='1';document.body.appendChild(script)}
 }
 function refreshPublicCopy(){injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio')}
 function install(){
