@@ -1,5 +1,5 @@
-const CACHE_VERSION='rm2627-static-v3';
-const CORE_PATHS=['','index.html','style.css','community.css','ux-cleanup.css','app.js','season-data.js','minute-sync.js','community.js','pwa.css','pwa.js','manifest.webmanifest','app-icon.svg'];
+const CACHE_VERSION='rm2627-static-v4';
+const CORE_PATHS=['','index.html','style.css','community.css','ux-cleanup.css','personal-hub.css','app.js','season-data.js','minute-sync.js','community.js','personal-hub.js','personal-nav.js','pwa.css','pwa.js','manifest.webmanifest','app-icon.svg'];
 const scopeUrl=new URL(self.registration.scope);
 const coreUrls=[...new Set(CORE_PATHS)].map(path=>new URL(path,scopeUrl).href);
 
