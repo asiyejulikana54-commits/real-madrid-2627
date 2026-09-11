@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RM 26/27">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102945"/>
+      <stop offset="1" stop-color="#06101d"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d777"/>
+      <stop offset="1" stop-color="#c89b2d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="165" fill="none" stroke="url(#gold)" stroke-width="16"/>
+  <circle cx="256" cy="256" r="138" fill="#09192b" stroke="rgba(255,255,255,.08)" stroke-width="3"/>
+  <text x="256" y="278" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="116" font-weight="900" letter-spacing="-8" fill="#f7f9fc">RM</text>
+  <text x="256" y="337" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" letter-spacing="3" fill="#d8b44a">26/27</text>
+</svg>
