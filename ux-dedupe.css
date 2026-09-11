@@ -1,0 +1,19 @@
+/* Auditoría de información: cada dato tiene una pantalla principal */
+.ux-purpose{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(106,168,238,.14);border-radius:12px;background:rgba(106,168,238,.025)}.ux-purpose>div:first-child{display:flex;align-items:center;gap:10px;min-width:0}.ux-purpose span{flex:0 0 auto;font-size:8px;font-weight:900;letter-spacing:.12em;color:var(--blue)}.ux-purpose p{margin:0;color:var(--muted);font-size:10px;line-height:1.4}.ux-purpose>div:last-child{display:flex;gap:5px;flex:0 0 auto}.ux-purpose button{border:0;background:transparent;color:#b9c8d8;font-size:9px;font-weight:800;padding:5px 6px;cursor:pointer;white-space:nowrap}.ux-purpose button:hover{color:var(--gold)}.ux-purpose button b{color:var(--gold);margin-left:2px}
+
+/* Inicio: inteligencia + accesos + bloc; no repetimos mini versiones de otras pantallas */
+.ux-duplicate-home,.ux-duplicate-block{display:none!important}.ux-home-more-body>.grid.cols-2{grid-template-columns:1fr!important}.ux-home-more-body>.grid.cols-2>.quick-notes{display:block}.ux-home-more-body{padding-top:0}.ux-home-routes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0 2px}.ux-home-routes>span{font-size:8px;font-weight:900;letter-spacing:.12em;color:#64778d;margin-right:3px}.ux-home-routes button{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface-1);color:#c7d2de;border-radius:999px;padding:7px 10px;font-size:9px;font-weight:800;cursor:pointer}.ux-home-routes button:hover{border-color:#38516c;color:#fff}.ux-home-routes button b{color:var(--gold);font-size:11px}
+
+/* Power posee el ranking; los números base pertenecen a Estadísticas */
+.ux-power-deduped .power-head,.ux-power-deduped .power-row{grid-template-columns:42px minmax(150px,1fr) 88px minmax(110px,.7fr)}.ux-power-deduped .power-head>span:nth-child(4),.ux-power-deduped .power-head>span:nth-child(5),.ux-power-deduped .power-head>span:nth-child(6),.ux-power-deduped .power-row>span:nth-child(4),.ux-power-deduped .power-row>span:nth-child(5),.ux-power-deduped .power-row>span:nth-child(6){display:none}.ux-power-deduped .power-row>.power-level{display:block}.ux-power-deduped .ux-power-ranking{margin-top:12px}
+
+/* Comparador es deliberadamente ligero; Radar es la herramienta de decisión */
+.ux-comparator-deduped .compare-grid{margin-top:10px}.ux-comparator-deduped>.card{max-width:920px}.ux-radar-profiles{margin-top:10px}.ux-radar-secondary{opacity:.88}.ux-radar-secondary .eyebrow{color:#7f92a8}
+
+/* Evolución = tiempo. Jerarquías = posiciones */
+.ux-evolution-deduped .a-matrix-card{background:var(--surface-1)}.ux-hierarchy-deduped .h-position-grid{margin-top:4px}
+
+/* Comunidad y MVP permanecen visualmente separados */
+.ux-community-deduped .community-kpis,.ux-mvp-deduped .mvp-hero-stat{margin-top:4px}
+
+@media(max-width:780px){.ux-purpose{align-items:flex-start;flex-direction:column;padding:9px 10px;margin:8px 0 11px}.ux-purpose>div:first-child{align-items:flex-start;flex-direction:column;gap:3px}.ux-purpose p{font-size:9px}.ux-purpose>div:last-child{width:100%;overflow-x:auto}.ux-purpose button{padding-left:0}.ux-home-routes{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}.ux-home-routes>span{display:none}.ux-home-routes button{flex:0 0 auto}.ux-power-deduped .power-row{grid-template-columns:30px 1fr 62px}.ux-power-deduped .power-row>.power-level{display:none}.ux-power-deduped .power-head{display:none}.ux-radar-secondary{display:none}}
