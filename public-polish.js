@@ -49,8 +49,8 @@ function improveCopy(){
   }
 }
 function loadEngagement(){
-  if(!document.querySelector('link[data-engagement]')){const link=document.createElement('link');link.rel='stylesheet';link.href='engagement.css?v=2';link.dataset.engagement='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-engagement]')){const script=document.createElement('script');script.src='engagement.js?v=2';script.dataset.engagement='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-public-engagement]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-engagement.css?v=3';link.dataset.publicEngagement='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-public-engagement]')){const script=document.createElement('script');script.src='public-engagement.js?v=3';script.dataset.publicEngagement='1';document.body.appendChild(script)}
 }
 function refreshPublicCopy(){injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio')}
 function install(){
