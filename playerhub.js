@@ -102,6 +102,10 @@ function decorateStatsTable(){
   table.dataset.profileReady='1';table.classList.add('stats-clickable');
   table.addEventListener('click',e=>{const row=e.target.closest('tbody tr');if(!row)return;const name=row.querySelector('td')?.textContent?.trim();const player=players.find(p=>p.name===name);if(player)openPlayerHub(player.name)});
 }
+function refreshPlayerHubUi(){decoratePlayerCards();decorateStatsTable();renderPowerHub()}
 
 ensurePlayerHubSection();ensurePowerHome();ensurePlayerModal();decoratePlayerCards();decorateStatsTable();
-const playerGrid=document.getElementById('playersGrid');if(playerGrid)new MutationObserver(()=>decoratePlayerCards()).observe(playerGrid,{childList:true});
+document.getElementById('playerSearch')?.addEventListener('input',()=>setTimeout(decoratePlayerCards,0));
+document.getElementById('positionFilter')?.addEventListener('change',()=>setTimeout(decoratePlayerCards,0));
+document.addEventListener('rm-ranking-official-ready',()=>setTimeout(refreshPlayerHubUi,0));
+document.addEventListener('rm-season-data-ready',()=>setTimeout(refreshPlayerHubUi,0));
