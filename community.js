@@ -38,7 +38,7 @@ savePrediction=async function(){
 document.getElementById('savePredictionBtn').textContent='Publicar predicción';
 const resultBox=document.getElementById('predictionResult');if(resultBox)resultBox.innerHTML=resultBox.innerHTML.replace('Guardar predicción','Publicar predicción');
 
-let communityCache=null;
+let communityCache=window.RMCommunityData||null;
 function renderCommunityPitch(popularXI,total){
   const pitch=document.getElementById('communityPitch');if(!pitch)return;
   if(!total){pitch.innerHTML='<div class="community-loading">Todavía no hay pronósticos. Sé el primero desde “Predicción”.</div>';return}
@@ -49,7 +49,7 @@ function pollBlock(title,slotData){
   return `<div class="community-poll"><h3>${title}</h3>${items.map(x=>`<div class="poll-row"><div><span>${escapeHtml(displayName(x.name))}</span><b>${x.percentage}%${x.multiPosition?` <small>(global ${x.globalPercentage}%)</small>`:''}</b></div><div class="poll-bar"><i style="width:${x.percentage}%"></i></div></div>`).join('')}</div>`
 }
 function renderCommunity(data){
-  communityCache=data;const total=data.totalPredictions||0;
+  if(!data)return;communityCache=data;window.RMCommunityData=data;const total=data.totalPredictions||0;
   document.getElementById('communityTotal').textContent=total;document.getElementById('communityScoredMatches').textContent=data.scoredMatches||0;
   const rb=data.slotShares?.rb?.[0],rw=data.slotShares?.rw?.[0];
   document.getElementById('communityRB').textContent=rb?displayName(rb.name):'—';document.getElementById('communityRBShare').textContent=rb?`${rb.percentage}% de los pronósticos`:'Esperando votos';
@@ -62,68 +62,46 @@ function renderCommunity(data){
 }
 async function loadCommunity(force=false){
   if(communityCache&&!force){renderCommunity(communityCache);return}
-  try{const response=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data)}
+  try{const response=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}))}
   catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>'}
 }
-loadCommunity();
+document.addEventListener('rm-community-updated',event=>{if(event.detail){communityCache=event.detail;window.RMCommunityData=event.detail;if(document.getElementById('comunidad')?.classList.contains('active'))renderCommunity(event.detail)}});
 
-if(!document.querySelector('script[data-matchday]')){
-  const script=document.createElement('script');script.async=false;script.src='matchday.js?v=1';script.dataset.matchday='1';document.body.appendChild(script);
+function ensureStyle(href,key){
+  if(document.querySelector(`link[data-${key}]`))return;
+  const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.setAttribute(`data-${key}`,'1');document.head.appendChild(link);
 }
-if(!document.querySelector('link[data-playerhub]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='playerhub.css?v=1';link.dataset.playerhub='1';document.head.appendChild(link);
+function ensureScript(src,key){
+  const existing=document.querySelector(`script[data-${key}]`);if(existing)return Promise.resolve(true);
+  return new Promise(resolve=>{
+    const script=document.createElement('script');script.async=false;script.src=src;script.setAttribute(`data-${key}`,'1');
+    script.onload=()=>resolve(true);script.onerror=()=>{console.warn(`No se pudo cargar ${src}`);resolve(false)};document.body.appendChild(script);
+  });
 }
-if(!document.querySelector('script[data-playerhub]')){
-  const script=document.createElement('script');script.async=false;script.src='playerhub.js?v=1';script.dataset.playerhub='1';document.body.appendChild(script);
+async function loadModule({css,cssKey,script,scriptKey}){if(css)ensureStyle(css,cssKey);if(script)return ensureScript(script,scriptKey);return true}
+function idleTurn(timeout=900){return new Promise(resolve=>{if('requestIdleCallback'in window)requestIdleCallback(()=>resolve(),{timeout});else setTimeout(resolve,90)})}
+async function afterFirstPaint(){await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))}
+
+const deferredModules=[
+  {css:'mvp.css?v=1',cssKey:'mvp',script:'mvp.js?v=1',scriptKey:'mvp'},
+  {script:'season-input.js?v=1',scriptKey:'season-input'},
+  {script:'season-extension.js?v=1',scriptKey:'season-extension'},
+  {css:'history.css?v=1',cssKey:'history',script:'history.js?v=2',scriptKey:'history'},
+  {css:'analytics.css?v=1',cssKey:'analytics',script:'analytics.js?v=2',scriptKey:'analytics'},
+  {css:'lineuplab.css?v=1',cssKey:'lineuplab',script:'lineuplab.js?v=1',scriptKey:'lineuplab'},
+  {css:'decisionradar.css?v=1',cssKey:'decisionradar',script:'decisionradar.js?v=1',scriptKey:'decisionradar'},
+  {css:'intelligence.css?v=1',cssKey:'intelligence',script:'intelligence.js?v=1',scriptKey:'intelligence'},
+  {css:'hierarchy.css?v=1',cssKey:'hierarchy',script:'hierarchy.js?v=2',scriptKey:'hierarchy'}
+];
+async function loadDeferredModules(){
+  for(const mod of deferredModules){await idleTurn();await loadModule(mod)}
+  document.dispatchEvent(new CustomEvent('rm-modules-ready'));
 }
-if(!document.querySelector('link[data-mvp]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='mvp.css?v=1';link.dataset.mvp='1';document.head.appendChild(link);
+async function loadCriticalModules(){
+  await afterFirstPaint();
+  await loadModule({script:'matchday.js?v=1',scriptKey:'matchday'});
+  await loadModule({css:'playerhub.css?v=1',cssKey:'playerhub',script:'playerhub.js?v=1',scriptKey:'playerhub'});
+  document.dispatchEvent(new CustomEvent('rm-critical-modules-ready'));
+  loadDeferredModules();
 }
-if(!document.querySelector('script[data-mvp]')){
-  const script=document.createElement('script');script.async=false;script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
-}
-if(!document.querySelector('script[data-season-input]')){
-  const script=document.createElement('script');script.async=false;script.src='season-input.js?v=1';script.dataset.seasonInput='1';document.body.appendChild(script);
-}
-if(!document.querySelector('script[data-season-data]')){
-  const script=document.createElement('script');script.async=false;script.src='season-data.js?v=6';script.dataset.seasonData='1';document.body.appendChild(script);
-}
-if(!document.querySelector('script[data-season-extension]')){
-  const script=document.createElement('script');script.async=false;script.src='season-extension.js?v=1';script.dataset.seasonExtension='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-history]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='history.css?v=1';link.dataset.history='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-history]')){
-  const script=document.createElement('script');script.async=false;script.src='history.js?v=2';script.dataset.history='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-analytics]')){
-  const link=document.createElement('link');link.href='analytics.css?v=1';link.rel='stylesheet';link.dataset.analytics='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-analytics]')){
-  const script=document.createElement('script');script.async=false;script.src='analytics.js?v=2';script.dataset.analytics='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-lineuplab]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='lineuplab.css?v=1';link.dataset.lineuplab='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-lineuplab]')){
-  const script=document.createElement('script');script.async=false;script.src='lineuplab.js?v=1';script.dataset.lineuplab='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-decisionradar]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='decisionradar.css?v=1';link.dataset.decisionradar='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-decisionradar]')){
-  const script=document.createElement('script');script.async=false;script.src='decisionradar.js?v=1';script.dataset.decisionradar='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-intelligence]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='intelligence.css?v=1';link.dataset.intelligence='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-intelligence]')){
-  const script=document.createElement('script');script.async=false;script.src='intelligence.js?v=1';script.dataset.intelligence='1';document.body.appendChild(script);
-}
-if(!document.querySelector('link[data-hierarchy]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='hierarchy.css?v=1';link.dataset.hierarchy='1';document.head.appendChild(link);
-}
-if(!document.querySelector('script[data-hierarchy]')){
-  const script=document.createElement('script');script.async=false;script.src='hierarchy.js?v=2';script.dataset.hierarchy='1';document.body.appendChild(script);
-}
+loadCriticalModules();
