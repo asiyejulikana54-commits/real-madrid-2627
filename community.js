@@ -82,8 +82,14 @@ if(!document.querySelector('link[data-mvp]')){
 if(!document.querySelector('script[data-mvp]')){
   const script=document.createElement('script');script.async=false;script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
 }
+if(!document.querySelector('script[data-season-input]')){
+  const script=document.createElement('script');script.async=false;script.src='season-input.js?v=1';script.dataset.seasonInput='1';document.body.appendChild(script);
+}
 if(!document.querySelector('script[data-season-data]')){
   const script=document.createElement('script');script.async=false;script.src='season-data.js?v=6';script.dataset.seasonData='1';document.body.appendChild(script);
+}
+if(!document.querySelector('script[data-season-extension]')){
+  const script=document.createElement('script');script.async=false;script.src='season-extension.js?v=1';script.dataset.seasonExtension='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-history]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='history.css?v=1';link.dataset.history='1';document.head.appendChild(link);
@@ -92,7 +98,7 @@ if(!document.querySelector('script[data-history]')){
   const script=document.createElement('script');script.async=false;script.src='history.js?v=2';script.dataset.history='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-analytics]')){
-  const link=document.createElement('link');link.rel='stylesheet';link.href='analytics.css?v=1';link.dataset.analytics='1';document.head.appendChild(link);
+  const link=document.createElement('link');link.href='analytics.css?v=1';link.rel='stylesheet';link.dataset.analytics='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-analytics]')){
   const script=document.createElement('script');script.async=false;script.src='analytics.js?v=2';script.dataset.analytics='1';document.body.appendChild(script);
