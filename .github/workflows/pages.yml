@@ -30,6 +30,7 @@ jobs:
       - name: Validate public frontend
         run: |
           node --check public-polish.js
+          node --check public-engagement.js
           node --check ux-cleanup.js
 
       - name: Bust public frontend cache
