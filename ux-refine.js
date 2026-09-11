@@ -40,13 +40,14 @@ function refinePlayerCards(){
     if(card.dataset.uxV2==='1')return;
     const name=card.querySelector('h3')?.textContent?.trim();const data=metricForName(name);if(!data.player)return;
     const p=data.player,m=data.metric;
-    card.dataset.uxV2='1';card.classList.add('ux-player-card');
+    card.dataset.uxV2='1';card.classList.add('ux-player-card','player-clickable');card.tabIndex=0;
     card.innerHTML=`<div class="ux-player-top"><span>${esc(p.pos)} · ${esc(p.eligible.join('/'))}</span><b>${data.power===null?'Sin Power':`P ${data.power.toFixed(2)}`}</b></div><h3>${esc(p.short||p.name)}</h3><p>${esc(compactRole(p.role))}</p><div class="ux-player-numbers"><span><small>Media</small><b>${data.rating===null?'—':data.rating.toFixed(2)}</b></span><span><small>Minutos</small><b>${m?m.minutes:'—'}</b></span></div><div class="ux-player-foot"><span>${data.rank?`#${data.rank} Power`:'Pendiente'}</span><b>Ver ficha →</b></div>`;
+    card.onclick=()=>openPlayerHub(p.name);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPlayerHub(p.name)}};
   });
 }
 
 function wrapNode(node,label,sub,className){
-  if(!node||node.closest(`.${className}`))return null;
+  const classes=String(className||'').split(/\s+/).filter(Boolean),marker=classes.at(-1);if(!node||(marker&&node.closest(`.${marker}`)))return null;
   const details=document.createElement('details');details.className=className;
   details.innerHTML=`<summary><div><b>${esc(label)}</b>${sub?`<span>${esc(sub)}</span>`:''}</div><strong>+</strong></summary>`;
   node.replaceWith(details);details.appendChild(node);return details;
