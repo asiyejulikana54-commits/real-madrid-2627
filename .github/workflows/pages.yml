@@ -87,6 +87,9 @@ jobs:
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
+      - name: Bust player experience cache
+        run: sed -i 's/community.js?v=3/community.js?v=4/' index.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
