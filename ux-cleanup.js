@@ -45,7 +45,7 @@ function syncNav(id){
 function ensureMoreSheet(){
   if(document.getElementById('uxMoreSheet'))return;
   const wrap=document.createElement('div');wrap.id='uxMoreSheet';wrap.className='ux-sheet';
-  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Proyecto</span><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
+  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y proyecto</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
   document.body.appendChild(wrap);
 }
 function refreshMoreSheet(){
@@ -53,6 +53,11 @@ function refreshMoreSheet(){
 }
 window.openUxMore=function(){ensureMoreSheet();document.getElementById('uxMoreSheet')?.classList.add('open');document.body.classList.add('ux-sheet-open');syncNav(uxActive())};
 window.closeUxMore=function(){document.getElementById('uxMoreSheet')?.classList.remove('open');document.body.classList.remove('ux-sheet-open')};
+window.uxInstallRM=function(){
+  closeUxMore();
+  if(window.RMPWA?.install){window.RMPWA.install();return}
+  setTimeout(()=>{if(window.RMPWA?.install)window.RMPWA.install();else if(typeof toast==='function')toast('Abre esta página en Chrome y usa ⋮ → Añadir a pantalla de inicio')},250);
+};
 
 function simplifyTopbar(){
   const actions=document.querySelector('.topbar .actions');if(!actions||actions.dataset.uxClean)return;actions.dataset.uxClean='1';
