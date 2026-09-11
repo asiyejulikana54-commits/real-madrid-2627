@@ -12,7 +12,7 @@ const UX_PRIMARY=[
   {id:'plantilla',icon:'◉',label:'Equipo'},
   {id:'power',icon:'⚡',label:'Datos'}
 ];
-const UX_REQUIRED=['partido','power','evolucion','mvp','laboratorio','radar','jerarquias'];
+const UX_REQUIRED=['partido','power'];
 let uxInstalled=false;
 
 function uxSection(id){return sections.find(s=>s[0]===id)}
@@ -48,6 +48,9 @@ function ensureMoreSheet(){
   wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Proyecto</span><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
   document.body.appendChild(wrap);
 }
+function refreshMoreSheet(){
+  const current=document.getElementById('uxMoreSheet'),wasOpen=current?.classList.contains('open');if(current)current.remove();ensureMoreSheet();if(wasOpen)document.getElementById('uxMoreSheet')?.classList.add('open');
+}
 window.openUxMore=function(){ensureMoreSheet();document.getElementById('uxMoreSheet')?.classList.add('open');document.body.classList.add('ux-sheet-open');syncNav(uxActive())};
 window.closeUxMore=function(){document.getElementById('uxMoreSheet')?.classList.remove('open');document.body.classList.remove('ux-sheet-open')};
 
@@ -60,7 +63,7 @@ function simplifyTopbar(){
   const prediction=[...actions.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("prediccion"));
   const lineup=[...actions.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("once"));
   if(prediction)prediction.textContent='Predecir XI';if(lineup)lineup.textContent='Crear XI';
-  const more=document.createElement('button');more.className='btn ux-top-more';more.textContent='•••';more.setAttribute('aria-label','Más opciones');more.onclick=openUxMore;actions.appendChild(more);
+  if(!actions.querySelector('.ux-top-more')){const more=document.createElement('button');more.className='btn ux-top-more';more.textContent='•••';more.setAttribute('aria-label','Más opciones');more.onclick=openUxMore;actions.appendChild(more)}
 }
 
 function simplifyHero(){
@@ -69,8 +72,7 @@ function simplifyHero(){
   const title=box.querySelector('h3')?.textContent||'Debates del próximo partido';
   details.innerHTML=`<summary><span>${uxEsc(title)}</span><b>Ver debates</b></summary>`;
   const list=box.querySelector('.focus-list');if(list)details.appendChild(list);
-  box.replaceWith(details);
-  if(window.innerWidth>780)details.open=true;
+  box.replaceWith(details);if(window.innerWidth>780)details.open=true;
 }
 
 function simplifyHome(){
@@ -78,42 +80,32 @@ function simplifyHome(){
   const details=document.createElement('details');details.id='uxHomeMore';details.className='ux-home-more';
   details.innerHTML='<summary><div><span>Más información</span><b>Power, jerarquías, comunidad, método y notas</b></div><strong>+</strong></summary><div class="ux-home-more-body"></div>';
   inicio.appendChild(details);const body=details.querySelector('.ux-home-more-body');
-  const candidates=[
-    document.getElementById('powerHome'),
-    document.getElementById('hierarchyHome'),
-    document.getElementById('homeVsCommunity'),
-    document.getElementById('ratingBars')?.closest('.grid.cols-2'),
-    [...inicio.children].find(el=>el.classList?.contains('grid')&&el.classList?.contains('cols-4'))
-  ].filter(Boolean);
+  const candidates=[document.getElementById('powerHome'),document.getElementById('hierarchyHome'),document.getElementById('homeVsCommunity'),document.getElementById('ratingBars')?.closest('.grid.cols-2'),[...inicio.children].find(el=>el.classList?.contains('grid')&&el.classList?.contains('cols-4'))].filter(Boolean);
   [...new Set(candidates)].forEach(el=>body.appendChild(el));
 }
 
-function cleanDenseCards(){
-  document.querySelectorAll('.section-head p').forEach(p=>p.classList.add('ux-support-copy'));
-  document.querySelectorAll('.card').forEach(c=>c.classList.add('ux-card'));
-}
+function cleanDenseCards(){document.querySelectorAll('.section-head p').forEach(p=>p.classList.add('ux-support-copy'));document.querySelectorAll('.card').forEach(c=>c.classList.add('ux-card'))}
+function refreshUi(){simplifyTopbar();simplifyHero();simplifyHome();cleanDenseCards();renderNavs();syncNav(uxActive())}
 function loadRefineLayer(){
-  if(!document.querySelector('link[data-ux-refine]')){const link=document.createElement('link');link.rel='stylesheet';link.href='ux-refine.css?v=1';link.dataset.uxRefine='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-ux-refine]')){const script=document.createElement('script');script.src='ux-refine.js?v=1';script.dataset.uxRefine='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-ux-refine]')){const link=document.createElement('link');link.rel='stylesheet';link.href='ux-refine.css?v=2';link.dataset.uxRefine='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-ux-refine]')){const script=document.createElement('script');script.src='ux-refine.js?v=2';script.dataset.uxRefine='1';document.body.appendChild(script)}
 }
-function loadVisualLayer(){
-  if(document.querySelector('script[data-visual-system]'))return;
-  const script=document.createElement('script');script.src='visual-system.js?v=1';script.dataset.visualSystem='1';document.body.appendChild(script);
-}
+function loadVisualLayer(){if(document.querySelector('script[data-visual-system]'))return;const script=document.createElement('script');script.src='visual-system.js?v=2';script.dataset.visualSystem='1';document.body.appendChild(script)}
 function loadPublicLayer(){
-  if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=1';link.dataset.publicPolish='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=2';script.dataset.publicPolish='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=5';link.dataset.publicPolish='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=5';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
 
 function install(){
   if(uxInstalled)return;
-  if(typeof sections==='undefined'||typeof showSection!=='function'||!UX_REQUIRED.every(id=>sections.some(s=>s[0]===id))){setTimeout(install,120);return}
-  uxInstalled=true;document.body.classList.add('ux-clean');ensureMoreSheet();simplifyTopbar();simplifyHero();simplifyHome();cleanDenseCards();
-  const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id)};
-  renderNavs();
+  if(typeof sections==='undefined'||typeof showSection!=='function'||!UX_REQUIRED.every(id=>sections.some(s=>s[0]===id))){setTimeout(install,80);return}
+  uxInstalled=true;document.body.classList.add('ux-clean');ensureMoreSheet();refreshUi();
+  const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id);setTimeout(cleanDenseCards,0)};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
-  const observer=new MutationObserver(()=>cleanDenseCards());observer.observe(document.querySelector('main'),{childList:true,subtree:true});
+  document.addEventListener('rm-modules-ready',()=>{refreshMoreSheet();refreshUi()});
+  document.addEventListener('rm-ranking-official-ready',()=>setTimeout(cleanDenseCards,0));
+  [250,900,2200].forEach(ms=>setTimeout(refreshUi,ms));
   loadRefineLayer();loadVisualLayer();loadPublicLayer();
 }
-setTimeout(install,80);
+setTimeout(install,60);
 })();
