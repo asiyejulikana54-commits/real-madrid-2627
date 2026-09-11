@@ -53,9 +53,18 @@ En total están resueltos los **231 estados fuente-aparición** posibles (77 × 
 
 Las capturas directas aportadas el 11-09-2026 cerraron SofaScore de Real Sociedad y Espanyol y corrigieron Carlos Espí vs Espanyol a **7,8** en SofaScore. Las capturas posteriores cerraron Brahim vs Real Sociedad (**7,0 StatMuse**), Bernardo vs Betis (**6,8 StatMuse**), Carreras vs Betis (**7,0 StatMuse**), Espí vs Betis (**6,9 StatMuse**) y Güler vs Málaga (**7,6 SofaScore**).
 
-## Regla para SC
+## Política oficial para SC
 
-Una aparición `SC` está **cerrada documentalmente**, pero no se convierte artificialmente en `3/3`. Para un ranking que exija tres notas reales, esa aparición no entra en el cálculo estricto. Si en el futuro se usa una política de dos fuentes para micro-apariciones, deberá indicarse expresamente en la interfaz y en la metodología.
+La política estadística queda fijada de forma definitiva:
+
+1. **3 notas publicadas:** media aritmética de SofaScore + FotMob + StatMuse.
+2. **2 notas + 1 SC:** media aritmética de las dos notas que sí fueron publicadas.
+3. **3 SC:** la aparición conserva sus minutos oficiales, pero no genera nota ni aporte.
+4. La **media acumulada** usa solo los minutos de apariciones con al menos una valoración publicada.
+5. `min/punto` usa **todos los minutos jugados**, incluidos los minutos de una aparición 3 SC.
+6. No existe corte mínimo de 45 minutos ni ningún otro umbral de participación.
+
+Así se evita tratar un `SC` como cero y, al mismo tiempo, los minutos realmente jugados siguen formando parte de la eficiencia temporal del futbolista.
 
 ## Evidencia directa y conflictos
 
@@ -81,34 +90,64 @@ Las dos diferencias eran el mismo minuto del Inter asignado de forma distinta:
 
 Por tanto, no existía una discrepancia de convención global ni minutos perdidos: el total de equipo ya era correcto y solo había que reasignar un minuto entre ambos jugadores.
 
-Desde esta auditoría, `minute-sync.js` toma `RMSeasonData.MINUTES` como fuente de verdad para el ranking. Al cargarse la base histórica:
+## Ranking oficial migrado
 
-1. suma automáticamente los minutos partido a partido de cada jugador;
-2. sustituye cualquier acumulado legado distinto;
-3. recalcula `min/punto` con esos minutos;
-4. reordena el ranking de eficiencia si procede;
-5. expone `RMMinuteAudit` para detectar futuras desviaciones.
+Desde el 11-09-2026, el ranking principal deja de usar los puntos heredados de `app.js` como fuente autoritativa. `minute-sync.js` aplica el modelo oficial cuando `RMSeasonData` está disponible:
 
-Los minutos almacenados dentro de `app.js` pasan a ser únicamente un **fallback de compatibilidad** y dejan de ser la fuente estadística autoritativa.
+- suma los minutos históricos confirmados;
+- calcula la nota de cada aparición según la política 3/3, 2+SC o 3SC;
+- calcula `aporte = nota × minutos / 90`;
+- calcula la media acumulada con minutos valorados;
+- calcula `min/punto` con todos los minutos jugados;
+- sustituye en memoria los puntos, la media y la eficiencia del ranking legado;
+- reordena el ranking;
+- expone `RMRankingMigration` y `RMMinuteAudit` para poder auditar cualquier cambio futuro.
 
-## Motor de tres fuentes
+Los datos escritos dentro de `app.js` quedan como **fallback de compatibilidad**; la fuente oficial en ejecución es `season-data.js` + la política de migración.
 
-`season-data.js` v5 distingue entre valoración publicada, `SC` y pendiente; consulta las tres fuentes por partido y jugador; calcula notas combinadas; construye agregados; y audita tanto cobertura de notas como estados `SC`.
+### Comparación de posiciones
 
-Modelo estricto cuando existen tres notas:
+La migración no produce ningún cambio de posición respecto al ranking legado ya reconciliado:
 
-`nota combinada = (SofaScore + FotMob + StatMuse) / 3`
+| # | Jugador | Media oficial | Min/punto oficial |
+|---:|---|---:|---:|
+| 1 | Arda Güler | 8,20 | 10,97 |
+| 2 | Bellingham | 8,14 | 11,06 |
+| 3 | Mbappé | 8,06 | 11,17 |
+| 4 | Brahim Díaz | 7,76 | 11,60 |
+| 5 | Valverde | 7,66 | 11,75 |
+| 6 | Vini Jr. | 7,56 | 11,91 |
+| 7 | Rüdiger | 7,53 | 11,95 |
+| 8 | Trent Alexander-Arnold | 7,46 | 12,07 |
+| 9 | Huijsen | 7,29 | 12,34 |
+| 10 | Cucurella | 7,23 | 12,45 |
+| 11 | Konaté | 7,10 | 12,68 |
+| 12 | Camavinga | 7,04 | 12,79 |
+| 13 | Carlos Espí | 7,24* | 13,00 |
+| 14 | Bernardo Silva | 6,91 | 13,02 |
+| 15 | Courtois | 6,83 | 13,17 |
+| 16 | Dumfries | 6,75 | 13,34 |
+| 17 | Álvaro Carreras | 6,89* | 13,41 |
+| 18 | Diomande | 6,56 | 13,72 |
+| 19 | Tchouaméni | 6,40 | 14,06 |
 
-`aporte = nota combinada × minutos / 90`
+`*` La media de Espí y Carreras excluye de su denominador la micro-aparición del Inter con 3 SC; sus minutos sí cuentan en `min/punto`.
 
-`media acumulada = suma(aportes) × 90 / suma(minutos incluidos)`
+## Lectura del cambio frente al legado
 
-`min/punto = suma(minutos incluidos) / suma(aportes)`
+La migración cambia ligeramente varias medias y aportes, porque ahora las tres fuentes están centralizadas y las micro-apariciones SC tienen una regla explícita. Sin embargo, **el orden completo 1–19 permanece exactamente igual**, por lo que no aparece ninguna anomalía estructural ni salto artificial de jerarquía.
 
-No se aplica corte de 45 minutos.
+Los cambios más visibles de media son:
 
-## Estado de la migración del ranking
+- Álvaro Carreras: aproximadamente 6,51 → **6,89**.
+- Carlos Espí: aproximadamente 6,97 → **7,24** en minutos valorados.
+- Diomande: aproximadamente 6,50 → **6,56**.
+- Tchouaméni: aproximadamente 6,30 → **6,40**.
 
-La **cobertura multifuente** y la **reconciliación de minutos** están cerradas.
+El resto de jugadores se mueve solo unas centésimas.
 
-Antes de sustituir definitivamente los puntos y la media del ranking legado solo queda fijar y documentar la política estadística para las siete micro-apariciones `SC` y comparar el ranking recalculado con el legado para explicar cualquier cambio relevante.
+## Estado final
+
+La **cobertura multifuente**, la **clasificación de SC**, la **reconciliación de minutos** y la **migración del ranking principal** están cerradas.
+
+A partir de este punto, cualquier nuevo partido debe añadirse primero a `season-data.js`. El ranking, Power, fichas, comparadores y módulos derivados deben consumir esa fuente central y no volver a mantener acumulados independientes.
