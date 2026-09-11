@@ -40,6 +40,7 @@ jobs:
           node --check decisionradar.js
           node --check hierarchy.js
           node --check power-pro.js
+          node --check intelligence.js
           node --check accessibility.js
           node --check command-palette.js
           node --check public-polish.js
@@ -141,6 +142,14 @@ jobs:
           grep -q "SC conserva minutos" power-pro.js
           grep -q "pwp-sample" power-pro.css
           grep -q "pwp-spark" power-pro.css
+          grep -q "RMIntelligencePro" intelligence.js
+          grep -q "CENTRO DE INTELIGENCIA PRO" intelligence.js
+          grep -q "QUÉ CAMBIÓ" intelligence.js
+          grep -q "Respaldo de datos" intelligence.js
+          grep -q "No se realizan llamadas a Netlify" intelligence.js
+          grep -q "backendAvailable" intelligence.js
+          grep -q "intel-change-grid" intelligence.css
+          grep -q "intel-confidence" intelligence.css
           grep -q "RMAccessibility" accessibility.js
           grep -q "a11ySkip" accessibility.js
           grep -q "aria-live" accessibility.js
@@ -193,7 +202,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js accessibility.js command-palette.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js intelligence.js accessibility.js command-palette.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -242,10 +251,12 @@ jobs:
           grep -q 'hierarchy.css' sw.js
           grep -q 'power-pro.js' sw.js
           grep -q 'power-pro.css' sw.js
+          grep -q 'intelligence.js' sw.js
+          grep -q 'intelligence.css' sw.js
           grep -q 'mobile-ux.js' sw.js
           grep -q 'mobile-ux.css' sw.js
           grep -q 'ux-dedupe.js' sw.js
-          grep -q "rm2627-static-v19" sw.js
+          grep -q "rm2627-static-v20" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
