@@ -96,6 +96,10 @@ function loadRefineLayer(){
   if(!document.querySelector('link[data-ux-refine]')){const link=document.createElement('link');link.rel='stylesheet';link.href='ux-refine.css?v=1';link.dataset.uxRefine='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-ux-refine]')){const script=document.createElement('script');script.src='ux-refine.js?v=1';script.dataset.uxRefine='1';document.body.appendChild(script)}
 }
+function loadVisualLayer(){
+  if(document.querySelector('script[data-visual-system]'))return;
+  const script=document.createElement('script');script.src='visual-system.js?v=1';script.dataset.visualSystem='1';document.body.appendChild(script);
+}
 
 function install(){
   if(uxInstalled)return;
@@ -105,7 +109,7 @@ function install(){
   renderNavs();
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
   const observer=new MutationObserver(()=>cleanDenseCards());observer.observe(document.querySelector('main'),{childList:true,subtree:true});
-  loadRefineLayer();
+  loadRefineLayer();loadVisualLayer();
 }
 setTimeout(install,80);
 })();
