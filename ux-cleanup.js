@@ -12,6 +12,7 @@ const UX_PRIMARY=[
   {id:'plantilla',icon:'◉',label:'Equipo'},
   {id:'power',icon:'⚡',label:'Datos'}
 ];
+const UX_REQUIRED=['partido','power','evolucion','mvp','laboratorio','radar','jerarquias'];
 let uxInstalled=false;
 
 function uxSection(id){return sections.find(s=>s[0]===id)}
@@ -94,7 +95,7 @@ function cleanDenseCards(){
 
 function install(){
   if(uxInstalled)return;
-  if(typeof sections==='undefined'||typeof showSection!=='function'||sections.length<7){setTimeout(install,120);return}
+  if(typeof sections==='undefined'||typeof showSection!=='function'||!UX_REQUIRED.every(id=>sections.some(s=>s[0]===id))){setTimeout(install,120);return}
   uxInstalled=true;document.body.classList.add('ux-clean');ensureMoreSheet();simplifyTopbar();simplifyHero();simplifyHome();cleanDenseCards();
   const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id)};
   renderNavs();
