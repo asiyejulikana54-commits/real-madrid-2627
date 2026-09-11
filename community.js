@@ -68,29 +68,29 @@ async function loadCommunity(force=false){
 loadCommunity();
 
 if(!document.querySelector('script[data-matchday]')){
-  const script=document.createElement('script');script.src='matchday.js?v=1';script.dataset.matchday='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='matchday.js?v=1';script.dataset.matchday='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-playerhub]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='playerhub.css?v=1';link.dataset.playerhub='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-playerhub]')){
-  const script=document.createElement('script');script.src='playerhub.js?v=1';script.dataset.playerhub='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='playerhub.js?v=1';script.dataset.playerhub='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-mvp]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='mvp.css?v=1';link.dataset.mvp='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-mvp]')){
-  const script=document.createElement('script');script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='mvp.js?v=1';script.dataset.mvp='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-history]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='history.css?v=1';link.dataset.history='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-history]')){
-  const script=document.createElement('script');script.src='history.js?v=1';script.dataset.history='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='history.js?v=1';script.dataset.history='1';document.body.appendChild(script);
 }
 if(!document.querySelector('link[data-analytics]')){
   const link=document.createElement('link');link.rel='stylesheet';link.href='analytics.css?v=1';link.dataset.analytics='1';document.head.appendChild(link);
 }
 if(!document.querySelector('script[data-analytics]')){
-  const script=document.createElement('script');script.src='analytics.js?v=1';script.dataset.analytics='1';document.body.appendChild(script);
+  const script=document.createElement('script');script.async=false;script.src='analytics.js?v=1';script.dataset.analytics='1';document.body.appendChild(script);
 }
