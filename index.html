@@ -70,7 +70,7 @@
       <div class="section-head"><div><h2>Puntuaciones y eficiencia</h2><p>Una única base actual: tres fuentes, todos los minutos y sin corte mínimo.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Pos.</th><th>Media actual</th><th>Minutos</th><th>Aporte</th><th>Min / punto</th><th>Estado</th></tr></thead><tbody id="statsBody"></tbody></table></div>
       <div class="grid cols-3" style="margin-top:16px">
-        <div class="card"><div class="eyebrow">Valoración</div><h3>Media de 3 páginas</h3><p class="muted">La nota combinada usa SofaScore, FotMob y StatMuse con el mismo peso cuando están disponibles.</p></div>
+        <div class="card"><div class="eyebrow">Valoración</div><h3>Media multifuente</h3><p class="muted">Usamos SofaScore, FotMob y StatMuse: 3/3 cuando existen las tres notas y 2+SC cuando una fuente comprobada no calificó.</p></div>
         <div class="card"><div class="eyebrow">Comparación</div><h3>Sin “partido válido”</h3><p class="muted">No descartamos automáticamente apariciones cortas por no llegar a 45 minutos. El tiempo jugado entra en el cálculo de eficiencia.</p></div>
         <div class="card"><div class="eyebrow">Eficiencia</div><h3>Aporte por tiempo</h3><p class="muted">Aporte = nota × minutos / 90. El ranking se ordena por minutos por punto: cuanto menos tiempo necesita un jugador para generar un punto de aporte, mejor.</p></div>
       </div>
@@ -160,8 +160,9 @@
 <nav class="mobile-nav" id="navMobile"></nav>
 <div class="toast" id="toast"></div>
 <script src="app.js?v=10"></script>
-<script src="minute-sync.js?v=1"></script>
-<script src="community.js?v=1"></script>
+<script src="season-data.js?v=6" data-season-data="1"></script>
+<script src="minute-sync.js?v=4"></script>
+<script src="community.js?v=2"></script>
 <script src="ux-cleanup.js?v=1"></script>
 </body>
 </html>
