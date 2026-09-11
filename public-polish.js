@@ -2,6 +2,12 @@
 let installed=false;
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function go(id){if(typeof showSection==='function')showSection(id)}
+function ensureMeta(name,content,property=false){let el=document.head.querySelector(`meta[${property?'property':'name'}="${name}"]`);if(!el){el=document.createElement('meta');el.setAttribute(property?'property':'name',name);document.head.appendChild(el)}el.setAttribute('content',content)}
+function publicMeta(){
+  document.title='RM 26/27 · Datos, XI y comunidad del Real Madrid';
+  const description='Sigue el Real Madrid 2026/27 con rankings de rendimiento, Power RM, comparador de jugadores, constructor de XI y predicciones de la comunidad.';
+  ensureMeta('description',description);ensureMeta('theme-color','#071421');ensureMeta('og:title','RM 26/27 · Datos, XI y comunidad',true);ensureMeta('og:description',description,true);ensureMeta('og:type','website',true);
+}
 function updateHomeTopbar(id){
   if(id!=='inicio')return;
   const title=document.getElementById('pageTitle'),sub=document.getElementById('pageSub');
@@ -37,7 +43,7 @@ function improveCopy(){
 function install(){
   if(installed)return;
   if(!document.getElementById('inicio')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;document.body.classList.add('public-ready');injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio');
+  installed=true;publicMeta();document.body.classList.add('public-ready');injectIntro();improveCopy();updateHomeTopbar(document.querySelector('.section.active')?.id||'inicio');
   const base=showSection;showSection=function(id){base(id);updateHomeTopbar(id)};
   const observer=new MutationObserver(()=>improveCopy());observer.observe(document.querySelector('main'),{childList:true,subtree:true});
 }
