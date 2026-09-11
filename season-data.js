@@ -18,8 +18,7 @@ const DATA={
   malaga:{ratings:{
     'Courtois':fm(7.0),'Rüdiger':fm(7.3),'Huijsen':fm(7.5),'Cucurella':fm(7.7),
     'Valverde':fm(7.0),'Bernardo Silva':fm(5.9),'Camavinga':fm(7.8),'Bellingham':fm(8.8),
-    'Brahim Díaz':fm(7.0),'Arda Güler':undefined,'Mbappé':fm(8.7),'Vini Jr.':fm(8.3),
-    'Trent Alexander-Arnold':fm(8.5),'Diomande':fm(6.6)
+    'Brahim Díaz':fm(7.0),'Mbappé':fm(8.7),'Vini Jr.':fm(8.3),'Trent Alexander-Arnold':fm(8.5),'Diomande':fm(6.6)
   },minutes:{
     'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(0),'Konaté':fm(0),'Rüdiger':fm(90),'Huijsen':fm(90),
     'Cucurella':fm(90),'Álvaro Carreras':fm(0),'Valverde':fm(77),'Bernardo Silva':fm(13),'Camavinga':fm(90),
@@ -65,12 +64,11 @@ const DATA={
     'Courtois':fm(90),'Lunin':fm(0),'Dumfries':fm(90),'Konaté':fm(90),'Rüdiger':fm(0),'Huijsen':fm(90),
     'Cucurella':fm(90),'Álvaro Carreras':fm(3),'Valverde':fm(90),'Bellingham':fm(90),'Brahim Díaz':fm(79),
     'Mbappé':fm(89),'Vini Jr.':fm(87),'Trent Alexander-Arnold':fm(79),'Diomande':fm(11),'Tchouaméni':fm(11),'Carlos Espí':fm(1),
-    'Arda Güler':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.'),
-    'Camavinga':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.'),
-    'Bernardo Silva':reconstructed(0,'Ausencia registrada en el proyecto; falta una ficha postpartido que la muestre directamente.')
+    'Arda Güler':rec(0,'UEFA · sanción','confirmed','UEFA lo registró como sancionado para Real Madrid-Inter.'),
+    'Camavinga':rec(0,'UEFA · sanción','confirmed','UEFA lo registró como sancionado para Real Madrid-Inter.'),
+    'Bernardo Silva':rec(0,'UEFA · sanción','confirmed','UEFA lo registró como sancionado para Real Madrid-Inter.')
   }}
 };
-for(const match of Object.values(DATA))for(const kind of ['ratings','minutes'])for(const [key,row] of Object.entries(match[kind]||{}))if(row===undefined)delete match[kind][key];
 function canonical(name){return ALIASES[name]||name}
 function entry(kind,matchId,player,{includeReconstructed=false}={}){
   const bucket=DATA[matchId]?.[kind];if(!bucket)return null;const row=bucket[canonical(player)]||null;
@@ -98,6 +96,6 @@ function audit(){
   return out;
 }
 function statusLabel(status){return status==='confirmed'?'Confirmado':status==='reconstructed'?'Reconstruido':'Pendiente'}
-window.RMSeasonData=Object.freeze({version:2,matches:MATCHES,canonical,ratingEntry,minuteEntry,rating,minutes,ratingSeries,recentRating,ratingDelta,audit,statusLabel});
-document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:2}}));
+window.RMSeasonData=Object.freeze({version:3,matches:MATCHES,canonical,ratingEntry,minuteEntry,rating,minutes,ratingSeries,recentRating,ratingDelta,audit,statusLabel});
+document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:3}}));
 })();
