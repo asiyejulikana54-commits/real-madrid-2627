@@ -37,6 +37,7 @@ jobs:
           node --check prediction-pro.js
           node --check lineup-pro.js
           node --check evolution-pro.js
+          node --check accessibility.js
           node --check public-polish.js
           node --check public-engagement.js
           node --check share-cards.js
@@ -74,6 +75,9 @@ jobs:
           grep -q "evolution-pro.js?v=1" public-polish.js
           grep -q "evolution-pro.css?v=1" public-polish.js
           grep -q "loadEvolutionPro" public-polish.js
+          grep -q "accessibility.js?v=1" public-polish.js
+          grep -q "accessibility.css?v=1" public-polish.js
+          grep -q "loadAccessibility" public-polish.js
           grep -q "share-cards.js?v=2" public-polish.js
           grep -q "RMComparePro" compare-pro.js
           grep -q "VEREDICTO ACTUAL" compare-pro.js
@@ -106,6 +110,12 @@ jobs:
           grep -q "Momentum:" evolution-pro.js
           grep -q "SC no entra como 0" evolution-pro.js
           grep -q "ep-player-row" evolution-pro.css
+          grep -q "RMAccessibility" accessibility.js
+          grep -q "a11ySkip" accessibility.js
+          grep -q "aria-live" accessibility.js
+          grep -q "trapTab" accessibility.js
+          grep -q "prefers-reduced-motion" accessibility.css
+          grep -q "focus-visible" accessibility.css
           grep -q "robustNavigate" mobile-ux.js
           grep -q "directActivate" mobile-ux.js
           grep -q "selectstart" mobile-ux.js
@@ -148,7 +158,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js accessibility.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
@@ -187,10 +197,12 @@ jobs:
           grep -q 'lineup-pro.css' sw.js
           grep -q 'evolution-pro.js' sw.js
           grep -q 'evolution-pro.css' sw.js
+          grep -q 'accessibility.js' sw.js
+          grep -q 'accessibility.css' sw.js
           grep -q 'mobile-ux.js' sw.js
           grep -q 'mobile-ux.css' sw.js
           grep -q 'ux-dedupe.js' sw.js
-          grep -q "rm2627-static-v16" sw.js
+          grep -q "rm2627-static-v17" sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
@@ -198,7 +210,7 @@ jobs:
         run: |
           sed -i 's/community.js?v=3/community.js?v=7/' index.html
           sed -i 's/ux-cleanup.js?v=7/ux-cleanup.js?v=9/' index.html
-          sed -i 's/public-polish.js?v=7/public-polish.js?v=8/' ux-cleanup.js
+          sed -i 's/public-polish.js?v=7/public-polish.js?v=9/' ux-cleanup.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
