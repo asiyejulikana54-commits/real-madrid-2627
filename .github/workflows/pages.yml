@@ -33,6 +33,8 @@ jobs:
           node --check public-polish.js
           node --check public-engagement.js
           node --check share-cards.js
+          node --check personal-hub.js
+          node --check personal-nav.js
           node --check ux-cleanup.js
           node --check ux-refine.js
           node --check visual-system.js
@@ -45,7 +47,14 @@ jobs:
           grep -q "requestIdleCallback" community.js
           grep -q "uxInstallRM" ux-cleanup.js
           grep -q "Instalar RM 26/27" ux-cleanup.js
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js; then
+          grep -q "rm_prediction_history_v1" personal-hub.js
+          grep -q "rmGlobalSearch" personal-hub.js
+          grep -q "Compartir enlace" personal-hub.js
+          grep -q "mi-temporada" personal-nav.js
+          grep -q 'personal-hub.js?v=1' index.html
+          grep -q 'personal-nav.js?v=1' index.html
+          grep -q 'personal-hub.css?v=1' index.html
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js; then
             echo "No se permiten observadores globales en las capas de presentación"; exit 1;
           fi
 
@@ -58,9 +67,11 @@ jobs:
           grep -q 'pwa.css?v=2' index.html
           grep -q 'pwa.js?v=2' index.html
           grep -q 'community.js?v=3' index.html
-          grep -q 'ux-cleanup.js?v=6' index.html
+          grep -q 'ux-cleanup.js?v=7' index.html
           grep -q 'window.RMPWA' pwa.js
           grep -q 'showInstallGuide' pwa.js
+          grep -q 'personal-hub.js' sw.js
+          grep -q 'personal-nav.js' sw.js
           grep -q 'app-icon.svg' manifest.webmanifest
           grep -q '/.netlify/functions/' sw.js
 
