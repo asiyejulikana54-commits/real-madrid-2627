@@ -2,7 +2,6 @@
 const ROUTE_KEYS=['section','player','a','b','anchor'];
 let installed=false,attempts=0,lastRoute='';
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
-function esc(v){return String(v??'')}
 function activeSection(){return document.querySelector('.section.active')?.id||'inicio'}
 function sectionExists(id){return Boolean(id&&document.getElementById(id)?.classList.contains('section'))}
 function baseUrl(){const u=new URL(location.href);u.hash='';for(const key of ROUTE_KEYS)u.searchParams.delete(key);return u}
@@ -42,7 +41,9 @@ function openCompare(a,b,tries=0){
 }
 function scrollAnchor(id,tries=0){if(!id)return false;const el=document.getElementById(id);if(el){setTimeout(()=>el.scrollIntoView?.({behavior:'smooth',block:'start'}),40);return true}if(tries<30)setTimeout(()=>scrollAnchor(id,tries+1),100);return false}
 function route(force=false){
-  const q=new URL(location.href).searchParams,section=q.get('section')||'inicio',player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor');
+  const q=new URL(location.href).searchParams,requested=q.get('section'),player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor');
+  if(!requested&&!player&&!a&&!b&&!anchor)return false;
+  const section=requested||(player?'plantilla':a&&b?'comparador':activeSection());
   const signature=[section,player,a,b,anchor].join('|');if(!force&&signature===lastRoute)return false;lastRoute=signature;
   if(!sectionExists(section))return false;
   safe(()=>showSection(section));
