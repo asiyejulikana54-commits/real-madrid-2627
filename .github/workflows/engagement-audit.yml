@@ -28,5 +28,7 @@ jobs:
         run: node scripts/validate-post-xi-center.cjs
       - name: Validate simple mode
         run: node scripts/validate-simple-mode.cjs
+      - name: Validate navigation history
+        run: node scripts/validate-navigation-history.cjs
       - name: Validate match story
         run: node scripts/validate-match-story.cjs
