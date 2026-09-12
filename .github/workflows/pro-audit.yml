@@ -22,3 +22,5 @@ jobs:
         run: node scripts/validate-pro-surface.cjs
       - name: Validate Momentum PRO
         run: node scripts/validate-momentum-pro.cjs
+      - name: Validate decision center
+        run: node scripts/validate-decision-center.cjs
