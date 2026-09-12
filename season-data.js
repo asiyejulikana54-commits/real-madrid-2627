@@ -1,8 +1,8 @@
 (()=>{
 const MATCHES=Object.freeze([
-  {id:'malaga',label:'Málaga',short:'MÁL',comp:'LaLiga'},
-  {id:'real-sociedad',label:'Real Sociedad',short:'RSO',comp:'LaLiga'},
   {id:'espanyol',label:'Espanyol',short:'ESP',comp:'LaLiga'},
+  {id:'real-sociedad',label:'Real Sociedad',short:'RSO',comp:'LaLiga'},
+  {id:'malaga',label:'Málaga',short:'MÁL',comp:'LaLiga'},
   {id:'betis',label:'Betis',short:'BET',comp:'LaLiga'},
   {id:'inter',label:'Inter',short:'INT',comp:'Champions'}
 ]);
@@ -149,9 +149,10 @@ function audit(){
   return out;
 }
 function statusLabel(status){return status==='confirmed'?'Confirmado':status==='reconstructed'?'Reconstruido':status==='unrated'?'SC · Sin calificación':'Pendiente'}
+const CHRONOLOGY=Object.freeze({version:3,source:'canonical',order:Object.freeze(MATCHES.map(m=>m.id)),labels:Object.freeze(MATCHES.map(m=>m.label)),note:'Orden canónico de jornadas: Espanyol J1, Real Sociedad J2, Málaga J3, Betis J4, Inter J5.'});
 window.RMSeasonData=Object.freeze({
   version:6,formSource:'official-combined',
-  matches:MATCHES,sources:SOURCE_ORDER,sourceLabels:SOURCE_LABELS,
+  matches:MATCHES,sources:SOURCE_ORDER,sourceLabels:SOURCE_LABELS,chronology:CHRONOLOGY,
   canonical,ratingEntry,minuteEntry,rating,minutes,sourceRatings,sourceUnrated,combinedRatingEntry,officialRatingEntry,ratingSeries,recentRating,ratingDelta,
   aggregatePlayer,aggregateRanking,sourceAudit,audit,statusLabel,
   methodology:Object.freeze({
