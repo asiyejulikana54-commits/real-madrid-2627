@@ -26,3 +26,5 @@ jobs:
         run: node scripts/validate-decision-center.cjs
       - name: Validate match story
         run: node scripts/validate-match-story.cjs
+      - name: Validate compare lifecycle
+        run: node scripts/validate-compare-lifecycle.cjs
