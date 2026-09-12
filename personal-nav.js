@@ -5,6 +5,11 @@ function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
 }
+function loadRoundImpact(){
+  if(!document.querySelector('link[data-round-impact]')){const link=document.createElement('link');link.rel='stylesheet';link.href='round-impact.css?v=1';link.dataset.roundImpact='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-round-impact]')){const script=document.createElement('script');script.src='round-impact.js?v=1';script.dataset.roundImpact='1';document.body.appendChild(script)}
+}
+function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
   const firstGroup=sheet.querySelector('.ux-sheet-groups section>div');if(firstGroup&&!sheet.querySelector('[data-section="mi-temporada"]'))firstGroup.insertAdjacentHTML('afterbegin',personalButton());
@@ -23,7 +28,7 @@ function injectDesktop(){
 function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;refresh();
+  installed=true;refresh();scheduleRoundImpact();
   const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0)};
   if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
