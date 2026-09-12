@@ -20,9 +20,10 @@ if(!pwa.includes('window.RMPWA')||!pwa.includes('showInstallGuide'))failures.pus
 if(manifest&&!Array.isArray(manifest.icons))failures.push('manifest.webmanifest no define icons');
 
 const coreMatch=sw.match(/const CORE_PATHS=\[(.*?)\];/s);
+let quoted=[];
 if(!coreMatch)failures.push('sw.js no define CORE_PATHS');
 else{
-  const quoted=[...coreMatch[1].matchAll(/['"]([^'"]+)['"]/g)].map(m=>m[1]);
+  quoted=[...coreMatch[1].matchAll(/(['"])(.*?)\1/g)].map(m=>m[2]);
   const unique=new Set(quoted);
   if(unique.size!==quoted.length)failures.push('CORE_PATHS contiene rutas duplicadas');
   for(const file of quoted){if(file&&!exists(file))failures.push(`CORE_PATHS apunta a un archivo inexistente: ${file}`)}
@@ -30,4 +31,4 @@ else{
 }
 
 if(failures.length){console.error('PWA audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`PWA audit: OK · ${coreMatch?[...coreMatch[1].matchAll(/['"]([^'"]+)['"]/g)].length:0} recursos · caché versionada · engagement offline incluido`);
+console.log(`PWA audit: OK · ${quoted.length} recursos · caché versionada · engagement offline incluido`);
