@@ -24,15 +24,15 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Inicio | `home-pro` + `personal-home` + `engagement-loop` | **PRO V2** | Afinar el briefing conforme crezca el histórico |
 | Plantilla | `squad-pro` | PRO | Contexto por rol específico |
 | Ficha de jugador | `playerhub` + `player-experience` + `player-intelligence` | **PRO V2** | Ampliar histórico cuando haya más jornadas auditadas |
-| Estadísticas | `stats-pro` | **PRO V2** | Vistas personales nombradas / exportación filtrada |
-| Eficiencia | `efficiency-pro` | **PRO V2** | Comparar dos ventanas entre sí |
+| Estadísticas | `stats-pro` + `momentum-pro` | **PRO V3** | Vistas personales nombradas / exportación filtrada |
+| Eficiencia | `efficiency-pro` | **PRO V2** | Calibrar la lectura con más jornadas |
 | Power RM | `power-pro` | **PRO V2** | Calibración del Power con más jornadas |
 | Comparador | `compare-pro` | PRO | Endurecer apertura del radar/lifecycle |
 | Partidos | `match-history-pro` | PRO | Más comparaciones entre bloques de jornadas |
 | Centro del partido | `matchday-pro` | PRO | Integrar señales post-XI oficial |
-| Predicción | `prediction-pro` + capas de decisión | PRO+ | Seguir auditando calibración |
+| Predicción | `prediction-pro` + capas de decisión + `momentum-pro` | PRO+ | Seguir auditando calibración |
 | Constructor XI | `lineup-pro` | PRO | Recomendaciones por compatibilidad táctica |
-| Evolución | `evolution-pro` | **PRO V2** | Comparar ventanas y competiciones lado a lado |
+| Evolución | `evolution-pro` | **PRO V2** | Comparar competiciones lado a lado |
 | Mi temporada | `personal-season-pro` + `engagement-loop` | **PRO V2** | Clasificación global cuando exista backend histórico suficiente |
 | Comunidad | `community-pro` | **PRO** | Histórico comunitario cuando el backend acumule jornadas |
 | Jerarquías | `hierarchy` | PRO funcional | Renombrado técnico opcional, no necesario |
@@ -41,6 +41,20 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Radar de decisión | `decisionradar` | PRO funcional | Lifecycle/arranque más robusto |
 
 ## Cambios de esta revisión
+
+### Momentum PRO · forma vs temporada
+
+- Nueva capa `momentum-pro` que compara la media ponderada por minutos de los últimos 1/3/5 partidos con la media de temporada del mismo jugador.
+- La lectura se presenta explícitamente como desviación respecto al nivel habitual; la ventana reciente forma parte de la media de temporada y no se vende como dos muestras independientes.
+- Se muestran mayor subida y mayor bajada solo cuando existe soporte mínimo: 45 minutos recientes con nota y 90 minutos de temporada con nota.
+- Cada jugador conserva su muestra reciente, muestra total, cobertura y nivel de respaldo para evitar interpretar igual una señal fuerte y una muestra corta.
+- SC, ausencia y partido sin calificación nunca se convierten en 0.
+- La ventana puede ser 1/3/5 y puede aplicarse al contexto global para sincronizar Estadísticas, Power, Eficiencia y Evolución.
+- En Predicción, Momentum PRO cruza la misma ventana con `RMDecisionBoard` y señala si la forma reciente favorece al jugador del Proyecto, a la alternativa o si el duelo sigue demasiado igualado.
+- Un cambio de sentido frente a la media de temporada se etiqueta como **giro reciente**, sin convertirlo en probabilidad de titularidad.
+- El umbral para declarar ventaja reciente en un duelo es 0,15 puntos y exige al menos 45 minutos recientes con nota para ambos jugadores.
+- La capa no hace llamadas de red propias, no usa `MutationObserver`, tiene reintentos finitos, API `window.RMMomentumPro` y está incluida en la PWA.
+- Existe una auditoría específica en `scripts/validate-momentum-pro.cjs`, ejecutada dentro del workflow PRO.
 
 ### Bucle de retorno diario
 
@@ -106,7 +120,7 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 1. **Clasificación social real**: cuando el backend acumule XI oficiales y puntuaciones, convertir el marcador personal en ranking global y ligas privadas sin reconstruir resultados pasados.
 2. **Comparador PRO lifecycle**: eliminar cualquier dependencia frágil de cargas tardías del Radar y acotar todos los reintentos.
 3. **Calibración histórica**: cuando haya muestra suficiente, medir qué señales anticipan mejor titularidad/rendimiento y cuáles generan falsos positivos.
-4. **Comparación entre ventanas**: permitir comparar, por ejemplo, temporada completa vs últimos 3 partidos para un jugador o grupo.
+4. **Comparación entre competiciones**: permitir contrastar LaLiga vs Champions o bloques de jornadas lado a lado sin mezclar muestras.
 5. **Auditoría E2E**: incorporar pruebas de navegación/acciones reales en navegador cuando el proyecto tenga un runner E2E disponible.
 
 ## Regla de mantenimiento
