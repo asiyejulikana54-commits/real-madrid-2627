@@ -20,15 +20,24 @@ function hPower(p){const m=hMetric(p),r=hRating(p);if(!m||r===null)return null;c
 function hRecent(p){return season()?.recentRating?.(p.name,3)||null}
 function hDelta(p){return season()?.ratingDelta?.(p.name)||null}
 function hPositionCfg(pos){return H_POSITIONS.find(x=>x.id===pos)}
-function hDecision(p,pos){const cfg=hPositionCfg(pos);if(!cfg)return 0;const inXI=xi=>cfg.slots.some(s=>xi?.[s]===p.name);return ((inXI(baseXI)?1:0)+(inXI(rayoXI)?1:0))/2*10}
+function hCoachUsage(p){
+  const data=season(),matches=(data?.matches||[]).slice(-3);if(!matches.length)return {value:0,n:0,minutes:0};
+  let share=0,n=0,minutes=0;
+  for(const match of matches){
+    const entry=data?.minuteEntry?.(match.id,p.name),availability=`${entry?.source||''} ${entry?.note||''}`;
+    if(/sanci[oó]n/i.test(availability))continue;
+    const min=Math.max(0,Math.min(90,Number(entry?.value)||0));minutes+=min;share+=min/90;n++;
+  }
+  return {value:n?share/n*10:0,n,minutes};
+}
 function hScore(p,pos){
   const m=hMetric(p),power=hPower(p);if(!m||power===null)return null;
-  const recent=hRecent(p),sample=Math.min(m.minutes,450)/450*10,decision=hDecision(p,pos);
-  const parts=[{v:power,w:.45},{v:sample,w:.20},{v:decision,w:.15}];if(recent)parts.push({v:recent.value,w:.20});
+  const recent=hRecent(p),sample=Math.min(m.minutes,450)/450*10,usage=hCoachUsage(p);
+  const parts=[{v:power,w:.45},{v:sample,w:.20},{v:usage.value,w:.15}];if(recent)parts.push({v:recent.value,w:.20});
   const totalW=parts.reduce((s,x)=>s+x.w,0);return parts.reduce((s,x)=>s+x.v*x.w,0)/totalW;
 }
 function hCandidates(pos){
-  return players.filter(p=>p.eligible.includes(pos)&&(hMode==='all'||p.eligible[0]===pos)).map(p=>({p,score:hScore(p,pos),power:hPower(p),recent:hRecent(p),delta:hDelta(p),metric:hMetric(p),decision:hDecision(p,pos)})).sort((a,b)=>{
+  return players.filter(p=>p.eligible.includes(pos)&&(hMode==='all'||p.eligible[0]===pos)).map(p=>({p,score:hScore(p,pos),power:hPower(p),recent:hRecent(p),delta:hDelta(p),metric:hMetric(p),usage:hCoachUsage(p)})).sort((a,b)=>{
     if(a.score!==null&&b.score===null)return -1;if(a.score===null&&b.score!==null)return 1;if(a.score!==null&&b.score!==null&&Math.abs(b.score-a.score)>.0001)return b.score-a.score;return (a.p.short||a.p.name).localeCompare(b.p.short||b.p.name,'es');
   });
 }
@@ -57,7 +66,7 @@ function hPositionState(summary){
 function hTier(row,index,known,pos){
   if(row.score===null)return {id:'depth',label:'Fondo de plantilla',className:'depth'};
   const spots=hStarterSpots(pos),boundary=known[Math.min(spots-1,Math.max(0,known.length-1))],challenger=known[spots]||null;
-  if(index<spots){const gap=challenger?row.score-challenger.score:99;if(gap>=.75&&row.decision>=5)return {id:'clear',label:'Titular claro',className:'clear'};if(gap>=.35)return {id:'edge',label:'Ventaja',className:'edge'};return {id:'duel',label:'Duelo abierto',className:'duel'}}
+  if(index<spots){const gap=challenger?row.score-challenger.score:99;if(gap>=.75&&(row.usage?.value||0)>=5)return {id:'clear',label:'Titular claro',className:'clear'};if(gap>=.35)return {id:'edge',label:'Ventaja',className:'edge'};return {id:'duel',label:'Duelo abierto',className:'duel'}}
   const gap=boundary?boundary.score-row.score:99;if(index===spots&&gap<=.45)return {id:'duel',label:'Duelo abierto',className:'duel'};if(index<=spots+1||gap<=1.20)return {id:'rotation',label:'Rotación',className:'rotation'};return {id:'depth',label:'Fondo de plantilla',className:'depth'};
 }
 function hPositionData(pos){const rows=hCandidates(pos),known=rows.filter(x=>x.score!==null);return rows.map((r,i)=>({...r,tier:hTier(r,i,known,pos)}))}
@@ -72,8 +81,8 @@ function hPressure(){
 function hTierCounts(){const counts={clear:0,edge:0,duel:0,rotation:0,depth:0};H_POSITIONS.forEach(p=>hPositionData(p.id).forEach(r=>counts[r.tier.id]++));return counts}
 function trendHtml(row){const d=row.delta?.delta;if(typeof d!=='number')return '<span class="h-trend neutral">Sin tendencia</span>';if(Math.abs(d)<.05)return '<span class="h-trend neutral">→ estable</span>';return `<span class="h-trend ${d>0?'up':'down'}">${d>0?'▲':'▼'} ${Math.abs(d).toFixed(2)} última nota</span>`}
 function hPlayerRow(row,index){
-  const name=row.p.short||row.p.name,minutes=row.metric?.minutes??null,recent=row.recent?.value??null,sample=Math.min(100,Math.round((minutes||0)/450*100));
-  return `<button class="h-player ${row.tier.className}" onclick="openPlayerHub('${row.p.name.replace(/'/g,"\\'")}')"><div class="h-player-main"><span class="h-rank">${row.score===null?'—':index+1}</span><div><b>${hEsc(name)}</b><small>${hEsc(row.p.eligible.join(' · '))}</small></div><strong>${row.score===null?'—':row.score.toFixed(2)}</strong></div><div class="h-player-meta"><span class="h-tier ${row.tier.className}">${row.tier.label}</span><span>${row.power===null?'Power —':`Power ${row.power.toFixed(2)}`}</span><span>${minutes===null?'Min —':`${minutes} min`}</span><span>${recent===null?'Forma —':`Forma ${recent.toFixed(2)} · ${row.recent.n}/3`}</span>${trendHtml(row)}</div><div class="h-sample"><i style="width:${sample}%"></i></div></button>`;
+  const name=row.p.short||row.p.name,minutes=row.metric?.minutes??null,recent=row.recent?.value??null,sample=Math.min(100,Math.round((minutes||0)/450*100)),usage=row.usage?.value??0;
+  return `<button class="h-player ${row.tier.className}" onclick="openPlayerHub('${row.p.name.replace(/'/g,"\\'")}')"><div class="h-player-main"><span class="h-rank">${row.score===null?'—':index+1}</span><div><b>${hEsc(name)}</b><small>${hEsc(row.p.eligible.join(' · '))}</small></div><strong>${row.score===null?'—':row.score.toFixed(2)}</strong></div><div class="h-player-meta"><span class="h-tier ${row.tier.className}">${row.tier.label}</span><span>${row.power===null?'Power —':`Power ${row.power.toFixed(2)}`}</span><span>${minutes===null?'Min —':`${minutes} min`}</span><span>Uso ${usage.toFixed(1)}/10</span><span>${recent===null?'Forma —':`Forma ${recent.toFixed(2)} · ${row.recent.n}/3`}</span>${trendHtml(row)}</div><div class="h-sample"><i style="width:${sample}%"></i></div></button>`;
 }
 function hPairActions(summary){if(!summary.boundary||!summary.challenger)return '';return `<div class="h-pair-actions"><button onclick="event.stopPropagation();hierarchyToRadar('${summary.pos}')">Abrir Radar</button><button onclick="event.stopPropagation();hierarchyToCompare('${summary.pos}')">Comparar</button></div>`}
 function hPositionCard(cfg){
@@ -95,7 +104,7 @@ function renderHierarchyHome(){
 function renderHierarchy(){
   const section=document.getElementById('jerarquias');if(!section)return;const hot=hHottest(),clear=hClearest(),best=hBestLeader(),pressure=hPressure(),counts=hTierCounts(),coverage=season()?.sourceAudit?.();const states=hAllSummaries().map(hPositionState),open=states.filter(x=>x.id==='open').length,clearCount=states.filter(x=>x.id==='clear').length;
   section.innerHTML=`<div class="section-head"><div><div class="eyebrow">JERARQUÍAS PRO</div><h2>Mapa de jerarquías por posición</h2><p>No solo ordena jugadores: muestra distancia, confianza de la muestra y presión reciente en cada puesto.</p></div><div class="h-mode"><button class="${hMode==='all'?'active':''}" onclick="setHierarchyMode('all')">Polivalencia</button><button class="${hMode==='primary'?'active':''}" onclick="setHierarchyMode('primary')">Rol principal</button></div></div>
-  <div class="card h-method"><div><div class="eyebrow">ÍNDICE DE JERARQUÍA</div><h3>45% Power · 20% muestra · 20% forma · 15% nuestras decisiones</h3><p>El índice conserva la metodología del proyecto. La confianza de muestra se muestra aparte y nunca suma puntos al jugador.</p></div><div><b>Confianza ≠ probabilidad de ser titular</b><span>Solo indica cuánto respaldo tienen los datos que sostienen la frontera del puesto.</span><small>${coverage?.complete3||0} apariciones 3/3 · ${coverage?.partial2||0} apariciones 2+SC.</small></div></div>
+  <div class="card h-method"><div><div class="eyebrow">ÍNDICE DE JERARQUÍA</div><h3>45% Power · 20% muestra · 20% forma · 15% uso del entrenador</h3><p>El 15% ya no usa nuestros onces ni preferencias. “Uso del entrenador” mide los minutos reales de los últimos 3 partidos en los que el jugador estuvo disponible; una sanción registrada no le penaliza.</p></div><div><b>Confianza ≠ probabilidad de ser titular</b><span>Solo indica cuánto respaldo tienen los datos que sostienen la frontera del puesto.</span><small>${coverage?.complete3||0} apariciones 3/3 · ${coverage?.partial2||0} apariciones 2+SC.</small></div></div>
   <div class="h-kpis"><div class="card"><span>🔥 Puestos abiertos</span><b>${open}</b><small>${hot?.challenger?`${hot.pos}: ${hEsc(displayName(hot.boundary.p.name))} / ${hEsc(displayName(hot.challenger.p.name))}`:'Sin frontera abierta'}</small></div><div class="card"><span>🔒 Jerarquías claras</span><b>${clearCount}</b><small>${clear?.challenger?`${clear.pos} · margen ${clear.gap.toFixed(2)}`:'Sin frontera clara'}</small></div><div class="card"><span>⭐ Índice más alto</span><b>${best?hEsc(displayName(best.known[0].p.name)):'—'}</b><small>${best?`${best.pos} · ${best.known[0].score.toFixed(2)}`:'—'}</small></div><div class="card"><span>↗ Mayor presión reciente</span><b>${pressure?hEsc(displayName(pressure.row.p.name)):'—'}</b><small>${pressure?`${pressure.pos} · +${pressure.delta.toFixed(2)} última nota`:'Sin subida comparable'}</small></div></div>
   <div class="h-legend"><span class="clear">Titular claro <b>${counts.clear}</b></span><span class="edge">Ventaja <b>${counts.edge}</b></span><span class="duel">Duelo abierto <b>${counts.duel}</b></span><span class="rotation">Rotación <b>${counts.rotation}</b></span><span class="depth">Fondo <b>${counts.depth}</b></span></div>
   <div class="section-head"><div><h2>Puesto a puesto</h2><p>En DFC y MC la frontera relevante es 2.º–3.º; en el resto, 1.º–2.º.</p></div></div><div class="h-position-grid">${H_POSITIONS.map(hPositionCard).join('')}</div>
