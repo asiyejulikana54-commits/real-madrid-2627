@@ -1,5 +1,5 @@
 (()=>{
-let installed=false;
+let installed=false,attempts=0;
 function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, favoritos, actividad y progreso personal.</small></button>'}
 function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
@@ -33,6 +33,10 @@ function loadPredictionReadiness(){
   if(!document.querySelector('link[data-prediction-readiness]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-readiness.css?v=1';link.dataset.predictionReadiness='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-prediction-readiness]')){const script=document.createElement('script');script.src='prediction-readiness.js?v=1';script.dataset.predictionReadiness='1';document.body.appendChild(script)}
 }
+function loadScenarioLab(){
+  if(!document.querySelector('link[data-scenario-lab]')){const link=document.createElement('link');link.rel='stylesheet';link.href='scenario-lab.css?v=1';link.dataset.scenarioLab='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-scenario-lab]')){const script=document.createElement('script');script.src='scenario-lab.js?v=1';script.dataset.scenarioLab='1';document.body.appendChild(script)}
+}
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
@@ -51,9 +55,9 @@ function injectDesktop(){
 }
 function refresh(){injectMore();injectDesktop()}
 function install(){
-  if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionActions();loadPredictionReadiness();
-  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),370)};
+  if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
+  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionActions();loadPredictionReadiness();loadScenarioLab();
+  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),390)};
   if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
