@@ -1,0 +1,22 @@
+.cpl-guide{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:16px;padding:14px 16px;border:1px solid var(--border,#26384a);border-radius:14px;background:rgba(255,255,255,.025)}
+.cpl-guide>div{display:grid;gap:4px;min-width:0}
+.cpl-guide span{font-size:.7rem;font-weight:800;letter-spacing:.11em;opacity:.72}
+.cpl-guide b{font-size:.98rem;line-height:1.25}
+.cpl-guide small{font-size:.82rem;line-height:1.35;opacity:.72}
+.cpl-guide button{flex:0 0 auto;border:1px solid var(--border,#33485d);border-radius:999px;background:transparent;color:inherit;padding:9px 13px;font:inherit;font-weight:750;cursor:pointer}
+.cpl-guide button:hover,.cpl-guide button:focus-visible{background:rgba(255,255,255,.06)}
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-common,
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-ranks,
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-footnote,
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cpl-static-extra{display:none!important}
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-metrics .cp-metric:nth-child(n+5){display:none!important}
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-actions{margin-top:14px}
+body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-actions #cpRadar{font-weight:800}
+body.rm-pro-mode #compareLifecycleGuide #cplToggle{display:none}
+@media(max-width:700px){
+  .cpl-guide{align-items:stretch;flex-direction:column;gap:10px;padding:13px}
+  .cpl-guide button{width:100%}
+  body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-actions{display:grid;grid-template-columns:1fr 1fr}
+  body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-actions .btn{min-width:0;white-space:normal}
+}
+@media(max-width:460px){body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-actions{grid-template-columns:1fr}}
