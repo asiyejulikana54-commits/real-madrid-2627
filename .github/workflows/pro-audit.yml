@@ -20,3 +20,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate PRO coverage
         run: node scripts/validate-pro-surface.cjs
+      - name: Validate Momentum PRO
+        run: node scripts/validate-momentum-pro.cjs
