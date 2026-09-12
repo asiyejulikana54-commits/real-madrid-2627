@@ -2,7 +2,7 @@ const path=require('path');
 const fs=require('fs');
 const vm=require('vm');
 global.window=global;
-global.document={dispatchEvent(){}};
+global.document={dispatchEvent(){},addEventListener(){}};
 global.CustomEvent=function(type,init={}){this.type=type;this.detail=init.detail};
 
 require(path.join(__dirname,'..','season-input.js'));
@@ -31,13 +31,20 @@ if(!Number.isFinite(courtoisAgg.minPerPoint)||Math.abs(courtoisAgg.minPerPoint-c
 const root=path.join(__dirname,'..');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 
-// CRONOLOGÍA: Espanyol J1, Real Sociedad J2, Málaga J3.
+// CRONOLOGÍA: Espanyol J1, Real Sociedad J2, Málaga J3. Se valida código y ejecución real.
 const minuteSync=fs.readFileSync(path.join(root,'minute-sync.js'),'utf8');
 try{new vm.Script(minuteSync,{filename:'minute-sync.js'})}catch(error){failures.push(`Minute sync no compila: ${error.message}`)}
 if(!minuteSync.includes("['espanyol','real-sociedad','malaga','betis','inter']"))failures.push('la cronología corregida no fija Espanyol 1º y Málaga 3º');
 if(!minuteSync.includes('applyChronologyFix')||!minuteSync.includes('rm-season-order-corrected'))failures.push('falta aplicar y anunciar la corrección cronológica');
 if(!minuteSync.includes('ratingSeries')||!minuteSync.includes('recentRating')||!minuteSync.includes('ratingDelta'))failures.push('la corrección cronológica no alcanza forma/evolución');
 if(!minuteSync.includes('Primera jornada del seguimiento histórico'))failures.push('la copia histórica de Espanyol sigue tratándolo como cuarto partido');
+try{require(path.join(root,'minute-sync.js'))}catch(error){failures.push(`la corrección cronológica no se puede ejecutar: ${error.message}`)}
+const chronologicalData=global.RMSeasonData;
+const expectedOrder=['espanyol','real-sociedad','malaga','betis','inter'];
+const actualOrder=(chronologicalData?.matches||[]).slice(0,5).map(m=>m.id);
+if(JSON.stringify(actualOrder)!==JSON.stringify(expectedOrder))failures.push(`orden real incorrecto: ${actualOrder.join(' → ')}`);
+if(chronologicalData?.matches?.at(-1)?.id!=='__smoke__')failures.push('la corrección cronológica desplaza incorrectamente partidos futuros');
+if(chronologicalData?.chronology?.labels?.[0]!=='Espanyol'||chronologicalData?.chronology?.labels?.[2]!=='Málaga')failures.push('el metadato de cronología no identifica J1 Espanyol y J3 Málaga');
 
 // MVP PRO: valida que la capa compile, sea local-first y esté disponible offline.
 const mvpJs=fs.readFileSync(path.join(root,'mvp.js'),'utf8');
@@ -79,6 +86,21 @@ if(/MutationObserver\s*\(/.test(historyJs))failures.push('Historial PRO usa Muta
 if(!historyCss.includes('.mhp-compare-score')||!historyCss.includes('.mhp-strict-change')||!historyCss.includes('.cov-33'))failures.push('faltan estilos estructurales del Historial PRO mejorado');
 if(!sw.includes("'match-history-pro.js'")||!sw.includes("'match-history-pro.css'"))failures.push('Historial PRO no está incluido en la PWA');
 
+// EVOLUCIÓN PRO: valida lectura cronológica real, cambio estricto y mapa de jornadas.
+const evolutionJs=fs.readFileSync(path.join(root,'evolution-pro.js'),'utf8');
+const evolutionCss=fs.readFileSync(path.join(root,'evolution-pro.css'),'utf8');
+try{new vm.Script(evolutionJs,{filename:'evolution-pro.js'})}catch(error){failures.push(`Evolución PRO no compila: ${error.message}`)}
+if(!evolutionJs.includes('RMEvolutionPro'))failures.push('Evolución PRO no expone su API pública');
+if(!evolutionJs.includes('MAPA DE JORNADAS')||!evolutionJs.includes('La temporada en el orden real'))failures.push('Evolución PRO no muestra la cronología real');
+if(!evolutionJs.includes('CAMBIO DE JORNADA · ESTRICTO')||!evolutionJs.includes('strictPair'))failures.push('Evolución PRO no exige comparación estricta entre jornadas');
+if(!evolutionJs.includes('PROGRESO TEMPORADA')||!evolutionJs.includes('seasonDelta'))failures.push('Evolución PRO no incluye progreso J1→última jornada');
+if(!evolutionJs.includes('jornadaLabel')||!evolutionJs.includes('rm-season-order-corrected'))failures.push('Evolución PRO no se sincroniza con la cronología corregida');
+if(!evolutionJs.includes('Momentum usa las últimas notas disponibles')||!evolutionJs.includes('SC no entra como 0'))failures.push('Evolución PRO no distingue Momentum de cambio estricto o pierde semántica SC');
+if(!evolutionJs.includes('sortName()')||!evolutionJs.includes('sortValue(stat)'))failures.push('Evolución PRO no adapta la lectura al criterio de ordenación');
+if(/MutationObserver\s*\(/.test(evolutionJs))failures.push('Evolución PRO usa MutationObserver');
+if(!evolutionCss.includes('.ep-journey-strip')||!evolutionCss.includes('.ep-journey-card')||!evolutionCss.includes('.ep-journey-main'))failures.push('faltan estilos del mapa de jornadas de Evolución PRO');
+if(!sw.includes("'evolution-pro.js'")||!sw.includes("'evolution-pro.css'"))failures.push('Evolución PRO no está incluida en la PWA');
+
 // NAVEGACIÓN MÓVIL: valida recuperación, accesibilidad y refresco de capas PRO.
 const mobileUx=fs.readFileSync(path.join(root,'mobile-ux.js'),'utf8');
 const predictionPro=fs.readFileSync(path.join(root,'prediction-pro.js'),'utf8');
@@ -93,4 +115,4 @@ if(!predictionPro.includes("addEventListener('rm-mobile-nav-fallback',render)"))
 if(/MutationObserver\s*\(/.test(mobileUx)||/MutationObserver\s*\(/.test(predictionPro))failures.push('la recuperación móvil introduce MutationObserver');
 
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${data.matches.length} partidos · cronología Espanyol→Real Sociedad→Málaga validada · MVP PRO + Eficiencia PRO + Historial PRO + navegación móvil validados`);
+console.log(`Season update smoke test: OK · ${chronologicalData.matches.length} partidos · cronología real ejecutada · MVP PRO + Eficiencia PRO + Historial PRO + Evolución PRO + navegación móvil validados`);
