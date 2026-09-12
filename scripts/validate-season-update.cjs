@@ -13,14 +13,21 @@ const players=Object.fromEntries(XI.map(name=>[name,{minutes:90,sofascore:7,fotm
 global.RMSeasonMatchEntries=[{id:'__smoke__',label:'Smoke Test',short:'TST',comp:'Test',date:'2099-01-01',duration:90,final:true,players}];
 
 require(path.join(__dirname,'..','season-data.js'));
-const baseMatches=global.RMSeasonData.matches.length;
+const baseData=global.RMSeasonData;
+const baseMatches=baseData.matches.length;
+const expectedOrder=['espanyol','real-sociedad','malaga','betis','inter'];
+const baseOrder=baseData.matches.slice(0,5).map(m=>m.id);
 require(path.join(__dirname,'..','season-extension.js'));
 const data=global.RMSeasonData;
 const failures=[];
+if(JSON.stringify(baseOrder)!==JSON.stringify(expectedOrder))failures.push(`season-data nace con orden incorrecto: ${baseOrder.join(' → ')}`);
+if(baseData.chronology?.source!=='canonical')failures.push('season-data no declara la cronología como fuente canónica');
+if(baseData.chronology?.labels?.[0]!=='Espanyol'||baseData.chronology?.labels?.[2]!=='Málaga')failures.push('season-data no identifica Espanyol J1 y Málaga J3 en metadatos');
 if(data.version!==7)failures.push(`versión esperada 7, recibida ${data.version}`);
 if(!data.validation?.ok)failures.push(`validación fallida: ${JSON.stringify(data.validation?.errors||[])}`);
 if(data.matches.length!==baseMatches+1)failures.push('el partido nuevo no se añadió exactamente una vez');
-if(data.matches.at(-1)?.id!=='__smoke__')failures.push('el nuevo partido no quedó como último encuentro');
+if(data.matches.at(-1)?.id!=='__smoke__')failures.push('el partido nuevo no quedó como último encuentro');
+if(JSON.stringify(data.matches.slice(0,5).map(m=>m.id))!==JSON.stringify(expectedOrder))failures.push('season-extension altera el orden canónico de las jornadas');
 if(data.officialRatingEntry('__smoke__','Courtois')?.value!==7)failures.push('la nota oficial 3/3 no se calculó correctamente');
 if(data.aggregatePlayer('Courtois').totalMinutes!==540)failures.push(`Courtois debería acumular 540 minutos y acumula ${data.aggregatePlayer('Courtois').totalMinutes}`);
 if(data.recentRating('Courtois',1)?.rows?.[0]?.match?.id!=='__smoke__')failures.push('la forma reciente no incorpora el partido nuevo');
@@ -31,20 +38,20 @@ if(!Number.isFinite(courtoisAgg.minPerPoint)||Math.abs(courtoisAgg.minPerPoint-c
 const root=path.join(__dirname,'..');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 
-// CRONOLOGÍA: Espanyol J1, Real Sociedad J2, Málaga J3. Se valida código y ejecución real.
+// CRONOLOGÍA: la fuente canónica ya nace correcta; minute-sync solo puentea la estructura antigua.
 const minuteSync=fs.readFileSync(path.join(root,'minute-sync.js'),'utf8');
 try{new vm.Script(minuteSync,{filename:'minute-sync.js'})}catch(error){failures.push(`Minute sync no compila: ${error.message}`)}
-if(!minuteSync.includes("['espanyol','real-sociedad','malaga','betis','inter']"))failures.push('la cronología corregida no fija Espanyol 1º y Málaga 3º');
-if(!minuteSync.includes('applyChronologyFix')||!minuteSync.includes('rm-season-order-corrected'))failures.push('falta aplicar y anunciar la corrección cronológica');
-if(!minuteSync.includes('ratingSeries')||!minuteSync.includes('recentRating')||!minuteSync.includes('ratingDelta'))failures.push('la corrección cronológica no alcanza forma/evolución');
+if(!minuteSync.includes("['espanyol','real-sociedad','malaga','betis','inter']"))failures.push('el puente legado no reconoce el orden canónico');
+if(!minuteSync.includes('syncLegacyChronology')||!minuteSync.includes('rm-season-order-corrected'))failures.push('falta sincronizar y anunciar la cronología a estructuras antiguas');
+if(minuteSync.includes('applyChronologyFix'))failures.push('minute-sync sigue parcheando RMSeasonData en lugar de respetar la fuente canónica');
+if(!minuteSync.includes("source:'canonical'"))failures.push('minute-sync no identifica la procedencia canónica del orden');
 if(!minuteSync.includes('Primera jornada del seguimiento histórico'))failures.push('la copia histórica de Espanyol sigue tratándolo como cuarto partido');
-try{require(path.join(root,'minute-sync.js'))}catch(error){failures.push(`la corrección cronológica no se puede ejecutar: ${error.message}`)}
+try{require(path.join(root,'minute-sync.js'))}catch(error){failures.push(`el puente cronológico no se puede ejecutar: ${error.message}`)}
 const chronologicalData=global.RMSeasonData;
-const expectedOrder=['espanyol','real-sociedad','malaga','betis','inter'];
 const actualOrder=(chronologicalData?.matches||[]).slice(0,5).map(m=>m.id);
-if(JSON.stringify(actualOrder)!==JSON.stringify(expectedOrder))failures.push(`orden real incorrecto: ${actualOrder.join(' → ')}`);
-if(chronologicalData?.matches?.at(-1)?.id!=='__smoke__')failures.push('la corrección cronológica desplaza incorrectamente partidos futuros');
-if(chronologicalData?.chronology?.labels?.[0]!=='Espanyol'||chronologicalData?.chronology?.labels?.[2]!=='Málaga')failures.push('el metadato de cronología no identifica J1 Espanyol y J3 Málaga');
+if(JSON.stringify(actualOrder)!==JSON.stringify(expectedOrder))failures.push(`orden real incorrecto tras minute-sync: ${actualOrder.join(' → ')}`);
+if(chronologicalData?.matches?.at(-1)?.id!=='__smoke__')failures.push('minute-sync desplaza incorrectamente partidos futuros');
+if(chronologicalData?.chronology?.source!=='canonical')failures.push('minute-sync ha sustituido el metadato canónico de RMSeasonData');
 
 // MVP PRO: valida que la capa compile, sea local-first y esté disponible offline.
 const mvpJs=fs.readFileSync(path.join(root,'mvp.js'),'utf8');
@@ -115,4 +122,4 @@ if(!predictionPro.includes("addEventListener('rm-mobile-nav-fallback',render)"))
 if(/MutationObserver\s*\(/.test(mobileUx)||/MutationObserver\s*\(/.test(predictionPro))failures.push('la recuperación móvil introduce MutationObserver');
 
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${chronologicalData.matches.length} partidos · cronología real ejecutada · MVP PRO + Eficiencia PRO + Historial PRO + Evolución PRO + navegación móvil validados`);
+console.log(`Season update smoke test: OK · ${chronologicalData.matches.length} partidos · cronología canónica desde origen · MVP PRO + Eficiencia PRO + Historial PRO + Evolución PRO + navegación móvil validados`);
