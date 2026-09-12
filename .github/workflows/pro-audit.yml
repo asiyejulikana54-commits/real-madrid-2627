@@ -24,3 +24,5 @@ jobs:
         run: node scripts/validate-momentum-pro.cjs
       - name: Validate decision center
         run: node scripts/validate-decision-center.cjs
+      - name: Validate match story
+        run: node scripts/validate-match-story.cjs
