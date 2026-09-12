@@ -73,8 +73,9 @@ const rayoXI={gk:'Courtois',lb:'Álvaro Carreras',lcb:'Rüdiger',rcb:'Huijsen',r
 const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'LI'],['lcb','DFC',38,75,'DFC'],['rcb','DFC',62,75,'DFC'],['rb','LD',86,73,'LD'],['dm1','MC',36,55,'MC'],['dm2','MC',64,55,'MC'],['am','MP',50,37,'MP'],['lw','EI',20,25,'EI'],['rw','ED',80,25,'ED'],['st','DC',50,12,'DC']];
 
 const predictionMatch={id:'rayo-2026-09-12',rival:'Rayo',kickoff:'2026-09-12T21:00:00+02:00',deadline:'2026-09-12T19:55:00+02:00'};
-// Cuando salga el once oficial, sustituir null por un array con los 11 nombres exactos de players[].
-const officialXI=null;
+const officialXI=['Courtois','Dumfries','Konaté','Rüdiger','Álvaro Carreras','Bernardo Silva','Valverde','Diomande','Bellingham','Vini Jr.','Mbappé'];
+const officialXIBySlot={gk:'Courtois',lb:'Álvaro Carreras',lcb:'Rüdiger',rcb:'Konaté',rb:'Dumfries',dm1:'Valverde',dm2:'Bernardo Silva',am:'Bellingham',lw:'Vini Jr.',rw:'Diomande',st:'Mbappé'};
+window.RMOfficialXIBySlot=Object.freeze({...officialXIBySlot});
 const predictionStorageKey=`rm_prediction_${predictionMatch.id}`;
 
 function navHtml(mobile=false){return sections.map((s,i)=>`<button class="${i===0?'active':''}" data-section="${s[0]}" onclick="showSection('${s[0]}')">${mobile?'':`<span>${s[1]}</span>`}${s[2]}</button>`).join('')}
