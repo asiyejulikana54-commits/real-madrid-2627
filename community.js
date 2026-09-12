@@ -7,7 +7,11 @@ document.getElementById('navMobile').innerHTML=navHtml(true);
 const participantStorageKey='rm_community_participant_id';
 function getParticipantId(){let id=localStorage.getItem(participantStorageKey);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);localStorage.setItem(participantStorageKey,id)}return id}
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
-function communityBackendAvailable(){return /^https?:$/.test(location.protocol)&&!location.hostname.endsWith('github.io')}
+function communityBackendAvailable(){return /^https?:$/.test(location.protocol)}
+function communityApiUrl(params={}){
+  const base=location.hostname.endsWith('github.io')?'https://real-madrid-2627-panel.netlify.app/.netlify/functions/community-v2':'/.netlify/functions/community-v2';
+  const url=new URL(base,location.href);for(const [key,value] of Object.entries(params))if(value!==undefined&&value!==null&&value!=='')url.searchParams.set(key,String(value));return url.href;
+}
 
 const baseShowSection=showSection;
 showSection=function(id){baseShowSection(id);if(id==='comunidad')loadCommunity()};
@@ -32,7 +36,7 @@ savePrediction=async function(){
     toast('Predicción guardada en tu móvil');btn.textContent='Publicar predicción';btn.disabled=predictionIsClosed();document.dispatchEvent(new CustomEvent('rm-local-prediction-updated'));return;
   }
   try{
-    const response=await fetch('/.netlify/functions/community-v2',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
+    const response=await fetch(communityApiUrl(),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:getParticipantId(),alias,matchId:predictionMatch.id,xi})});
     const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||`Error ${response.status}`);
     toast(result.updated?'Predicción comunitaria actualizada':'Predicción publicada en la comunidad');communityCache=null;await loadCommunity(true);setTimeout(()=>showSection('comunidad'),350)
   }catch(error){toast(`Guardada en tu móvil · ${error.message||'sin conexión con la comunidad'}`)}
@@ -45,9 +49,9 @@ const resultBox=document.getElementById('predictionResult');if(resultBox)resultB
 let communityCache=window.RMCommunityData||null;
 function renderCommunityUnavailable(){
   const total=document.getElementById('communityTotal');if(total)total.textContent='—';
-  const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">La comunidad en vivo se activará cuando esta versión esté conectada al backend. Tu predicción local sigue funcionando.</div>';
-  const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo en espera</b><span>GitHub Pages funciona como versión pública de verificación sin llamar a las funciones de Netlify.</span></div>';
-  const board=document.getElementById('communityLeaderboard');if(board)board.innerHTML='<div class="result-pending"><b>Ranking comunitario no cargado</b><span>Se mostrará en la versión conectada.</span></div>';
+  const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">La comunidad en vivo necesita conexión web. Tu predicción local sigue funcionando.</div>';
+  const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo en espera</b><span>Conéctate a internet para cargar votos, clasificación y ligas.</span></div>';
+  const board=document.getElementById('communityLeaderboard');if(board)board.innerHTML='<div class="result-pending"><b>Ranking comunitario no cargado</b><span>Se mostrará cuando vuelva la conexión.</span></div>';
 }
 function renderCommunityPitch(popularXI,total){
   const pitch=document.getElementById('communityPitch');if(!pitch)return;
@@ -73,10 +77,11 @@ function renderCommunity(data){
 async function loadCommunity(force=false){
   if(communityCache&&!force){renderCommunity(communityCache);return communityCache}
   if(!communityBackendAvailable()){renderCommunityUnavailable();return null}
-  try{const response=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}));return data}
+  try{const response=await fetch(communityApiUrl({participantId:getParticipantId()}),{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}));return data}
   catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>';return null}
 }
 document.addEventListener('rm-community-updated',event=>{if(event.detail){communityCache=event.detail;window.RMCommunityData=event.detail;if(document.getElementById('comunidad')?.classList.contains('active'))renderCommunity(event.detail)}});
+window.RMCommunityApi=Object.freeze({url:communityApiUrl,available:communityBackendAvailable,participantId:getParticipantId,refresh:()=>loadCommunity(true)});
 
 function ensureStyle(href,key){
   if(document.querySelector(`link[data-${key}]`))return;
