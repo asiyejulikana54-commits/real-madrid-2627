@@ -22,7 +22,7 @@ const players=[
 {name:'Valverde',pos:'MED',eligible:['MC','ED'],role:'MC/ED · centrocampista / opción en banda derecha',tags:['Titular base','Posible descanso']},
 {name:'Bernardo Silva',short:'Bernardo',pos:'MED',eligible:['MC','MP','ED'],role:'MC/MP/ED · creatividad y control',tags:['Titular base']},
 {name:'Camavinga',pos:'MED',eligible:['MC'],role:'MC · centrocampista',tags:['Rotación fuerte']},
-{name:'Tchouaméni',pos:'MED',eligible:['MC','DFC'],role:'MCD/MC · también central',tags:['Plantilla']},
+{name:'Tchouaméni',pos:'MED',eligible:['MC'],role:'MCD/MC · centrocampista',tags:['Plantilla']},
 {name:'Bellingham',pos:'MED',eligible:['MP','MC'],role:'MP/MC · referencia ofensiva',tags:['Titular base','Posible descanso']},
 {name:'Arda Güler',short:'Güler',pos:'MED',eligible:['MP','ED','MC'],role:'MP/ED/MC · creador',tags:['Fijo actual','MVP Betis']},
 {name:'Brahim Díaz',short:'Brahim',pos:'MED',eligible:['MP','ED','EI'],role:'MP/ED/EI · alternativa ofensiva',tags:['Debate banda']},
