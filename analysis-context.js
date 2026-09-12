@@ -93,6 +93,10 @@ function loadSharedEntry(){
   if(!document.querySelector('link[data-shared-entry]')){const link=document.createElement('link');link.rel='stylesheet';link.href='social-entry.css?v=1';link.dataset.sharedEntry='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-shared-entry]')){const script=document.createElement('script');script.src='social-entry.js?v=1';script.dataset.sharedEntry='1';document.body.appendChild(script)}
 }
+function loadMomentumPro(){
+  if(!document.querySelector('link[data-momentum-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='momentum-pro.css?v=1';link.dataset.momentumPro='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-momentum-pro]')){const script=document.createElement('script');script.src='momentum-pro.js?v=1';script.dataset.momentumPro='1';document.body.appendChild(script)}
+}
 function bindQuickPicksNav(){
   document.addEventListener('click',e=>{const nav=e.target?.closest?.('[data-section]');if(!nav||!['inicio','mi-temporada','partido'].includes(nav.dataset.section))return;setTimeout(()=>safe(()=>window.RMQuickPicks?.render?.()),220)},true);
 }
@@ -101,7 +105,7 @@ function install(){
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
   installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();bindQuickPicksNav();
   window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
-  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();loadFavoriteWatch();loadActivityCenter();loadDeepLinks();loadSharedEntry();
+  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();loadFavoriteWatch();loadActivityCenter();loadDeepLinks();loadSharedEntry();loadMomentumPro();
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
 ['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));
