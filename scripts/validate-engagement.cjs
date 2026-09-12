@@ -4,10 +4,10 @@ const vm=require('vm');
 const root=path.join(__dirname,'..');
 const failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-for(const file of ['engagement-loop.js','engagement-rewards.js','community-league.js','community.js','personal-nav.js','analysis-context.js','sw.js']){
+for(const file of ['engagement-loop.js','engagement-rewards.js','quick-picks.js','community-league.js','community.js','personal-nav.js','analysis-context.js','sw.js']){
   try{new vm.Script(read(file),{filename:file})}catch(error){failures.push(`${file} no compila: ${error.message}`)}
 }
-const js=read('engagement-loop.js'),css=read('engagement-loop.css'),rewards=read('engagement-rewards.js'),rewardsCss=read('engagement-rewards.css'),ctx=read('analysis-context.js'),sw=read('sw.js');
+const js=read('engagement-loop.js'),css=read('engagement-loop.css'),rewards=read('engagement-rewards.js'),rewardsCss=read('engagement-rewards.css'),quick=read('quick-picks.js'),quickCss=read('quick-picks.css'),ctx=read('analysis-context.js'),sw=read('sw.js');
 const rewardsLower=rewards.toLowerCase();
 const league=read('community-league.js'),leagueCss=read('community-league.css'),community=read('community.js'),nav=read('personal-nav.js'),backend=read('netlify/functions/community-v2.mts');
 for(const marker of ['TU MARCADOR','DUELO DEL DÍA','HOY EN RM 26/27','PERFIL DE PREDICCIÓN','rm_daily_debate_votes_v1','RMScenarioAudit','RMDecisionBoard','attempts<100'])if(!js.includes(marker))failures.push(`engagement-loop.js: falta ${marker}`);
@@ -19,10 +19,17 @@ if(/\bfetch\s*\(/.test(rewards))failures.push('engagement-rewards.js no debe hac
 if(/MutationObserver\s*\(/.test(rewards))failures.push('engagement-rewards.js no debe usar MutationObserver');
 for(const marker of ['.er-home-card','.er-missions','.er-badges','.er-streaks'])if(!rewardsCss.includes(marker))failures.push(`engagement-rewards.css: falta ${marker}`);
 if(!rewardsLower.includes('no crean puntos ficticios')||!rewardsLower.includes('no cambia tus estadísticas'))failures.push('las recompensas deben separar gamificación de estadísticas reales');
+for(const marker of ['QUICK PICKS','rm_quick_picks_v1','freezeQuestions','perfect:resolved===3&&correct===3','ANULADA · JUEGAN AMBOS O NINGUNO','RMQuickPicks','attempts<120'])if(!quick.includes(marker))failures.push(`quick-picks.js: falta ${marker}`);
+if(/\bfetch\s*\(/.test(quick))failures.push('quick-picks.js no debe hacer llamadas de red propias');
+if(/MutationObserver\s*\(/.test(quick))failures.push('quick-picks.js no debe usar MutationObserver');
+if(!quick.includes('if(!m||closed())return null'))failures.push('Quick Picks debe impedir crear preguntas después del cierre');
+for(const marker of ['.qp-grid','.qp-option','.qp-result','.qp-season-kpis'])if(!quickCss.includes(marker))failures.push(`quick-picks.css: falta ${marker}`);
 if(!ctx.includes('loadEngagementLoop')||!ctx.includes('engagement-loop.js?v=1')||!ctx.includes('engagement-loop.css?v=1'))failures.push('analysis-context.js no carga el bucle de retorno');
 if(!ctx.includes('loadEngagementRewards')||!ctx.includes('engagement-rewards.js?v=1')||!ctx.includes('engagement-rewards.css?v=1'))failures.push('analysis-context.js no carga rachas e insignias');
+if(!ctx.includes('loadQuickPicks')||!ctx.includes('quick-picks.js?v=1')||!ctx.includes('quick-picks.css?v=1'))failures.push('analysis-context.js no carga Quick Picks');
 if(!sw.includes("'engagement-loop.js'")||!sw.includes("'engagement-loop.css'"))failures.push('PWA no incluye el bucle de retorno');
 if(!sw.includes("'engagement-rewards.js'")||!sw.includes("'engagement-rewards.css'"))failures.push('PWA no incluye rachas e insignias');
+if(!sw.includes("'quick-picks.js'")||!sw.includes("'quick-picks.css'"))failures.push('PWA no incluye Quick Picks');
 if(!js.includes('Tu voto es local'))failures.push('el debate diario no explica que el voto es local');
 if(!js.includes('la comunidad solo aparece si tenemos datos reales'))failures.push('el debate diario no protege la lectura de comunidad');
 if(!js.includes('No reconstruimos predicciones')&&!js.includes('no reconstruimos predicciones'))failures.push('el perfil no protege la auditoría histórica');
@@ -37,4 +44,4 @@ for(const marker of ['roundLeaderboard','participationStreak','streak8','createL
 if(/access-control-allow-origin/i.test(backend))failures.push('community-v2.mts añade CORS sin necesitarlo');
 if(!backend.includes('Nunca se reconstruyen predicciones antiguas'))failures.push('backend no documenta la regla anti-backfill');
 if(failures.length){console.error('Engagement audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log('Engagement audit: OK · marcador + duelo diario + rachas + retos + insignias + clasificación + jornada + ligas privadas');
+console.log('Engagement audit: OK · marcador + duelo diario + Quick Picks + rachas + retos + insignias + clasificación + jornada + ligas privadas');
