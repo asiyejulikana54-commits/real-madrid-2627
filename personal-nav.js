@@ -26,7 +26,7 @@ function loadDecisionAudit(){
   if(!document.querySelector('script[data-decision-audit]')){const script=document.createElement('script');script.src='decision-audit.js?v=1';script.dataset.decisionAudit='1';document.body.appendChild(script)}
 }
 function loadDecisionActions(){
-  if(!document.querySelector('link[data-decision-actions]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-actions.css?v=1';link.dataset.decisionActions='1';document.head.appendChild(link)}
+  if(!document.querySelector('link[data-decision-actions]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-actions.css?v=1';link.datasetDecisionActions='1';link.dataset.decisionActions='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-decision-actions]')){const script=document.createElement('script');script.src='decision-actions.js?v=1';script.dataset.decisionActions='1';document.body.appendChild(script)}
 }
 function loadPredictionReadiness(){
@@ -44,6 +44,10 @@ function loadScenarioAudit(){
 function loadConsensusXI(){
   if(!document.querySelector('link[data-consensus-xi]')){const link=document.createElement('link');link.rel='stylesheet';link.href='consensus-xi.css?v=1';link.dataset.consensusXi='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-consensus-xi]')){const script=document.createElement('script');script.src='consensus-xi.js?v=1';script.dataset.consensusXi='1';document.body.appendChild(script)}
+}
+function loadCommunityPro(){
+  if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=1';link.dataset.communityPro='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=1';script.dataset.communityPro='1';document.body.appendChild(script)}
 }
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
@@ -65,8 +69,8 @@ function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
   installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionActions();loadPredictionReadiness();loadScenarioLab();loadConsensusXI();loadScenarioAudit();
-  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMConsensusXI?.render?.(),370);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),410);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMScenarioAudit?.render?.(),455)};
-  if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
+  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();if(id==='comunidad')loadCommunityPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='comunidad')setTimeout(()=>window.RMCommunityPro?.render?.(),120);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMConsensusXI?.render?.(),370);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),410);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMScenarioAudit?.render?.(),455)};
+  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad')loadCommunityPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 setTimeout(install,90);
