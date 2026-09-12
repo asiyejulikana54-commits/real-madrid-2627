@@ -21,7 +21,7 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 
 | Superficie | Capa principal | Estado | Siguiente salto |
 |---|---|---:|---|
-| Inicio | `home-pro` | PRO | Más síntesis histórica cuando crezca la muestra |
+| Inicio | `home-pro` + `personal-home` + `engagement-loop` | **PRO V2** | Afinar el briefing conforme crezca el histórico |
 | Plantilla | `squad-pro` | PRO | Contexto por rol específico |
 | Ficha de jugador | `playerhub` + `player-experience` + `player-intelligence` | **PRO V2** | Ampliar histórico cuando haya más jornadas auditadas |
 | Estadísticas | `stats-pro` | **PRO V2** | Vistas personales nombradas / exportación filtrada |
@@ -33,7 +33,7 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Predicción | `prediction-pro` + capas de decisión | PRO+ | Seguir auditando calibración |
 | Constructor XI | `lineup-pro` | PRO | Recomendaciones por compatibilidad táctica |
 | Evolución | `evolution-pro` | **PRO V2** | Comparar ventanas y competiciones lado a lado |
-| Mi temporada | `personal-season-pro` | PRO | Más memoria de decisiones personales |
+| Mi temporada | `personal-season-pro` + `engagement-loop` | **PRO V2** | Clasificación global cuando exista backend histórico suficiente |
 | Comunidad | `community-pro` | **PRO** | Histórico comunitario cuando el backend acumule jornadas |
 | Jerarquías | `hierarchy` | PRO funcional | Renombrado técnico opcional, no necesario |
 | Inteligencia | `intelligence` | PRO funcional | Más señales explicables con muestra suficiente |
@@ -41,6 +41,20 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Radar de decisión | `decisionradar` | PRO funcional | Lifecycle/arranque más robusto |
 
 ## Cambios de esta revisión
+
+### Bucle de retorno diario
+
+- Nueva capa `engagement-loop` orientada a retención, no a añadir más métricas aisladas.
+- Inicio muestra un **marcador personal** con media de aciertos, récord, racha de pronósticos 8+ y balance frente al Proyecto.
+- Cuando existe muestra auditada, el usuario ve también su posición dentro de la liga local de escenarios del proyecto.
+- Se incorpora un **Duelo del día** de un toque, construido a partir de debates reales de `RMDecisionBoard`; no se inventan enfrentamientos.
+- El voto diario se guarda solo en el dispositivo mediante `rm_daily_debate_votes_v1` y puede modificarse mientras el debate siga abierto.
+- Si existe `RMCommunityData`, el duelo muestra porcentajes reales por posición; si no, la ausencia de backend no se presenta como consenso.
+- El duelo abre directamente el Comparador PRO con los dos jugadores elegidos.
+- Inicio añade un briefing **Hoy en RM 26/27** reutilizando los cambios detectados por `RMPersonalHome` y el estado real de la predicción.
+- Mi temporada incorpora un perfil ampliado: media, récord, racha 8+, última variación, balance frente a Proyecto y posición en la Liga de escenarios.
+- La capa no hace llamadas de red propias, no usa `MutationObserver`, tiene reintentos finitos y queda incluida en la PWA.
+- Existe una auditoría automática específica en `scripts/validate-engagement.cjs` y `.github/workflows/engagement-audit.yml`.
 
 ### Contexto compartido de análisis
 
@@ -89,10 +103,10 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 
 ## Huecos que siguen siendo prioritarios
 
-1. **Comparador PRO lifecycle**: eliminar cualquier dependencia frágil de cargas tardías del Radar y acotar todos los reintentos.
-2. **Calibración histórica**: cuando haya muestra suficiente, medir qué señales anticipan mejor titularidad/rendimiento y cuáles generan falsos positivos.
-3. **Comparación entre ventanas**: permitir comparar, por ejemplo, temporada completa vs últimos 3 partidos para un jugador o grupo.
-4. **Histórico de jugador**: enriquecer Player Experience V2 con tendencias de decisiones cuando haya varias jornadas auditadas.
+1. **Clasificación social real**: cuando el backend acumule XI oficiales y puntuaciones, convertir el marcador personal en ranking global y ligas privadas sin reconstruir resultados pasados.
+2. **Comparador PRO lifecycle**: eliminar cualquier dependencia frágil de cargas tardías del Radar y acotar todos los reintentos.
+3. **Calibración histórica**: cuando haya muestra suficiente, medir qué señales anticipan mejor titularidad/rendimiento y cuáles generan falsos positivos.
+4. **Comparación entre ventanas**: permitir comparar, por ejemplo, temporada completa vs últimos 3 partidos para un jugador o grupo.
 5. **Auditoría E2E**: incorporar pruebas de navegación/acciones reales en navegador cuando el proyecto tenga un runner E2E disponible.
 
 ## Regla de mantenimiento
