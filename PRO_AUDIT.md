@@ -25,14 +25,14 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Plantilla | `squad-pro` | PRO | Contexto por rol específico |
 | Ficha de jugador | `playerhub` + `player-experience` + `player-intelligence` | **PRO V2** | Ampliar histórico cuando haya más jornadas auditadas |
 | Estadísticas | `stats-pro` | **PRO V2** | Vistas personales nombradas / exportación filtrada |
-| Eficiencia | `efficiency-pro` | PRO | Comparativa histórica por ventanas |
-| Power RM | `power-pro` | PRO | Calibración del Power con más jornadas |
+| Eficiencia | `efficiency-pro` | **PRO V2** | Comparar dos ventanas entre sí |
+| Power RM | `power-pro` | **PRO V2** | Calibración del Power con más jornadas |
 | Comparador | `compare-pro` | PRO | Endurecer apertura del radar/lifecycle |
 | Partidos | `match-history-pro` | PRO | Más comparaciones entre bloques de jornadas |
 | Centro del partido | `matchday-pro` | PRO | Integrar señales post-XI oficial |
 | Predicción | `prediction-pro` + capas de decisión | PRO+ | Seguir auditando calibración |
 | Constructor XI | `lineup-pro` | PRO | Recomendaciones por compatibilidad táctica |
-| Evolución | `evolution-pro` | PRO | Filtros por competición/periodo compartidos |
+| Evolución | `evolution-pro` | **PRO V2** | Comparar ventanas y competiciones lado a lado |
 | Mi temporada | `personal-season-pro` | PRO | Más memoria de decisiones personales |
 | Comunidad | `community-pro` | **PRO** | Histórico comunitario cuando el backend acumule jornadas |
 | Jerarquías | `hierarchy` | PRO funcional | Renombrado técnico opcional, no necesario |
@@ -41,6 +41,18 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 | Radar de decisión | `decisionradar` | PRO funcional | Lifecycle/arranque más robusto |
 
 ## Cambios de esta revisión
+
+### Contexto compartido de análisis
+
+- Nueva API `window.RMAnalysisContext` con estado persistente de competición y periodo.
+- Un cambio de contexto se propaga mediante `rm-analysis-context-updated` y recalcula Power, Eficiencia y Evolución.
+- Estadísticas PRO sigue siendo compatible con sus controles existentes y queda sincronizada con el mismo estado global.
+- Cambiar a últimos 1/3/5 partidos o a una competición concreta recalcula las métricas: no se limita a esconder filas.
+- Power recalcula media ponderada por minutos, muestra, Power, forma, tendencia y estabilidad dentro de la ventana.
+- Eficiencia recalcula minutos, aporte, Min/punto, Power y forma dentro de la misma ventana.
+- Evolución limita series, Momentum, rachas, extremos y comparaciones de jornada al contexto seleccionado, conservando la numeración real de las jornadas.
+- El contexto compartido se guarda localmente, no hace llamadas de red y está incluido en la PWA.
+- La auditoría automática comprueba sintaxis, API, carga, PWA y conexión de las tres capas dinámicas.
 
 ### Player Experience V2
 
@@ -77,9 +89,9 @@ Una sección se considera **PRO** cuando cumple, en lo aplicable, estos criterio
 
 ## Huecos que siguen siendo prioritarios
 
-1. **Filtros compartidos**: permitir que Estadísticas, Power, Evolución y Eficiencia usen la misma ventana temporal/competición.
-2. **Comparador PRO lifecycle**: eliminar cualquier dependencia frágil de cargas tardías del Radar y acotar todos los reintentos.
-3. **Calibración histórica**: cuando haya muestra suficiente, medir qué señales anticipan mejor titularidad/rendimiento y cuáles generan falsos positivos.
+1. **Comparador PRO lifecycle**: eliminar cualquier dependencia frágil de cargas tardías del Radar y acotar todos los reintentos.
+2. **Calibración histórica**: cuando haya muestra suficiente, medir qué señales anticipan mejor titularidad/rendimiento y cuáles generan falsos positivos.
+3. **Comparación entre ventanas**: permitir comparar, por ejemplo, temporada completa vs últimos 3 partidos para un jugador o grupo.
 4. **Histórico de jugador**: enriquecer Player Experience V2 con tendencias de decisiones cuando haya varias jornadas auditadas.
 5. **Auditoría E2E**: incorporar pruebas de navegación/acciones reales en navegador cuando el proyecto tenga un runner E2E disponible.
 
