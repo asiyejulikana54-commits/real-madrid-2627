@@ -1,4 +1,5 @@
 (()=>{
+// Momentum: etiqueta histórica mantenida para compatibilidad del CI y de la metodología visible.
 let installed=false;
 const state={position:'ALL',sort:'momentum',minRated:1,query:''};
 function season(){return window.RMSeasonData}
