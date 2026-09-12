@@ -86,6 +86,9 @@ function loadActivityCenter(){
   if(!document.querySelector('link[data-activity-center]')){const link=document.createElement('link');link.rel='stylesheet';link.href='activity-center.css?v=1';link.dataset.activityCenter='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-activity-center]')){const script=document.createElement('script');script.src='activity-center.js?v=1';script.dataset.activityCenter='1';document.body.appendChild(script)}
 }
+function loadNavigationHistory(){
+  if(!document.querySelector('script[data-navigation-history]')){const script=document.createElement('script');script.src='navigation-history.js?v=1';script.dataset.navigationHistory='1';document.body.appendChild(script)}
+}
 function loadDeepLinks(){
   if(!document.querySelector('script[data-deep-links]')){const script=document.createElement('script');script.src='deep-links.js?v=1';script.dataset.deepLinks='1';document.body.appendChild(script)}
 }
@@ -113,7 +116,7 @@ function install(){
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
   installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();bindQuickPicksNav();
   window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
-  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();loadFavoriteWatch();loadActivityCenter();loadDeepLinks();loadSharedEntry();loadMomentumPro();loadPostXiCenter();loadSimpleMode();
+  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();loadFavoriteWatch();loadActivityCenter();loadNavigationHistory();loadDeepLinks();loadSharedEntry();loadMomentumPro();loadPostXiCenter();loadSimpleMode();
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
 ['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));
