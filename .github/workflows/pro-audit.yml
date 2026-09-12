@@ -28,3 +28,5 @@ jobs:
         run: node scripts/validate-match-story.cjs
       - name: Validate compare lifecycle
         run: node scripts/validate-compare-lifecycle.cjs
+      - name: Validate Power sorting
+        run: node scripts/validate-power-sorting.cjs
