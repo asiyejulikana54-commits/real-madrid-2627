@@ -36,6 +36,7 @@ jobs:
           node scripts/validate-decision-coach.cjs
           node scripts/validate-review-archive.cjs
           node scripts/validate-decision-center.cjs
+          node scripts/validate-season-learning.cjs
 
       - name: Validate PWA
         run: node scripts/validate-pwa.cjs
