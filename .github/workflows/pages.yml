@@ -40,6 +40,7 @@ jobs:
           node scripts/validate-post-xi-center.cjs
           node scripts/validate-simple-mode.cjs
           node scripts/validate-match-story.cjs
+          node scripts/validate-compare-lifecycle.cjs
 
       - name: Validate PWA
         run: node scripts/validate-pwa.cjs
