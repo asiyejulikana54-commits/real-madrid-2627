@@ -7,7 +7,7 @@ function values(xi=current()){return safe(()=>predictionValues(xi),Object.values
 function unique(v){return [...new Set(v)]}
 function saved(){return safe(()=>getSavedPrediction(),null)}
 function closed(){return safe(()=>predictionIsClosed(),false)}
-function sameXi(a,b){if(!a||!b)return false;return slots.every(s=>(a[s[0]]||'')===(b[s[0]]||''))}
+function sameXi(a,b){if(!a||!b)return false;if(window.RMLineupSemantics)return window.RMLineupSemantics.equivalent(a,b);return slots.every(s=>(a[s[0]]||'')===(b[s[0]]||''))}
 function proposalValues(){return values(safe(()=>rayoXI,{}))}
 function display(n){return safe(()=>displayName(n),n)||n}
 function diffFromProposal(v){const mine=new Set(v),base=new Set(proposalValues());return {same:[...mine].filter(n=>base.has(n)),mine:[...mine].filter(n=>!base.has(n)),base:[...base].filter(n=>!mine.has(n))}}
@@ -58,6 +58,7 @@ function bind(){
   section.addEventListener('input',e=>{if(e.target?.id==='predictionName'||e.target?.id==='predictionComment')render()});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
   document.addEventListener('rm-community-updated',render);
+  document.addEventListener('rm-lineup-semantics-ready',render);
   document.addEventListener('rm-mobile-nav-fallback',render);
 }
 function scheduleDeadline(){clearTimeout(deadlineTimer);const ts=safe(()=>new Date(predictionMatch.deadline).getTime(),NaN);if(!Number.isFinite(ts))return;const delay=ts-Date.now()+1000;if(delay>0&&delay<2147483647)deadlineTimer=setTimeout(()=>{safe(()=>renderPredictionStatus());render()},delay)}
