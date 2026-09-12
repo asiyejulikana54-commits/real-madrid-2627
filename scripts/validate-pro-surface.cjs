@@ -68,6 +68,25 @@ else{
   }
 }
 
+if(!exists('lineup-semantics.js'))failures.push('Semántica XI: falta lineup-semantics.js');
+else{
+  const code=read('lineup-semantics.js');
+  try{new vm.Script(code,{filename:'lineup-semantics.js'})}catch(error){failures.push(`Semántica XI: no compila: ${error.message}`)}
+  for(const marker of ['RMLineupSemantics','normalizeAgainst','roleScore','equivalent','rm-lineup-semantics-ready'])if(!code.includes(marker))failures.push(`Semántica XI: falta ${marker}`);
+  if(!sw.includes("'lineup-semantics.js'"))failures.push('Semántica XI: no está en la PWA');
+  for(const [file,marker] of [['xi-stability.js','RMLineupSemantics'],['consensus-xi.js','normalizeAgainst'],['prediction-pro.js','equivalent'],['prediction-analytics.js','roleScore']])if(!read(file).includes(marker))failures.push(`Semántica XI: ${file} no está conectado a ${marker}`);
+  try{
+    const slots=[['gk','POR',0,0,'POR'],['lb','LI',0,0,'LI'],['lcb','DFC',0,0,'DFC'],['rcb','DFC',0,0,'DFC'],['rb','LD',0,0,'LD'],['dm1','MC',0,0,'MC'],['dm2','MC',0,0,'MC'],['am','MP',0,0,'MP'],['lw','EI',0,0,'EI'],['rw','ED',0,0,'ED'],['st','DC',0,0,'DC']];
+    const sandbox={window:{RMSeasonData:{canonical:n=>n}},slots,document:{dispatchEvent(){}},CustomEvent:function(){}};vm.createContext(sandbox);new vm.Script(code).runInContext(sandbox);const api=sandbox.window.RMLineupSemantics;
+    const base={gk:'Courtois',lb:'Carreras',lcb:'Rüdiger',rcb:'Huijsen',rb:'Trent',dm1:'Valverde',dm2:'Güler',am:'Bellingham',lw:'Vini',rw:'Diomande',st:'Mbappé'};
+    const swapped={...base,lcb:'Huijsen',rcb:'Rüdiger',dm1:'Güler',dm2:'Valverde'},swapResult=api.compare(base,swapped);
+    if(swapResult.count!==0||!swapResult.equivalent)failures.push('Semántica XI: una permuta DFC/MC se sigue contando como cambio');
+    const changed={...swapped,lcb:'Konaté',rcb:'Huijsen'},changeResult=api.compare(base,changed);
+    if(changeResult.count!==1||changeResult.bySlot.lcb.user!=='Konaté'||changeResult.bySlot.rcb.changed)failures.push('Semántica XI: no identifica correctamente un cambio real de central');
+    const roleSwap={...base,rb:'Valverde',dm1:'Trent'};if(api.compare(base,roleSwap).count!==2)failures.push('Semántica XI: una permuta entre roles distintos debe seguir siendo cambio');
+  }catch(error){failures.push(`Semántica XI: prueba funcional falló: ${error.message}`)}
+}
+
 if(!exists('consensus-xi.js')||!exists('scenario-audit.js'))failures.push('Síntesis auditable: faltan módulos');
 else{
   const consensus=read('consensus-xi.js'),audit=read('scenario-audit.js');
@@ -94,4 +113,4 @@ for(const [name,file,api,marker] of semantic){
 
 if(!exists('PRO_AUDIT.md'))failures.push('Falta PRO_AUDIT.md');
 if(failures.length){console.error('PRO surface audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales + contexto compartido + síntesis auditable`);
+console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales + contexto compartido + semántica XI + síntesis auditable`);
