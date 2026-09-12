@@ -9,7 +9,7 @@ const DUELS=[
 ];
 const PERFORMANCE_KEYS=new Set(['rating','power','recent','efficiency']);
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
-function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c.charCodeAt(0)===39?'&#39;':'&quot;')}
 function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),name)||name}
 function display(name){return safe(()=>displayName(name),name)||name}
 function player(name){return safe(()=>players.find(p=>p.name===name||p.short===name),null)}
