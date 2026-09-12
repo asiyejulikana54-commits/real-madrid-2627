@@ -8,6 +8,7 @@ for(const file of ['engagement-loop.js','engagement-rewards.js','community-leagu
   try{new vm.Script(read(file),{filename:file})}catch(error){failures.push(`${file} no compila: ${error.message}`)}
 }
 const js=read('engagement-loop.js'),css=read('engagement-loop.css'),rewards=read('engagement-rewards.js'),rewardsCss=read('engagement-rewards.css'),ctx=read('analysis-context.js'),sw=read('sw.js');
+const rewardsLower=rewards.toLowerCase();
 const league=read('community-league.js'),leagueCss=read('community-league.css'),community=read('community.js'),nav=read('personal-nav.js'),backend=read('netlify/functions/community-v2.mts');
 for(const marker of ['TU MARCADOR','DUELO DEL DÍA','HOY EN RM 26/27','PERFIL DE PREDICCIÓN','rm_daily_debate_votes_v1','RMScenarioAudit','RMDecisionBoard','attempts<100'])if(!js.includes(marker))failures.push(`engagement-loop.js: falta ${marker}`);
 if(/\bfetch\s*\(/.test(js))failures.push('engagement-loop.js no debe hacer llamadas de red propias');
@@ -17,7 +18,7 @@ for(const marker of ['RACHAS E INSIGNIAS','RETOS DE HOY','rm_engagement_visit_da
 if(/\bfetch\s*\(/.test(rewards))failures.push('engagement-rewards.js no debe hacer llamadas de red propias');
 if(/MutationObserver\s*\(/.test(rewards))failures.push('engagement-rewards.js no debe usar MutationObserver');
 for(const marker of ['.er-home-card','.er-missions','.er-badges','.er-streaks'])if(!rewardsCss.includes(marker))failures.push(`engagement-rewards.css: falta ${marker}`);
-if(!rewards.includes('no crean puntos ficticios')||!rewards.includes('no cambia tus estadísticas'))failures.push('las recompensas deben separar gamificación de estadísticas reales');
+if(!rewardsLower.includes('no crean puntos ficticios')||!rewardsLower.includes('no cambia tus estadísticas'))failures.push('las recompensas deben separar gamificación de estadísticas reales');
 if(!ctx.includes('loadEngagementLoop')||!ctx.includes('engagement-loop.js?v=1')||!ctx.includes('engagement-loop.css?v=1'))failures.push('analysis-context.js no carga el bucle de retorno');
 if(!ctx.includes('loadEngagementRewards')||!ctx.includes('engagement-rewards.js?v=1')||!ctx.includes('engagement-rewards.css?v=1'))failures.push('analysis-context.js no carga rachas e insignias');
 if(!sw.includes("'engagement-loop.js'")||!sw.includes("'engagement-loop.css'"))failures.push('PWA no incluye el bucle de retorno');
