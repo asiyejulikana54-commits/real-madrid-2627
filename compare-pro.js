@@ -37,21 +37,36 @@ function row(name){
 }
 function cmp(a,b,higher=true,tolerance=0){if(!Number.isFinite(a)||!Number.isFinite(b))return 0;const d=a-b;if(Math.abs(d)<=tolerance)return 0;return higher?(d>0?1:-1):(d<0?1:-1)}
 const METRICS=[
-  {key:'rating',label:'Media',get:x=>x.r,higher:true,tol:.05,fmt:v=>fmt(v,2),help:'Media combinada de las fuentes disponibles.'},
-  {key:'power',label:'Power RM',get:x=>x.power,higher:true,tol:.05,fmt:v=>fmt(v,2),help:'Rendimiento ajustado por tamaño de muestra.'},
-  {key:'recent',label:'Forma reciente',get:x=>x.recent,higher:true,tol:.05,fmt:v=>fmt(v,2),help:'Media de hasta los 3 últimos partidos con nota.'},
-  {key:'efficiency',label:'Min / punto',get:x=>x.efficiency,higher:false,tol:.15,fmt:v=>fmt(v,2),help:'Menor es mejor: minutos necesarios para generar un punto de aporte.'},
+  {key:'rating',label:'Media',get:x=>x.r,higher:true,tol:.05,impact:.22,fmt:v=>fmt(v,2),help:'Media combinada de las fuentes disponibles.'},
+  {key:'power',label:'Power RM',get:x=>x.power,higher:true,tol:.05,impact:.22,fmt:v=>fmt(v,2),help:'Rendimiento ajustado por tamaño de muestra.'},
+  {key:'recent',label:'Forma reciente',get:x=>x.recent,higher:true,tol:.05,impact:.30,fmt:v=>fmt(v,2),help:'Media de hasta los 3 últimos partidos con nota.'},
+  {key:'efficiency',label:'Min / punto',get:x=>x.efficiency,higher:false,tol:.15,impactRatio:.15,fmt:v=>fmt(v,2),help:'Menor es mejor: minutos necesarios para generar un punto de aporte.'},
   {key:'minutes',label:'Minutos',get:x=>x.minutes,higher:true,tol:15,fmt:v=>Number.isFinite(v)?String(Math.round(v)):'—',help:'Volumen total jugado; sirve como contexto de fiabilidad.'},
   {key:'sample',label:'Muestra',get:x=>x.sample,higher:true,tol:.03,fmt:v=>Number.isFinite(v)?`${Math.round(v*100)}%`:'—',help:'Peso de muestra hasta 450 minutos.'}
 ];
 function fmt(v,d=2){return Number.isFinite(v)?Number(v).toFixed(d):'—'}
 function avg(values){return values.length?values.reduce((s,v)=>s+v,0)/values.length:null}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function signedImpact(m,av,bv){
+  if(!Number.isFinite(av)||!Number.isFinite(bv)||!PERFORMANCE_KEYS.has(m.key))return null;
+  const oriented=m.higher?av-bv:bv-av;
+  if(Number.isFinite(m.impactRatio)){const base=Math.max((Math.abs(av)+Math.abs(bv))/2,1);return clamp(oriented/(base*m.impactRatio),-2,2)}
+  return clamp(oriented/Math.max(m.impact||1,m.tol||0),-2,2);
+}
+function impactBand(score,available){
+  if(!available)return {winner:0,key:'none',label:'Sin lectura suficiente'};
+  const abs=available===1?Math.min(Math.abs(score),.44):Math.abs(score),winner=score>.18?1:score<-.18?-1:0;
+  if(!winner)return {winner:0,key:'balanced',label:'Duelo equilibrado'};
+  if(abs<.45)return {winner,key:'slight',label:'Ventaja ligera'};
+  if(abs<.85)return {winner,key:'clear',label:'Ventaja clara'};
+  return {winner,key:'strong',label:'Ventaja fuerte'};
+}
 function sharedWeightedAvg(rows,valueKey){
   const weighted=rows.map(r=>({value:r[valueKey],weight:r.sharedWeight})).filter(r=>Number.isFinite(r.value)&&Number.isFinite(r.weight)&&r.weight>0),weight=weighted.reduce((s,r)=>s+r.weight,0);if(!weight)return null;
   return weighted.reduce((s,r)=>s+r.value*r.weight,0)/weight;
 }
 function jornadaLabel(match,index){return `J${index+1} · ${match.short||match.label||match.id}`}
-function globalWinner(v){return v.aw>v.bw?1:v.bw>v.aw?-1:0}
+function globalWinner(v){return Number.isFinite(v?.impactWinner)?v.impactWinner:(v.aw>v.bw?1:v.bw>v.aw?-1:0)}
 function commonSample(a,b){
   const rows=seasonMatches().map((match,index)=>{
     const ae=official(match.id,a.p?.name),be=official(match.id,b.p?.name),av=Number.isFinite(ae?.value)?Number(ae.value):null,bv=Number.isFinite(be?.value)?Number(be.value):null;
@@ -64,19 +79,32 @@ function commonSample(a,b){
   return {rows,shared,aw,bw,ties,aAvg,bAvg,simpleDelta,simpleWinner,aWeighted,bWeighted,weightedDelta,winner,aMinutes,bMinutes,sharedMinutes,coverage:rows.length?shared.length/rows.length:0};
 }
 function verdict(a,b){
-  let aw=0,bw=0,ties=0,available=0;
-  for(const m of METRICS.filter(x=>PERFORMANCE_KEYS.has(x.key))){const av=m.get(a),bv=m.get(b);if(!Number.isFinite(av)||!Number.isFinite(bv))continue;available++;const c=cmp(av,bv,m.higher,m.tol);if(c>0)aw++;else if(c<0)bw++;else ties++}
-  const an=display(a.p?.name||''),bn=display(b.p?.name||'');
-  let title='Duelo muy equilibrado',copy=available?`${an} y ${bn} están muy parejos en los ${available} indicadores de rendimiento comparables.`:'Todavía no hay métricas de rendimiento suficientes para comparar a ambos jugadores.';
-  if(aw>bw){title=`${an} sale por delante`;copy=`Gana ${aw}-${bw} en ${available} métrica${available===1?'':'s'} de rendimiento comparable${available===1?'':'s'}.`}
-  if(bw>aw){title=`${bn} sale por delante`;copy=`Gana ${bw}-${aw} en ${available} métrica${available===1?'':'s'} de rendimiento comparable${available===1?'':'s'}.`}
+  let aw=0,bw=0,ties=0;const details=[];
+  for(const m of METRICS.filter(x=>PERFORMANCE_KEYS.has(x.key))){
+    const av=m.get(a),bv=m.get(b);if(!Number.isFinite(av)||!Number.isFinite(bv))continue;
+    const c=cmp(av,bv,m.higher,m.tol),impact=signedImpact(m,av,bv);if(c>0)aw++;else if(c<0)bw++;else ties++;
+    details.push({m,av,bv,c,impact:Number.isFinite(impact)?impact:0});
+  }
+  const available=details.length,impactScore=available?avg(details.map(x=>x.impact)):0,band=impactBand(impactScore,available),impactWinner=band.winner,countWinner=aw>bw?1:bw>aw?-1:0;
+  const strongest=[...details].sort((x,y)=>Math.abs(y.impact)-Math.abs(x.impact))[0]||null,an=display(a.p?.name||''),bn=display(b.p?.name||''),impactLeader=impactWinner>0?an:impactWinner<0?bn:null,countLeader=countWinner>0?an:countWinner<0?bn:null;
+  let title='Duelo prácticamente igualado',copy=available?`${an} y ${bn} están muy cerca cuando además de contar categorías medimos cuánto se separan realmente en cada indicador.`:'Todavía no hay métricas de rendimiento suficientes para comparar a ambos jugadores.';
+  if(impactWinner){
+    title=`${impactLeader}: ${band.label.toLowerCase()}`;
+    if(countWinner===impactWinner)copy=`El ${aw}-${bw} por categorías y la magnitud de las diferencias apuntan al mismo jugador. La mayor separación aparece en ${strongest?.m?.label||'los indicadores disponibles'}.`;
+    else if(!countWinner)copy=`El marcador por categorías queda ${aw}-${bw}, pero al medir la magnitud de cada diferencia el duelo se inclina hacia ${impactLeader}. La mayor separación aparece en ${strongest?.m?.label||'los indicadores disponibles'}.`;
+    else copy=`El recuento de categorías favorece a ${countLeader} (${aw}-${bw}), pero ${impactLeader} compensa con diferencias de mayor tamaño. La separación más influyente está en ${strongest?.m?.label||'los indicadores disponibles'}.`;
+  }else if(countWinner){
+    copy=`El marcador por categorías favorece a ${countLeader} (${aw}-${bw}), pero las diferencias son demasiado pequeñas en conjunto para hablar de una ventaja práctica clara.`;
+  }
   const min=Math.min(a.minutes,b.minutes),max=Math.max(a.minutes,b.minutes);let confidence='Muestra alta',note='Ambos tienen una muestra suficientemente desarrollada para que la comparación sea más estable.';
   if(min<90){confidence='Muestra corta';note='Al menos uno de los dos está por debajo de 90 minutos: la diferencia todavía puede cambiar mucho.'}
   else if(min<270){confidence='Muestra media';note='Hay base para comparar, pero la muestra aún no está cerca del tope de 450 minutos.'}
+  if(available===1)note+=' Solo existe una métrica de rendimiento comparable, así que la intensidad del veredicto queda limitada a ventaja ligera.';
   if(max-min>=180)note+=' Además, existe una diferencia importante de minutos entre ambos.';
   if(available<PERFORMANCE_KEYS.size)note+=` El marcador usa ${available} de ${PERFORMANCE_KEYS.size} métricas porque las que no tienen dato en ambos jugadores no cuentan como empate.`;
+  if(countWinner&&impactWinner&&countWinner!==impactWinner)note+=' El recuento y la magnitud apuntan a jugadores distintos: conviene leer las métricas una a una y no quedarse solo con el marcador.';
   const shared=(a.p?.eligible||[]).filter(pos=>(b.p?.eligible||[]).includes(pos));if(!shared.length)note+=' Sus roles no son directamente equivalentes, así que esto no debe leerse como un “mejor jugador” universal.';
-  return {aw,bw,ties,available,title,copy,confidence,note};
+  return {aw,bw,ties,available,countWinner,impactWinner,impactScore,bandKey:band.key,bandLabel:band.label,strongestMetric:strongest?.m?.key||null,title,copy,confidence,note};
 }
 function metricRow(m,a,b){
   const av=m.get(a),bv=m.get(b),c=cmp(av,bv,m.higher,m.tol),aWin=Number.isFinite(av)&&Number.isFinite(bv)&&c>0,bWin=Number.isFinite(av)&&Number.isFinite(bv)&&c<0,tie=c===0&&Number.isFinite(av)&&Number.isFinite(bv);
@@ -89,10 +117,10 @@ function commonReading(common,global,a,b){
   if(!common.shared.length)return {tone:'limited',title:'Sin muestra común',copy:'Todavía no hay ninguna jornada con nota oficial para ambos jugadores. El duelo global se mantiene, pero no puede contrastarse frente a los mismos partidos.'};
   if(common.shared.length===1)return {tone:'limited',title:'Muestra común muy corta',copy:`Solo comparten una jornada con nota oficial. ${common.aw>common.bw?an:common.bw>common.aw?bn:'Ninguno'} sale por delante en ese partido; la ponderación común se muestra como contexto, no como conclusión estable.`};
   if(common.simpleWinner&&cw&&common.simpleWinner!==cw)return {tone:'split',title:'La participación cambia la lectura',copy:`La media simple de las jornadas compartidas favorece a ${common.simpleWinner>0?an:bn}, pero al ponderar cada partido con el mismo peso común de minutos para ambos la ventaja pasa a ${cw>0?an:bn}.`};
-  if(gw&&cw&&gw!==cw)return {tone:'split',title:'Lectura dividida',copy:`La comparación global favorece a ${gw>0?an:bn}, pero la muestra común simétrica favorece a ${cw>0?an:bn}. Conviene mirar jornada por jornada antes de decidir.`};
+  if(gw&&cw&&gw!==cw)return {tone:'split',title:'Lectura dividida',copy:`El veredicto global por magnitud favorece a ${gw>0?an:bn}, pero la muestra común simétrica favorece a ${cw>0?an:bn}. Conviene mirar jornada por jornada antes de decidir.`};
   if(gw&&cw===gw)return {tone:'aligned',title:'La muestra común confirma el global',copy:`La ventaja global de ${gw>0?an:bn} también aparece al comparar solo jornadas compartidas con exactamente los mismos pesos por partido para ambos.`};
-  if(!gw&&cw)return {tone:'shared',title:'El global empata, la muestra común separa',copy:`Las métricas globales están equilibradas, pero en la muestra común simétrica ${cw>0?an:bn} obtiene mejor rendimiento.`};
-  return {tone:'balanced',title:'Duelo equilibrado también en muestra común',copy:'Ni el agregado global ni la muestra común simétrica ofrecen una ventaja clara con la tolerancia actual.'};
+  if(!gw&&cw)return {tone:'shared',title:'El global está equilibrado, la muestra común separa',copy:`La magnitud global no ofrece una ventaja práctica clara, pero en la muestra común simétrica ${cw>0?an:bn} obtiene mejor rendimiento.`};
+  return {tone:'balanced',title:'Duelo equilibrado también en muestra común',copy:'Ni el agregado global por magnitud ni la muestra común simétrica ofrecen una ventaja clara con la tolerancia actual.'};
 }
 function commonHtml(common,global,a,b){
   const reading=commonReading(common,global,a,b),total=common.rows.length,an=display(a.p.name),bn=display(b.p.name),minuteGap=Math.abs(common.aMinutes-common.bMinutes);
@@ -121,15 +149,15 @@ function renderPro(){
   const A=document.getElementById('compareA'),B=document.getElementById('compareB'),root=document.getElementById('compareView');if(!A||!B||!root)return;
   const a=row(A.value),b=row(B.value);if(!a.p||!b.p)return;
   const v=verdict(a,b),common=commonSample(a,b);root.classList.add('compare-pro-ready');
-  root.innerHTML=`<div class="cp-shell">${presets()}<div class="cp-scoreboard">${playerHead(a,'left')}<div class="cp-vs"><span>MARCADOR GLOBAL</span><b>${v.aw}<i>–</i>${v.bw}</b><small>${v.available} métrica${v.available===1?'':'s'} comparable${v.available===1?'':'s'}</small></div>${playerHead(b,'right')}</div><section class="cp-verdict"><div><span>VEREDICTO ACTUAL</span><h2>${esc(v.title)}</h2><p>${esc(v.copy)}</p></div><div class="cp-confidence"><span>${esc(v.confidence)}</span><p>${esc(v.note)}</p></div></section>${commonHtml(common,v,a,b)}<div class="cp-metrics">${METRICS.map(m=>metricRow(m,a,b)).join('')}</div><div class="cp-ranks"><div><span>Power</span><b>${a.powerRank?`#${a.powerRank}`:'—'}</b><small>${esc(display(a.p.name))}</small></div><div><span>Eficiencia</span><b>${a.effRank?`#${a.effRank}`:'—'}</b><small>${esc(display(a.p.name))}</small></div><div><span>Power</span><b>${b.powerRank?`#${b.powerRank}`:'—'}</b><small>${esc(display(b.p.name))}</small></div><div><span>Eficiencia</span><b>${b.effRank?`#${b.effRank}`:'—'}</b><small>${esc(display(b.p.name))}</small></div></div>${actions(a,b)}<p class="cp-footnote">El marcador global usa solo las métricas con dato válido en ambos jugadores. La muestra común es una lectura separada y simétrica: compara exactamente las mismas jornadas y usa el mismo peso de participación para los dos; el H2H sigue usando la nota de cada partido. Ninguna de estas lecturas modifica Power ni decide por sí sola quién debe ser titular.</p></div>`;
-  bind(root,a,b);document.dispatchEvent(new CustomEvent('rm-compare-pro-rendered',{detail:{a:a.p.name,b:b.p.name,score:[v.aw,v.bw],available:v.available,common:{matches:common.shared.length,score:[common.aw,common.bw],ties:common.ties,weighted:[common.aWeighted,common.bWeighted],minutes:[common.aMinutes,common.bMinutes],sharedMinutes:common.sharedMinutes}}}));
+  root.innerHTML=`<div class="cp-shell">${presets()}<div class="cp-scoreboard">${playerHead(a,'left')}<div class="cp-vs"><span>MARCADOR GLOBAL</span><b>${v.aw}<i>–</i>${v.bw}</b><small>${v.available} métrica${v.available===1?'':'s'} comparable${v.available===1?'':'s'}</small></div>${playerHead(b,'right')}</div><section class="cp-verdict"><div><span>${esc(v.bandLabel.toUpperCase())}</span><h2>${esc(v.title)}</h2><p>${esc(v.copy)}</p></div><div class="cp-confidence"><span>${esc(v.confidence)}</span><p>${esc(v.note)}</p></div></section>${commonHtml(common,v,a,b)}<div class="cp-metrics">${METRICS.map(m=>metricRow(m,a,b)).join('')}</div><div class="cp-ranks"><div><span>Power</span><b>${a.powerRank?`#${a.powerRank}`:'—'}</b><small>${esc(display(a.p.name))}</small></div><div><span>Eficiencia</span><b>${a.effRank?`#${a.effRank}`:'—'}</b><small>${esc(display(a.p.name))}</small></div><div><span>Power</span><b>${b.powerRank?`#${b.powerRank}`:'—'}</b><small>${esc(display(b.p.name))}</small></div><div><span>Eficiencia</span><b>${b.effRank?`#${b.effRank}`:'—'}</b><small>${esc(display(b.p.name))}</small></div></div>${actions(a,b)}<p class="cp-footnote">El marcador global cuenta qué jugador gana cada métrica comparable; el veredicto añade una segunda capa y mide también la magnitud de esas diferencias con escalas propias para Media, Power, Forma y Eficiencia. Por eso un 3–1 muy estrecho puede seguir leyéndose como duelo equilibrado, o una diferencia grande puede pesar más que varias ventajas mínimas. La muestra común sigue siendo una lectura separada y simétrica. Ninguna de estas lecturas decide por sí sola quién debe ser titular.</p></div>`;
+  bind(root,a,b);document.dispatchEvent(new CustomEvent('rm-compare-pro-rendered',{detail:{a:a.p.name,b:b.p.name,score:[v.aw,v.bw],available:v.available,directionalWinner:v.countWinner,impactWinner:v.impactWinner,impactScore:v.impactScore,impactBand:v.bandKey,strongestMetric:v.strongestMetric,common:{matches:common.shared.length,score:[common.aw,common.bw],ties:common.ties,weighted:[common.aWeighted,common.bWeighted],minutes:[common.aMinutes,common.bMinutes],sharedMinutes:common.sharedMinutes}}}));
 }
 function applyUrl(){try{const q=new URL(location.href).searchParams,a=q.get('a'),b=q.get('b');if(a&&b)setDuel(a,b,false)}catch{}}
 function install(){
   if(installed)return;const A=document.getElementById('compareA'),B=document.getElementById('compareB'),root=document.getElementById('compareView');if(!A||!B||!root||typeof renderCompare!=='function'){setTimeout(install,80);return}
   installed=true;const base=renderCompare;renderCompare=function(){renderPro()};A.onchange=()=>{renderPro();syncUrl(A.value,B.value)};B.onchange=()=>{renderPro();syncUrl(A.value,B.value)};applyUrl();renderPro();
   document.addEventListener('rm-ranking-official-ready',renderPro);document.addEventListener('rm-season-data-ready',renderPro);document.addEventListener('rm-season-order-corrected',renderPro);
-  window.RMComparePro=Object.freeze({render:renderPro,setDuel,share:shareLink,commonSample:(a,b)=>commonSample(row(a),row(b)),baseRender:base});
+  window.RMComparePro=Object.freeze({render:renderPro,setDuel,share:shareLink,commonSample:(a,b)=>commonSample(row(a),row(b)),verdict:(a,b)=>verdict(row(a),row(b)),baseRender:base});
 }
 install();
 })();
