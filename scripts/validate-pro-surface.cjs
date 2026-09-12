@@ -55,6 +55,19 @@ for(const marker of ['PLAYER EXPERIENCE V2 · PRÓXIMO PARTIDO','HISTÓRICO AUDI
 }
 if(/\bfetch\s*\(/.test(playerIntelligence))failures.push('Player Experience V2 no debe hacer llamadas de red propias; debe reutilizar las capas de datos existentes');
 
+if(!exists('analysis-context.js'))failures.push('Contexto compartido: falta analysis-context.js');
+else{
+  const ctx=read('analysis-context.js');
+  try{new vm.Script(ctx,{filename:'analysis-context.js'})}catch(error){failures.push(`Contexto compartido: no compila: ${error.message}`)}
+  for(const marker of ['RMAnalysisContext','rm_analysis_context_v1','rm-analysis-context-updated','spCompetition','spHorizon','syncStats'])if(!ctx.includes(marker))failures.push(`Contexto compartido: falta ${marker}`);
+  if(/MutationObserver\s*\(/.test(ctx))failures.push('Contexto compartido: usa MutationObserver');
+  if(!polish.includes('loadAnalysisContext')||!polish.includes('analysis-context.js?v=1'))failures.push('Contexto compartido: no se carga desde public-polish');
+  if(!sw.includes("'analysis-context.js'"))failures.push('Contexto compartido: no está en la PWA');
+  for(const file of ['power-pro.js','efficiency-pro.js','evolution-pro.js']){
+    const code=read(file);if(!code.includes('RMAnalysisContext')||!code.includes('rm-analysis-context-updated'))failures.push(`Contexto compartido: ${file} no está conectado`);
+  }
+}
+
 const semantic=[
   ['Jerarquías','hierarchy.js','RMHierarchyPro','JERARQUÍAS PRO'],
   ['Inteligencia','intelligence.js','RMIntelligencePro','CENTRO DE INTELIGENCIA PRO'],
@@ -69,4 +82,4 @@ for(const [name,file,api,marker] of semantic){
 
 if(!exists('PRO_AUDIT.md'))failures.push('Falta PRO_AUDIT.md');
 if(failures.length){console.error('PRO surface audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales`);
+console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales + contexto compartido`);
