@@ -43,6 +43,7 @@ jobs:
           node scripts/validate-simple-mode.cjs
           node scripts/validate-match-story.cjs
           node scripts/validate-compare-lifecycle.cjs
+          node scripts/validate-power-sorting.cjs
 
       - name: Validate PWA
         run: node scripts/validate-pwa.cjs
