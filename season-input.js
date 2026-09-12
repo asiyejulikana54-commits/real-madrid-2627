@@ -12,23 +12,48 @@
  * - final:false permite guardar un borrador, pero ese partido NO entra en
  *   cálculos ni aparece publicado hasta cerrarlo.
  *
- * Para añadir Rayo, basta con introducir UN bloque dentro de RMSeasonMatchEntries.
+ * Cada partido se añade una sola vez a RMSeasonMatchEntries.
  */
 window.RMSeasonMatchEntries=Object.freeze([
-  // Próximo bloque: Rayo (12-09-2026). Se añadirá aquí cuando tengamos
-  // minutos y las tres fuentes cerradas.
+  Object.freeze({
+    id:'rayo',
+    label:'Rayo',
+    short:'RAY',
+    comp:'LaLiga',
+    date:'2026-09-12',
+    duration:90,
+    final:true,
+    sourceNote:'Cierre directo de SofaScore, FotMob y StatMuse · 12-09-2026.',
+    players:Object.freeze({
+      'Courtois':Object.freeze({minutes:90,sofascore:7.8,fotmob:7.8,statmuse:7.4}),
+      'Dumfries':Object.freeze({minutes:90,sofascore:6.5,fotmob:7.3,statmuse:6.8}),
+      'Konaté':Object.freeze({minutes:90,sofascore:6.4,fotmob:6.7,statmuse:6.3}),
+      'Rüdiger':Object.freeze({minutes:90,sofascore:7.7,fotmob:7.4,statmuse:7.4}),
+      'Álvaro Carreras':Object.freeze({minutes:90,sofascore:8.8,fotmob:8.9,statmuse:8.0}),
+      'Valverde':Object.freeze({minutes:45,sofascore:7.1,fotmob:6.9,statmuse:7.2}),
+      'Camavinga':Object.freeze({minutes:45,sofascore:7.1,fotmob:6.8,statmuse:6.9}),
+      'Bernardo Silva':Object.freeze({minutes:69,sofascore:6.8,fotmob:7.1,statmuse:7.4}),
+      'Tchouaméni':Object.freeze({minutes:21,sofascore:6.9,fotmob:6.6,statmuse:7.1}),
+      'Diomande':Object.freeze({minutes:72,sofascore:7.3,fotmob:7.8,statmuse:7.4}),
+      'Arda Güler':Object.freeze({minutes:18,sofascore:7.8,fotmob:8.1,statmuse:8.7}),
+      'Bellingham':Object.freeze({minutes:90,sofascore:8.1,fotmob:8.5,statmuse:8.9}),
+      'Vini Jr.':Object.freeze({minutes:89,sofascore:7.6,fotmob:7.8,statmuse:7.2}),
+      'Cucurella':Object.freeze({minutes:1,sofascore:'SC',fotmob:'SC',statmuse:6.7}),
+      'Mbappé':Object.freeze({minutes:90,sofascore:9.4,fotmob:9.5,statmuse:9.5})
+    })
+  })
 ]);
 
 // Plantilla de referencia. NO se publica: el motor solo consume
 // RMSeasonMatchEntries.
 window.RMSeasonMatchTemplate=Object.freeze({
-  id:'rayo',
-  label:'Rayo',
-  short:'RAY',
+  id:'siguiente-partido',
+  label:'Rival',
+  short:'RIV',
   comp:'LaLiga',
-  date:'2026-09-12',
+  date:'YYYY-MM-DD',
   duration:90,
-  final:true,
+  final:false,
   players:Object.freeze({
     'EJEMPLO 3/3':Object.freeze({minutes:90,sofascore:7.2,fotmob:7.1,statmuse:7.3}),
     'EJEMPLO 2+SC':Object.freeze({minutes:8,sofascore:6.8,fotmob:'SC',statmuse:7.0}),
