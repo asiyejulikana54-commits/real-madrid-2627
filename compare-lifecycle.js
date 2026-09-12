@@ -18,8 +18,13 @@ function hasOption(select,value){return Boolean(select&&[...select.options].some
 function compareControls(p){const A=document.getElementById('compareA'),B=document.getElementById('compareB');return Boolean(A&&B&&hasOption(A,p.a)&&hasOption(B,p.b))?{A,B}:null}
 function emit(name,detail){document.dispatchEvent(new CustomEvent(name,{detail}))}
 function syncUrl(p){try{const u=new URL(location.href);u.searchParams.set('section','comparador');u.searchParams.set('a',p.a);u.searchParams.set('b',p.b);u.searchParams.delete('player');history.replaceState(null,'',u.href)}catch{}}
+function ensureRadarAssets(){
+  if(!document.querySelector('link[data-compare-radar]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decisionradar.css?v=1';link.dataset.compareRadar='1';document.head.appendChild(link)}
+  if(!window.RMDecisionRadar&&!document.querySelector('script[data-compare-radar]')){const script=document.createElement('script');script.src='decisionradar.js?v=1';script.dataset.compareRadar='1';document.body.appendChild(script)}
+}
 function applyCompare(source='bridge'){
   const p=pendingCompare;if(!p)return false;const controls=compareControls(p);if(!controls)return false;
+  lastRendered=`${p.a}|${p.b}`;
   if(window.RMComparePro?.setDuel)window.RMComparePro.setDuel(p.a,p.b,true);else{controls.A.value=p.a;controls.B.value=p.b;if(typeof renderCompare==='function')renderCompare();syncUrl(p)}
   pendingCompare=null;emit('rm-compare-pro-duel-set',{a:p.a,b:p.b,source});return true;
 }
@@ -29,16 +34,17 @@ function openCompare(a,b,source='bridge'){
 }
 function radarPair(){const values=safe(()=>window.RMDecisionRadar?.players?.(),null);return Array.isArray(values)&&values.length===2?pair(values[0],values[1]):null}
 function applyRadar(source='compare'){
-  const p=pendingRadar;if(!p)return false;
+  const p=pendingRadar;if(!p)return false;const root=document.getElementById('radar');if(!root)return false;
+  safe(()=>showSection('radar'));
   if(window.RMDecisionRadar?.set){window.RMDecisionRadar.set(p.a,p.b);pendingRadar=null;emit('rm-compare-radar-duel-set',{...p,source});return true}
-  if(typeof window.setRadarPlayers==='function'&&document.getElementById('radar')){
+  if(typeof window.setRadarPlayers==='function'){
     window.setRadarPlayers(p.a,null);window.setRadarPlayers(null,p.b);pendingRadar=null;emit('rm-compare-radar-duel-set',{...p,source});return true
   }
   return false;
 }
 function retryRadar(source='compare',n=0){if(applyRadar(source))return;if(n>=MAX_ATTEMPTS)return;setTimeout(()=>retryRadar(source,n+1),80)}
 function openRadar(a,b,source='compare'){
-  const p=pair(a,b);if(!p)return false;pendingRadar=p;safe(()=>showSection('radar'));retryRadar(source);return true;
+  const p=pair(a,b);if(!p)return false;pendingRadar=p;ensureRadarAssets();retryRadar(source);return true;
 }
 function markStaticExtras(){
   const section=document.getElementById('comparador');if(!section)return;
