@@ -23,7 +23,7 @@ Para un partido final el sistema exige:
 3. los tres estados de fuente cerrados en cada jugador con minutos: nota o `SC`;
 4. suma de minutos igual a `11 × duration` (990 en un partido de 90 minutos).
 
-GitHub Actions ejecuta `scripts/validate-season-update.cjs` antes de publicar GitHub Pages. La prueba simula un sexto partido completo y comprueba que entra en la serie, la forma reciente y el agregado de temporada. Si falla, Pages no se publica.
+GitHub Actions ejecuta `scripts/validate-season-update.cjs` antes de publicar GitHub Pages. La prueba simula un sexto partido completo y comprueba que entra en la serie, la forma reciente y el agregado de temporada. Desde Rayo, `scripts/validate-rayo-data.cjs` protege además el cierre histórico real para impedir pérdidas de minutos, fuentes o valores `SC`.
 
 ## Qué se recalcula automáticamente
 
@@ -54,6 +54,8 @@ El navegador expone dos objetos de diagnóstico:
 
 El estado esperado después de una actualización cerrada es `ready`.
 
-## Rayo
+## Rayo · primer cierre real
 
-El bloque de referencia de Rayo ya está preparado como plantilla en `season-input.js`. Cuando termine el encuentro, solo habrá que sustituir los ejemplos por los jugadores reales y sus datos; no habrá que editar Power, Evolución, Radar, Laboratorio, Inteligencia ni Jerarquías.
+Rayo (12-09-2026) ya está publicado como `final:true` con **990 minutos** y las tres fuentes comprobadas. SofaScore, FotMob y StatMuse están cerradas para los 15 futbolistas que participaron. Cuando una fuente no publicó nota se conserva `SC`; en concreto, Cucurella mantiene `SC` en SofaScore y FotMob y 6,7 en StatMuse, sin sustituir ninguna ausencia por una valoración inventada.
+
+Este partido sirve como referencia del flujo que se repetirá a partir del siguiente encuentro: introducir una vez los datos verificados y dejar que el resto de módulos se recalculen automáticamente.
