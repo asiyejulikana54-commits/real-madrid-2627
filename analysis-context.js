@@ -1,0 +1,52 @@
+(()=>{
+const KEY='rm_analysis_context_v1';
+const DEFAULTS={competition:'ALL',horizon:'ALL'};
+let installed=false,attempts=0;
+function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
+function season(){return window.RMSeasonData||null}
+function allMatches(){return safe(()=>season()?.matches||[],[])||[]}
+function read(){try{return {...DEFAULTS,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...DEFAULTS}}}
+const current=read();
+function competitions(){return [...new Set(allMatches().map(m=>m.comp).filter(Boolean))]}
+function sanitize(next={}){
+  const competition=next.competition==='ALL'||competitions().includes(next.competition)?next.competition:'ALL';
+  const horizon=['ALL','5','3','1'].includes(String(next.horizon))?String(next.horizon):'ALL';
+  return {competition,horizon};
+}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(current))}catch{}}
+function state(){return {...current}}
+function matches(){
+  let rows=allMatches();
+  if(current.competition!=='ALL')rows=rows.filter(m=>m.comp===current.competition);
+  if(current.horizon!=='ALL'){const n=Math.max(1,Number(current.horizon)||1);rows=rows.slice(-n)}
+  return rows;
+}
+function label(){
+  const rows=matches(),competition=current.competition==='ALL'?'todas las competiciones':current.competition;
+  if(!rows.length)return `Sin partidos · ${competition}`;
+  const period=current.horizon==='ALL'?`${rows.length} jornada${rows.length===1?'':'s'}`:`últimos ${rows.length}`;
+  return `${period} · ${competition}`;
+}
+function emit(source='api'){
+  const detail={state:state(),matches:matches().map(m=>m.id),label:label(),source};
+  document.dispatchEvent(new CustomEvent('rm-analysis-context-updated',{detail}));
+  return detail;
+}
+function set(next={},source='api'){
+  const merged=sanitize({...current,...next}),changed=merged.competition!==current.competition||merged.horizon!==current.horizon;
+  current.competition=merged.competition;current.horizon=merged.horizon;persist();
+  if(changed)emit(source);
+  return state();
+}
+function reset(source='api'){return set(DEFAULTS,source)}
+function install(){
+  if(installed)return;
+  if(!season()){if(++attempts<80)setTimeout(install,100);return}
+  installed=true;Object.assign(current,sanitize(current));persist();
+  window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches});
+  document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
+}
+['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();emit('season')}}));
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+install();
+})();
