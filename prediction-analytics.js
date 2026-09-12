@@ -21,11 +21,12 @@ function setScore(xi,actual){
   const actualSet=new Set(actual.map(canonical)),pred=xiValues(xi),hits=pred.filter(n=>actualSet.has(canonical(n))),misses=pred.filter(n=>!actualSet.has(canonical(n)));
   return {score:hits.length,hits,misses};
 }
-function exactScore(xi,slots){
-  if(!xi||!slots||typeof slots!=='object')return null;
-  const keys=Object.keys(slots).filter(k=>slots[k]);if(!keys.length)return null;
-  const hits=keys.filter(k=>xi[k]&&canonical(xi[k])===canonical(slots[k]));
-  return {score:hits.length,possible:keys.length,hits};
+function exactScore(xi,slotMap){
+  if(!xi||!slotMap||typeof slotMap!=='object')return null;
+  if(window.RMLineupSemantics){const role=window.RMLineupSemantics.roleScore(xi,slotMap);if(role?.possible)return {score:role.score,possible:role.possible,hits:role.hits.map(h=>h.name),mode:'role'}}
+  const keys=Object.keys(slotMap).filter(k=>slotMap[k]);if(!keys.length)return null;
+  const hits=keys.filter(k=>xi[k]&&canonical(xi[k])===canonical(slotMap[k]));
+  return {score:hits.length,possible:keys.length,hits,mode:'strict'};
 }
 function label(id){
   const raw=String(id||'partido'),m=raw.match(/^(.*)-(\d{4})-(\d{2})-(\d{2})$/);if(!m)return raw.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -55,9 +56,9 @@ function capture(source='save'){
 }
 function settle(id=null,db=null){
   const m=match(),actual=official();if(!actual)return null;const store=db||read(),target=id||m?.id;if(!target||!store[target])return null;
-  const rec=store[target],u=setScore(rec.userXI,actual),p=setScore(rec.projectXI,actual),c=setScore(rec.communityXI,actual),slots=officialSlots(),ue=exactScore(rec.userXI,slots),pe=exactScore(rec.projectXI,slots),ce=exactScore(rec.communityXI,slots);
+  const rec=store[target],u=setScore(rec.userXI,actual),p=setScore(rec.projectXI,actual),c=setScore(rec.communityXI,actual),slotMap=officialSlots(),ue=exactScore(rec.userXI,slotMap),pe=exactScore(rec.projectXI,slotMap),ce=exactScore(rec.communityXI,slotMap);
   if(!u||!p)return null;
-  store[target]={...rec,userScore:u.score,projectScore:p.score,edge:u.score-p.score,userHits:u.hits,userMisses:u.misses,projectHits:p.hits,projectMisses:p.misses,communityScore:c?.score??rec.communityScore??null,communityHits:c?.hits??rec.communityHits??[],communityMisses:c?.misses??rec.communityMisses??[],exactUser:ue?.score??null,exactProject:pe?.score??null,exactCommunity:ce?.score??rec.exactCommunity??null,exactPossible:ue?.possible??pe?.possible??ce?.possible??null,scoredAt:rec.scoredAt||new Date().toISOString()};
+  store[target]={...rec,userScore:u.score,projectScore:p.score,edge:u.score-p.score,userHits:u.hits,userMisses:u.misses,projectHits:p.hits,projectMisses:p.misses,communityScore:c?.score??rec.communityScore??null,communityHits:c?.hits??rec.communityHits??[],communityMisses:c?.misses??rec.communityMisses??[],exactUser:ue?.score??null,exactProject:pe?.score??null,exactCommunity:ce?.score??rec.exactCommunity??null,exactPossible:ue?.possible??pe?.possible??ce?.possible??null,exactMode:ue?.mode||pe?.mode||ce?.mode||rec.exactMode||null,scoredAt:rec.scoredAt||new Date().toISOString()};
   write(store);return store[target];
 }
 function records(){
@@ -96,7 +97,7 @@ function renderPrediction(){
     root.innerHTML=`<div class="pa-head"><div><span>MEDIDOR DE ACIERTO</span><h3>Tú · Proyecto · Comunidad</h3><p>${hasBoth?'Al guardar congelaremos tu XI y la propuesta. El consenso de la comunidad quedará fijado al cierre.':'Completa y guarda tu XI para preparar la comparación.'}</p></div><b>0 jornadas</b></div><div class="pa-empty">La comparación histórica empieza al guardar un pronóstico completo.</div>`;return;
   }
   const scored=Number.isFinite(rec.userScore)&&Number.isFinite(rec.projectScore),communityScored=Number.isFinite(rec.communityScore),late=rec.snapshotLate;
-  root.innerHTML=`<div class="pa-head"><div><span>MEDIDOR DE ACIERTO</span><h3>Tú · Proyecto · Comunidad</h3><p>${scored?'Tres referencias con la misma regla: 1 punto por cada titular acertado.':'Tu XI y el proyecto están congelados; la comunidad se fijará con su consenso final al cierre.'}</p></div><b>${scored?esc(roundWinner(rec)):'Pendiente'}</b></div><div class="pa-score-grid"><article><span>TU XI</span><strong>${scored?rec.userScore:'—'}<small>/11</small></strong><small>${scored?'titulares acertados':'guardado'}</small></article><article><span>PROYECTO</span><strong>${scored?rec.projectScore:'—'}<small>/11</small></strong><small>${scored?'titulares acertados':'referencia congelada'}</small></article><article><span>COMUNIDAD</span><strong>${communityScored?rec.communityScore:'—'}<small>/11</small></strong><small>${communityScored?`${rec.communityTotal||0} pronósticos`:esc(communityStatus(rec))}</small></article></div>${scored?`<div class="pa-round"><span>RESULTADO DE LA JORNADA</span><b>${esc(roundWinner(rec))}</b><small>Tú vs Proyecto: ${rec.edge>0?`+${rec.edge}`:rec.edge}</small></div>`:''}${Number.isFinite(rec.exactUser)&&Number.isFinite(rec.exactProject)?`<div class="pa-exact"><span>COINCIDENCIA POR PUESTO</span><b>Tú ${rec.exactUser}/${rec.exactPossible} · Proyecto ${rec.exactProject}/${rec.exactPossible}${Number.isFinite(rec.exactCommunity)?` · Comunidad ${rec.exactCommunity}/${rec.exactPossible}`:''}</b></div>`:''}${late?'<p class="pa-note">La referencia del proyecto se capturó al activar esta función porque tu XI ya estaba guardado; desde el próximo guardado la foto será exacta al momento del pronóstico.</p>':'<p class="pa-note">Tu XI y el proyecto se congelan al guardar. La comunidad se congela al cierre, cuando ya no admite más votos. Así el consenso final no puede cambiar después de conocer el once oficial.</p>'}`;
+  root.innerHTML=`<div class="pa-head"><div><span>MEDIDOR DE ACIERTO</span><h3>Tú · Proyecto · Comunidad</h3><p>${scored?'Tres referencias con la misma regla: 1 punto por cada titular acertado.':'Tu XI y el proyecto están congelados; la comunidad se fijará con su consenso final al cierre.'}</p></div><b>${scored?esc(roundWinner(rec)):'Pendiente'}</b></div><div class="pa-score-grid"><article><span>TU XI</span><strong>${scored?rec.userScore:'—'}<small>/11</small></strong><small>${scored?'titulares acertados':'guardado'}</small></article><article><span>PROYECTO</span><strong>${scored?rec.projectScore:'—'}<small>/11</small></strong><small>${scored?'titulares acertados':'referencia congelada'}</small></article><article><span>COMUNIDAD</span><strong>${communityScored?rec.communityScore:'—'}<small>/11</small></strong><small>${communityScored?`${rec.communityTotal||0} pronósticos`:esc(communityStatus(rec))}</small></article></div>${scored?`<div class="pa-round"><span>RESULTADO DE LA JORNADA</span><b>${esc(roundWinner(rec))}</b><small>Tú vs Proyecto: ${rec.edge>0?`+${rec.edge}`:rec.edge}</small></div>`:''}${Number.isFinite(rec.exactUser)&&Number.isFinite(rec.exactProject)?`<div class="pa-exact"><span>COINCIDENCIA POR ROL</span><b>Tú ${rec.exactUser}/${rec.exactPossible} · Proyecto ${rec.exactProject}/${rec.exactPossible}${Number.isFinite(rec.exactCommunity)?` · Comunidad ${rec.exactCommunity}/${rec.exactPossible}`:''}</b><small>DFC y MC equivalentes no penalizan por invertir izquierda/derecha.</small></div>`:''}${late?'<p class="pa-note">La referencia del proyecto se capturó al activar esta función porque tu XI ya estaba guardado; desde el próximo guardado la foto será exacta al momento del pronóstico.</p>':'<p class="pa-note">Tu XI y el proyecto se congelan al guardar. La comunidad se congela al cierre, cuando ya no admite más votos. Así el consenso final no puede cambiar después de conocer el once oficial.</p>'}`;
 }
 function ensureSeason(){
   const root=document.getElementById('personalHubContent');if(!root)return null;let block=document.getElementById('predictionAnalyticsSeason');if(block)return block;
@@ -139,7 +140,7 @@ function bootstrap(){
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('prediccion')){setTimeout(install,100);return}
   installed=true;wrapSave();wrapNav();bootstrap();
-  ['rm-local-prediction-updated','rm-season-data-ready','rm-current-match-idea-updated'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(()=>{settle();renderAll()},80)));
+  ['rm-local-prediction-updated','rm-season-data-ready','rm-current-match-idea-updated','rm-lineup-semantics-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(()=>{settle();renderAll()},80)));
   document.addEventListener('rm-community-updated',ev=>setTimeout(()=>{captureCommunity(ev.detail||communityData(),'event');settle();renderAll()},80));
   document.addEventListener('rm-prediction-analytics-updated',()=>setTimeout(renderAll,0));
   window.addEventListener('storage',e=>{if(!e.key||e.key===KEY||e.key.startsWith('rm_prediction_'))setTimeout(renderAll,0)});
