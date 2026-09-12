@@ -50,8 +50,10 @@ function loadCommunityPro(){
   if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=1';script.dataset.communityPro='1';document.body.appendChild(script)}
 }
 function loadCommunityLeague(){
+  if(window.RMCommunityApi&&!window.RMCommunityApi.available?.())return false;
   if(!document.querySelector('link[data-community-league]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=1';link.dataset.communityLeague='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-community-league]')){const script=document.createElement('script');script.src='community-league.js?v=1';script.dataset.communityLeague='1';document.body.appendChild(script)}
+  return true;
 }
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
