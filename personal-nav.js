@@ -13,6 +13,10 @@ function loadPredictionAnalytics(){
   if(!document.querySelector('link[data-prediction-analytics]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-analytics.css?v=2';link.dataset.predictionAnalytics='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-prediction-analytics]')){const script=document.createElement('script');script.src='prediction-analytics.js?v=2';script.dataset.predictionAnalytics='1';document.body.appendChild(script)}
 }
+function loadXiStability(){
+  if(!document.querySelector('link[data-xi-stability]')){const link=document.createElement('link');link.rel='stylesheet';link.href='xi-stability.css?v=1';link.dataset.xiStability='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-xi-stability]')){const script=document.createElement('script');script.src='xi-stability.js?v=1';script.dataset.xiStability='1';document.body.appendChild(script)}
+}
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
@@ -32,8 +36,8 @@ function injectDesktop(){
 function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();
-  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140)};
+  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();
+  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180)};
   if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
