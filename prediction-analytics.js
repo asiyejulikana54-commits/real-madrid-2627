@@ -2,7 +2,7 @@
 const KEY='rm_prediction_analytics_v1';
 let installed=false,wrapAttempts=0,navWrapped=false;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
-function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function read(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch{return {}}}
 function write(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch{}}
 function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),name)||name}
@@ -83,7 +83,7 @@ function renderAll(){renderPrediction();if(document.getElementById('mi-temporada
 function emit(){document.dispatchEvent(new CustomEvent('rm-prediction-analytics-updated'))}
 function wrapSave(){
   if(wrapAttempts++>40)return;const base=window.savePrediction;if(typeof base!=='function'){setTimeout(wrapSave,100);return}if(base.__paWrapped)return;
-  const wrapped=function(...args){const out=base.apply(this,args);setTimeout(()=>{capture('save');renderAll()},0);return out};wrapped.__paWrapped=true;window.savePrediction=wrapped;
+  const wrapped=function(...args){const before=saved()?.savedAt||null,out=base.apply(this,args);setTimeout(()=>{const after=saved();if(after?.savedAt&&after.savedAt!==before)capture('save');renderAll()},0);return out};wrapped.__paWrapped=true;window.savePrediction=wrapped;
 }
 function wrapNav(){
   if(navWrapped||typeof showSection!=='function')return;navWrapped=true;const base=showSection;showSection=function(id){const out=base(id);if(id==='prediccion')setTimeout(renderPrediction,0);if(id==='mi-temporada')setTimeout(renderSeason,120);return out}
