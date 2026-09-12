@@ -51,7 +51,7 @@ jobs:
 
       - name: Bust public experience cache
         run: |
-          sed -i 's/community.js?v=3/community.js?v=7/' index.html
+          sed -i 's/community.js?v=3/community.js?v=9/' index.html
           sed -i 's/ux-cleanup.js?v=7/ux-cleanup.js?v=9/' index.html
           sed -i 's/public-polish.js?v=7/public-polish.js?v=9/' ux-cleanup.js
 
