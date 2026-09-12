@@ -20,3 +20,5 @@ jobs:
         run: node scripts/validate-decision-profile.cjs
       - name: Validate decision coach
         run: node scripts/validate-decision-coach.cjs
+      - name: Validate review archive
+        run: node scripts/validate-review-archive.cjs
