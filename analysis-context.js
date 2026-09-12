@@ -74,12 +74,19 @@ function loadEngagementRewards(){
   if(!document.querySelector('link[data-engagement-rewards]')){const link=document.createElement('link');link.rel='stylesheet';link.href='engagement-rewards.css?v=1';link.dataset.engagementRewards='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-engagement-rewards]')){const script=document.createElement('script');script.src='engagement-rewards.js?v=1';script.dataset.engagementRewards='1';document.body.appendChild(script)}
 }
+function loadQuickPicks(){
+  if(!document.querySelector('link[data-quick-picks]')){const link=document.createElement('link');link.rel='stylesheet';link.href='quick-picks.css?v=1';link.dataset.quickPicks='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-quick-picks]')){const script=document.createElement('script');script.src='quick-picks.js?v=1';script.dataset.quickPicks='1';document.body.appendChild(script)}
+}
+function bindQuickPicksNav(){
+  document.addEventListener('click',e=>{const nav=e.target?.closest?.('[data-section]');if(!nav||!['inicio','mi-temporada','partido'].includes(nav.dataset.section))return;setTimeout(()=>safe(()=>window.RMQuickPicks?.render?.()),220)},true);
+}
 function install(){
   if(installed)return;
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();
+  installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();bindQuickPicksNav();
   window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
-  syncStats(true);loadEngagementLoop();loadEngagementRewards();
+  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
 ['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));
