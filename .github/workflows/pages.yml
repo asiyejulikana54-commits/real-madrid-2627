@@ -32,6 +32,8 @@ jobs:
           for file in *.js; do node --check "$file"; done
           node scripts/validate-pro-surface.cjs
           node scripts/validate-engagement.cjs
+          node scripts/validate-decision-profile.cjs
+          node scripts/validate-decision-coach.cjs
 
       - name: Validate PWA
         run: node scripts/validate-pwa.cjs
