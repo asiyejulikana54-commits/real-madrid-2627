@@ -24,3 +24,5 @@ jobs:
         run: node scripts/validate-review-archive.cjs
       - name: Validate season learning
         run: node scripts/validate-season-learning.cjs
+      - name: Validate post-XI center
+        run: node scripts/validate-post-xi-center.cjs
