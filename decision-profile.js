@@ -2,6 +2,10 @@
 let installed=false,attempts=0;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
+function loadSeasonLearning(){
+  if(!document.querySelector('link[data-season-learning]')){const link=document.createElement('link');link.rel='stylesheet';link.href='season-learning.css?v=1';link.dataset.seasonLearning='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-season-learning]')){const script=document.createElement('script');script.src='season-learning.js?v=1';script.dataset.seasonLearning='1';document.body.appendChild(script)}
+}
 function pct(n,d){return d?`${Math.round(n/d*100)}%`:'—'}
 function zone(slot){const s=String(slot||'').toLowerCase();if(s==='gk'||s.includes('por'))return 'POR';if(['lb','lcb','rcb','rb'].includes(s)||/lateral|central|defensa/.test(s))return 'DEF';if(['dm1','dm2','am'].includes(s)||/medio|interior|mediapunta/.test(s))return 'MED';if(['lw','rw','st'].includes(s)||/extremo|delantero|ataque/.test(s))return 'ATA';return 'OTR'}
 function records(){return safe(()=>window.RMDecisionAudit?.records?.(),[])||[]}
@@ -42,7 +46,7 @@ function install(){
   if(installed)return;if(!window.RMDecisionAudit||!document.getElementById('mi-temporada')){if(++attempts<100)setTimeout(install,100);return}
   installed=true;render();['rm-decision-audit-updated','rm-local-prediction-updated','rm-prediction-analytics-updated','rm-season-data-ready','rm-season-extension-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(render,120)));
   document.addEventListener('click',e=>{if(e.target?.closest?.('[data-section="mi-temporada"]'))setTimeout(render,600)},true);
-  window.RMDecisionProfile=Object.freeze({render,state:profile});
+  window.RMDecisionProfile=Object.freeze({render,state:profile});loadSeasonLearning();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
 install();
