@@ -37,7 +37,7 @@ function patchMobile(){
 }
 function syncNav(){
   const id=active();document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
-  document.getElementById('uxMoreTab')?.classList.toggle('active',mode()==='simple'&&!navItems().some(x=>x.id===id));
+  document.getElementById('uxMoreTab')?.classList.toggle('active',!navItems().some(x=>x.id===id));
 }
 function ensureModeToggle(){
   const tools=document.querySelector('#uxMoreSheet .ux-sheet-tools');if(!tools)return false;
@@ -99,7 +99,7 @@ function adaptPrediction(){
 }
 function applyClasses(){const simple=mode()==='simple';document.body.classList.toggle('rm-simple-mode',simple);document.body.classList.toggle('rm-pro-mode',!simple)}
 function apply(){
-  applyClasses();ensureModeToggle();if(mode()==='simple'){patchDesktop();patchMobile();adaptIntro();adaptTopbar();adaptPrediction()}syncNav();
+  applyClasses();ensureModeToggle();if(mode()==='simple'){patchDesktop();patchMobile();adaptIntro();adaptTopbar();adaptPrediction();syncNav()}
 }
 function wrapNavigation(){
   if(wrapped||typeof showSection!=='function')return;wrapped=true;const base=showSection;showSection=function(id){base(id);setTimeout(apply,0);setTimeout(apply,120)};
