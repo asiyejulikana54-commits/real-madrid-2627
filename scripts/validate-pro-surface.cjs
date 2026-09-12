@@ -68,6 +68,18 @@ else{
   }
 }
 
+if(!exists('consensus-xi.js')||!exists('scenario-audit.js'))failures.push('Síntesis auditable: faltan módulos');
+else{
+  const consensus=read('consensus-xi.js'),audit=read('scenario-audit.js');
+  try{new vm.Script(consensus,{filename:'consensus-xi.js'})}catch(error){failures.push(`Síntesis auditable: consensus-xi.js no compila: ${error.message}`)}
+  try{new vm.Script(audit,{filename:'scenario-audit.js'})}catch(error){failures.push(`Síntesis auditable: scenario-audit.js no compila: ${error.message}`)}
+  for(const marker of ['auditableState','finalCommunityOnly','provisionalCommunity','EXPLORATORIO','AUDITABLE'])if(!consensus.includes(marker))failures.push(`Síntesis auditable: consensus-xi.js carece de ${marker}`);
+  if(!audit.includes('auditableState'))failures.push('Síntesis auditable: Scenario Audit no consume auditableState');
+  if(!audit.includes('auditSafe:true'))failures.push('Síntesis auditable: Scenario Audit no marca los nuevos snapshots seguros');
+  if(!audit.includes('no modifica snapshots históricos')&&!audit.includes('no se reescriben'))failures.push('Síntesis auditable: falta política de no reescritura histórica');
+  if(!sw.includes("'consensus-xi.js'")||!sw.includes("'scenario-audit.js'"))failures.push('Síntesis auditable: módulos fuera de la PWA');
+}
+
 const semantic=[
   ['Jerarquías','hierarchy.js','RMHierarchyPro','JERARQUÍAS PRO'],
   ['Inteligencia','intelligence.js','RMIntelligencePro','CENTRO DE INTELIGENCIA PRO'],
@@ -82,4 +94,4 @@ for(const [name,file,api,marker] of semantic){
 
 if(!exists('PRO_AUDIT.md'))failures.push('Falta PRO_AUDIT.md');
 if(failures.length){console.error('PRO surface audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales + contexto compartido`);
+console.log(`PRO surface audit: OK · ${surfaces.length} superficies con capa PRO + ${semantic.length} capas PRO funcionales + contexto compartido + síntesis auditable`);
