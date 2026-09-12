@@ -1,8 +1,9 @@
 (()=>{
 const NOTE_PREFIX='rm_matchday_notes_v1_';
-let installed=false,wakeLock=null,wakeWanted=false,selectedTag='';
+const DRAFT_PREFIX='rm_matchday_note_draft_v1_';
+let installed=false,wakeLock=null,wakeWanted=false,selectedTag='',draftTimer=null;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','>':'&gt;','"':'&quot;'}[c]||c))}
+function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]||c))}
 function match(){return safe(()=>predictionMatch,null)||{id:'proximo-partido',rival:'Próximo rival',kickoff:null,deadline:null}}
 function phase(){return safe(()=>window.RMMatchdayCenter?.phase?.(),null)||{id:'pre',label:'Previa',clock:'Predicción abierta'} }
 function official(){return safe(()=>Array.isArray(officialXI)?officialXI:null,null)}
@@ -12,22 +13,38 @@ function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),
 function display(name){return safe(()=>displayName(name),name)||name}
 function xiValues(xi){return Object.values(xi||{}).filter(Boolean)}
 function validXI(xi){const v=xiValues(xi);return v.length===11&&new Set(v.map(canonical)).size===11}
-function slotMeta(key){const s=safe(()=>slots.find(x=>x[0]===key),null);return {label:s?.[1]||String(key||'').toUpperCase(),key}}
 function playerOverlap(a,b){const A=new Set(xiValues(a).map(canonical));return xiValues(b).map(canonical).filter(x=>A.has(x)).length}
 function slotDiffs(a,b){return safe(()=>slots,[]).map(s=>{const av=a?.[s[0]]||null,bv=b?.[s[0]]||null;if(canonical(av)===canonical(bv))return null;return {key:s[0],label:s[1],a:av,b:bv}}).filter(Boolean)}
 function score(names){const real=official();if(!real)return null;const set=new Set(real.map(canonical));return names.filter(Boolean).map(canonical).filter(x=>set.has(x)).length}
-function choiceFor(xi,debate){
-  const names=xiValues(xi),set=new Set(names.map(canonical));return debate.options.filter(n=>set.has(canonical(n))).map(display);
-}
+function choiceFor(xi,debate){const names=xiValues(xi),set=new Set(names.map(canonical));return debate.options.filter(n=>set.has(canonical(n))).map(display)}
 function watchItems(){
   const debates=safe(()=>window.RMMatchdayCenter?.debates,[])||[],u=saved()?.xi||{},o=ours(),hasUser=validXI(u);
   const rows=debates.map(d=>{const a=choiceFor(o,d),b=choiceFor(u,d),same=a.length===b.length&&a.every(x=>b.includes(x));return {d,a,b,same}});
-  const ordered=hasUser?[...rows].sort((x,y)=>Number(x.same)-Number(y.same)):rows;
-  return ordered.slice(0,3);
+  return (hasUser?[...rows].sort((x,y)=>Number(x.same)-Number(y.same)):rows).slice(0,3);
 }
 function noteKey(){return `${NOTE_PREFIX}${match().id||'partido'}`}
+function draftKey(){return `${DRAFT_PREFIX}${match().id||'partido'}`}
 function notes(){try{const v=JSON.parse(localStorage.getItem(noteKey())||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function writeNotes(rows){try{localStorage.setItem(noteKey(),JSON.stringify(rows.slice(0,60)))}catch{}}
+function readDraft(){
+  try{const value=JSON.parse(localStorage.getItem(draftKey())||'null');if(!value||typeof value!=='object')return {text:'',minute:'',tag:''};return {text:String(value.text||'').slice(0,500),minute:String(value.minute||'').slice(0,3),tag:String(value.tag||'')}}catch{return {text:'',minute:'',tag:''}}
+}
+function hasDraft(d=readDraft()){return Boolean(d.text.trim()||d.minute.trim()||d.tag)}
+function writeDraft(draft){
+  const clean={text:String(draft?.text||'').slice(0,500),minute:String(draft?.minute||'').replace(/[^0-9]/g,'').slice(0,3),tag:String(draft?.tag||'')};
+  try{if(hasDraft(clean))localStorage.setItem(draftKey(),JSON.stringify(clean));else localStorage.removeItem(draftKey())}catch{}
+  return clean;
+}
+function clearDraft(){clearTimeout(draftTimer);try{localStorage.removeItem(draftKey())}catch{}}
+function composerDraft(){
+  const text=document.getElementById('mdpNoteText'),minute=document.getElementById('mdpMinute');
+  if(!text&&!minute)return readDraft();return {text:text?.value||'',minute:minute?.value||'',tag:selectedTag||''};
+}
+function persistComposer(){const d=writeDraft(composerDraft());updateDraftState(d);return d}
+function scheduleDraft(){clearTimeout(draftTimer);draftTimer=setTimeout(persistComposer,180)}
+function updateDraftState(d=readDraft()){
+  const el=document.getElementById('mdpDraftState');if(!el)return;const active=hasDraft(d);el.classList.toggle('active',active);el.textContent=active?'Borrador guardado en este dispositivo':'Sin borrador pendiente';
+}
 function timeLabel(iso){try{return new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit'}).format(new Date(iso))}catch{return ''}}
 function tagLabel(tag){return ({observation:'Observación',change:'Cambio',key:'Clave',doubt:'Duda',chance:'Ocasión'})[tag]||''}
 function toastSafe(text){safe(()=>toast(text))}
@@ -59,34 +76,45 @@ function noteRowsHtml(rows){
   return `<div class="mdp-note-list">${rows.map(n=>`<article><div><span>${esc(timeLabel(n.at))}${n.minute?` · ${esc(n.minute)}'`:''}</span>${n.tag?`<em>${esc(tagLabel(n.tag))}</em>`:''}</div><p>${esc(n.text)}</p><button type="button" data-mdp-delete="${esc(n.id)}" aria-label="Eliminar nota">×</button></article>`).join('')}</div>`;
 }
 function renderNotes(){
-  const shell=ensureShell();if(!shell)return;const rows=notes(),supported='wakeLock'in navigator;
-  shell.notebook.innerHTML=`<div class="section-head mdp-note-head" style="margin-top:0"><div><span class="mdp-label">BLOC DEL PARTIDO · LOCAL</span><h2>Apunta lo que quieras revisar después</h2><p>Se guarda solo en este dispositivo. El minuto es manual para no fingir un reloj de partido.</p></div><div class="mdp-note-tools">${supported?`<button class="btn" type="button" id="mdpWake">${wakeLock?'✓ Pantalla activa':'Mantener pantalla activa'}</button>`:''}${rows.length?'<button class="btn" type="button" id="mdpCopyNotes">Copiar notas</button>':''}</div></div><div class="mdp-note-compose"><input class="input" id="mdpMinute" inputmode="numeric" maxlength="3" placeholder="Min. (opcional)" aria-label="Minuto manual"><textarea id="mdpNoteText" maxlength="500" placeholder="Ej.: Trent está entrando por dentro y Diomandé mantiene la amplitud…"></textarea><div class="mdp-tags"><button type="button" data-mdp-tag="observation">Observación</button><button type="button" data-mdp-tag="chance">Ocasión</button><button type="button" data-mdp-tag="change">Cambio</button><button type="button" data-mdp-tag="key">Clave</button><button type="button" data-mdp-tag="doubt">Duda</button></div><button class="btn primary" type="button" id="mdpSaveNote">Guardar nota</button></div>${noteRowsHtml(rows)}<p class="mdp-local-note">🔒 Estas notas no se publican en Comunidad ni se envían a Netlify.</p>`;
-  shell.notebook.querySelectorAll('[data-mdp-tag]').forEach(b=>b.addEventListener('click',()=>{selectedTag=selectedTag===b.dataset.mdpTag?'':b.dataset.mdpTag;shell.notebook.querySelectorAll('[data-mdp-tag]').forEach(x=>x.classList.toggle('active',x.dataset.mdpTag===selectedTag))}));
+  const shell=ensureShell();if(!shell)return;
+  if(shell.notebook.querySelector('#mdpNoteText'))persistComposer();
+  const rows=notes(),supported=typeof navigator!=='undefined'&&'wakeLock'in navigator,draft=readDraft();selectedTag=draft.tag||selectedTag||'';
+  shell.notebook.innerHTML=`<div class="section-head mdp-note-head" style="margin-top:0"><div><span class="mdp-label">BLOC DEL PARTIDO · LOCAL</span><h2>Apunta lo que quieras revisar después</h2><p>Se guarda solo en este dispositivo. El minuto es manual para no fingir un reloj de partido.</p><span id="mdpDraftState" class="mdp-draft-state ${hasDraft(draft)?'active':''}">${hasDraft(draft)?'Borrador recuperado · guardado en este dispositivo':'Sin borrador pendiente'}</span></div><div class="mdp-note-tools">${supported?`<button class="btn" type="button" id="mdpWake">${wakeLock?'✓ Pantalla activa':'Mantener pantalla activa'}</button>`:''}${rows.length?'<button class="btn" type="button" id="mdpCopyNotes">Copiar notas</button>':''}</div></div><div class="mdp-note-compose"><input class="input" id="mdpMinute" inputmode="numeric" maxlength="3" placeholder="Min. (opcional)" aria-label="Minuto manual" value="${esc(draft.minute)}"><textarea id="mdpNoteText" maxlength="500" placeholder="Ej.: Trent está entrando por dentro y Diomandé mantiene la amplitud…">${esc(draft.text)}</textarea><div class="mdp-tags"><button type="button" data-mdp-tag="observation" class="${selectedTag==='observation'?'active':''}">Observación</button><button type="button" data-mdp-tag="chance" class="${selectedTag==='chance'?'active':''}">Ocasión</button><button type="button" data-mdp-tag="change" class="${selectedTag==='change'?'active':''}">Cambio</button><button type="button" data-mdp-tag="key" class="${selectedTag==='key'?'active':''}">Clave</button><button type="button" data-mdp-tag="doubt" class="${selectedTag==='doubt'?'active':''}">Duda</button></div><button class="btn primary" type="button" id="mdpSaveNote">Guardar nota</button></div>${noteRowsHtml(rows)}<p class="mdp-local-note">🔒 Notas y borrador son locales: no se publican en Comunidad ni se envían a Netlify. Ctrl/Cmd + Enter guarda la nota.</p>`;
+  const text=shell.notebook.querySelector('#mdpNoteText'),minute=shell.notebook.querySelector('#mdpMinute');
+  text?.addEventListener('input',scheduleDraft);minute?.addEventListener('input',scheduleDraft);
+  text?.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addNote()}});
+  shell.notebook.querySelectorAll('[data-mdp-tag]').forEach(b=>b.addEventListener('click',()=>{selectedTag=selectedTag===b.dataset.mdpTag?'':b.dataset.mdpTag;shell.notebook.querySelectorAll('[data-mdp-tag]').forEach(x=>x.classList.toggle('active',x.dataset.mdpTag===selectedTag));persistComposer()}));
   shell.notebook.querySelector('#mdpSaveNote')?.addEventListener('click',addNote);shell.notebook.querySelectorAll('[data-mdp-delete]').forEach(b=>b.addEventListener('click',()=>deleteNote(b.dataset.mdpDelete)));shell.notebook.querySelector('#mdpCopyNotes')?.addEventListener('click',copyNotes);shell.notebook.querySelector('#mdpWake')?.addEventListener('click',toggleWake);
 }
 function addNote(){
   const text=document.getElementById('mdpNoteText')?.value.trim()||'',raw=document.getElementById('mdpMinute')?.value.trim()||'';if(!text){toastSafe('Escribe una nota primero');return}
   let minute=null;if(raw){const n=Number(raw);if(!Number.isInteger(n)||n<1||n>130){toastSafe('El minuto debe estar entre 1 y 130');return}minute=n}
-  const id=safe(()=>crypto.randomUUID(),`n_${Date.now()}_${Math.random().toString(36).slice(2)}`),row={id,at:new Date().toISOString(),minute,tag:selectedTag||'',text};writeNotes([row,...notes()]);selectedTag='';renderNotes();toastSafe('Nota guardada en este dispositivo');
+  const id=safe(()=>crypto.randomUUID(),`n_${Date.now()}_${Math.random().toString(36).slice(2)}`),row={id,at:new Date().toISOString(),minute,tag:selectedTag||'',text};writeNotes([row,...notes()]);selectedTag='';clearDraft();renderNotes();toastSafe('Nota guardada en este dispositivo');
 }
-function deleteNote(id){writeNotes(notes().filter(n=>n.id!==id));renderNotes();toastSafe('Nota eliminada')}
+function deleteNote(id){persistComposer();writeNotes(notes().filter(n=>n.id!==id));renderNotes();toastSafe('Nota eliminada')}
 async function copyNotes(){
   const rows=[...notes()].reverse();if(!rows.length)return;const title=`Real Madrid vs ${match().rival||'rival'} · notas del partido`,text=[title,...rows.map(n=>`${timeLabel(n.at)}${n.minute?` · ${n.minute}'`:''}${n.tag?` · ${tagLabel(n.tag)}`:''} — ${n.text}`)].join('\n');
   try{await navigator.clipboard.writeText(text);toastSafe('Notas copiadas')}catch{toastSafe('No se pudieron copiar las notas')}
 }
 function scrollNotes(){document.getElementById('matchdayProNotebook')?.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>document.getElementById('mdpNoteText')?.focus(),350)}
-async function acquireWake(){if(!('wakeLock'in navigator))return false;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null;renderNotes()},{once:true});return true}catch{return false}}
+async function acquireWake(){
+  if(!(typeof navigator!=='undefined'&&'wakeLock'in navigator))return false;
+  try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null;renderNotes()},{once:true});return true}catch{wakeLock=null;wakeWanted=false;return false}
+}
 async function toggleWake(){
+  persistComposer();
   if(wakeLock){wakeWanted=false;try{await wakeLock.release()}catch{}wakeLock=null;renderNotes();toastSafe('Pantalla activa desactivada');return}
   wakeWanted=true;const ok=await acquireWake();renderNotes();toastSafe(ok?'Pantalla activa mientras mantengas esta vista':'El navegador no permitió mantener la pantalla activa')
 }
 function render(){renderTop();renderNotes()}
 function install(){
-  if(installed)return;if(!document.getElementById('partido')||!window.RMMatchdayCenter){setTimeout(install,100);return}installed=true;render();
-  ['rm-local-prediction-updated','rm-community-updated','rm-matchday-polls-updated','rm-season-data-ready','rm-ranking-official-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(render,0)));
-  document.addEventListener('rm-mobile-nav-fallback',()=>setTimeout(render,0));document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&wakeWanted&&!wakeLock&&document.getElementById('partido')?.classList.contains('active'))await acquireWake();renderNotes()});
+  if(installed)return;if(!document.getElementById('partido')||!window.RMMatchdayCenter){setTimeout(install,100);return}installed=true;const d=readDraft();selectedTag=d.tag||'';render();
+  ['rm-local-prediction-updated','rm-community-updated','rm-matchday-polls-updated','rm-season-data-ready','rm-ranking-official-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(renderTop,0)));
+  document.addEventListener('rm-mobile-nav-fallback',()=>setTimeout(renderTop,0));
+  document.addEventListener('visibilitychange',async()=>{if(document.visibilityState!=='visible')return;if(wakeWanted&&!wakeLock&&document.getElementById('partido')?.classList.contains('active')){const ok=await acquireWake();if(!ok)renderNotes()}else updateDraftState()});
+  window.addEventListener('pagehide',persistComposer);
   setInterval(()=>{if(document.getElementById('partido')?.classList.contains('active'))renderTop();else document.body.classList.remove('matchday-pro-active')},30000);
-  window.RMMatchdayPro=Object.freeze({render,notes,addNote,scrollNotes});
+  window.RMMatchdayPro=Object.freeze({render,notes,addNote,scrollNotes,draft:readDraft,saveDraft:persistComposer});
 }
 install();
 })();
