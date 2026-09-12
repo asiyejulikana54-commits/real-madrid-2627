@@ -21,10 +21,12 @@ if(!js.includes('No reconstruimos predicciones')&&!js.includes('no reconstruimos
 for(const marker of ['LIGA RM','Ligas privadas','Racha 8+','createLeague','joinLeague','leaveLeague','RMCommunityLeague','attempts<100'])if(!league.includes(marker))failures.push(`community-league.js: falta ${marker}`);
 if(/MutationObserver\s*\(/.test(league))failures.push('community-league.js no debe usar MutationObserver');
 for(const marker of ['.cgl-shell','.cgl-table','.cgl-private-grid','.cgl-pulse'])if(!leagueCss.includes(marker))failures.push(`community-league.css: falta ${marker}`);
-for(const marker of ['communityApiUrl','real-madrid-2627-panel.netlify.app','RMCommunityApi','participantId:getParticipantId()'])if(!community.includes(marker))failures.push(`community.js: falta ${marker}`);
+for(const marker of ['communityApiUrl','RMCommunityApi','participantId:getParticipantId()','github.io'])if(!community.includes(marker))failures.push(`community.js: falta ${marker}`);
+if(community.includes('real-madrid-2627-panel.netlify.app/.netlify/functions'))failures.push('community.js no debe saltarse la política same-origin del backend');
 for(const marker of ['loadCommunityLeague','community-league.js?v=1','community-league.css?v=1'])if(!nav.includes(marker))failures.push(`personal-nav.js: falta ${marker}`);
 if(!sw.includes("'community-league.js'")||!sw.includes("'community-league.css'"))failures.push('PWA no incluye la Liga RM');
-for(const marker of ['roundLeaderboard','participationStreak','streak8','createLeague','joinLeague','leaveLeague','participant-leagues/','league-members/','access-control-allow-origin'])if(!backend.includes(marker))failures.push(`community-v2.mts: falta ${marker}`);
+for(const marker of ['roundLeaderboard','participationStreak','streak8','createLeague','joinLeague','leaveLeague','participant-leagues/','league-members/','getDeployStore','Netlify.context'])if(!backend.includes(marker))failures.push(`community-v2.mts: falta ${marker}`);
+if(/access-control-allow-origin/i.test(backend))failures.push('community-v2.mts añade CORS sin necesitarlo');
 if(!backend.includes('Nunca se reconstruyen predicciones antiguas'))failures.push('backend no documenta la regla anti-backfill');
 if(failures.length){console.error('Engagement audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
 console.log('Engagement audit: OK · marcador + duelo diario + clasificación + jornada + rachas + ligas privadas');
