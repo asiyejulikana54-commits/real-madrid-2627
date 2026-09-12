@@ -106,10 +106,10 @@ function addProContext(name){
   block.querySelector('[data-px-peer-radar]')?.addEventListener('click',()=>openPeerRadar(p.name,peer.p.name));
 }
 function addSeasonSummary(name){
-  const rows=series(name),form=recent(name),{best,worst}=extremes(rows);const anchor=document.querySelector('#playerHubContent .px-pro-context')||document.querySelector('#playerHubContent .sample-card');if(!anchor)return;
+  const rows=series(name),form=recent(name),{best}=extremes(rows);const anchor=document.querySelector('#playerHubContent .px-pro-context')||document.querySelector('#playerHubContent .sample-card');if(!anchor)return;
   document.querySelector('#playerHubContent .px-season-summary')?.remove();
   const block=document.createElement('section');block.className='px-season-summary';
-  const bestValue=best?.entry?.value;block.innerHTML=`<div class="px-season-title"><div><span>FORMA DISPONIBLE</span><b>${rows.length?`${rows.length} partido${rows.length===1?'':'s'} con valoración`:'Sin valoraciones todavía'}</b></div><em>${form?format(form.value):'—'}<small>media últimas ${form?.n||0} notas</small></em></div><div class="px-match-form">${rows.length?rows.map(row=>`<div class="${row.entry.value===bestValue?'best':''}"><span>${esc(row.match.short||row.match.label)}</span><b>${format(row.entry.value)}</b></div>`).join(''):'<div><span>—</span><b>—</b></div>'}</div><div class="px-recent-note">Forma disponible usa hasta las 3 últimas notas oficiales publicadas. A diferencia del progreso estricto de arriba, puede saltar jornadas sin calificación y por eso se muestra como una lectura distinta.</div>`;
+  const bestValue=best?.entry?.value;block.innerHTML=`<div class="px-season-title"><div><span>FORMA PARTIDO A PARTIDO · DISPONIBLE</span><b>${rows.length?`${rows.length} partido${rows.length===1?'':'s'} con valoración`:'Sin valoraciones todavía'}</b></div><em>${form?format(form.value):'—'}<small>media últimas ${form?.n||0} notas</small></em></div><div class="px-match-form">${rows.length?rows.map(row=>`<div class="${row.entry.value===bestValue?'best':''}"><span>${esc(row.match.short||row.match.label)}</span><b>${format(row.entry.value)}</b></div>`).join(''):'<div><span>—</span><b>—</b></div>'}</div><div class="px-recent-note">Forma disponible usa hasta las 3 últimas notas oficiales publicadas. A diferencia del progreso estricto de arriba, puede saltar jornadas sin calificación y por eso se muestra como una lectura distinta.</div>`;
   anchor.insertAdjacentElement('afterend',block);
 }
 function addEvolutionAction(){
