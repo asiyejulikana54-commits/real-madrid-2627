@@ -41,6 +41,7 @@ jobs:
           node scripts/validate-season-learning.cjs
           node scripts/validate-post-xi-center.cjs
           node scripts/validate-simple-mode.cjs
+          node scripts/validate-navigation-history.cjs
           node scripts/validate-match-story.cjs
           node scripts/validate-compare-lifecycle.cjs
           node scripts/validate-power-sorting.cjs
