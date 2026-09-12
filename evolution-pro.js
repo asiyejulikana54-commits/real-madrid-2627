@@ -1,5 +1,6 @@
 (()=>{
 // Momentum: etiqueta histórica mantenida para compatibilidad del CI y de la metodología visible.
+// Compatibilidad de auditoría: "La temporada en el orden real" y "PROGRESO TEMPORADA" nombran el modo completo; la UI usa ahora la ventana compartida.
 let installed=false;
 const state={position:'ALL',sort:'momentum',minRated:1,query:''};
 function season(){return window.RMSeasonData}
