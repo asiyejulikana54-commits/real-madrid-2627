@@ -10,8 +10,8 @@ function loadRoundImpact(){
   if(!document.querySelector('script[data-round-impact]')){const script=document.createElement('script');script.src='round-impact.js?v=1';script.dataset.roundImpact='1';document.body.appendChild(script)}
 }
 function loadPredictionAnalytics(){
-  if(!document.querySelector('link[data-prediction-analytics]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-analytics.css?v=1';link.dataset.predictionAnalytics='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-prediction-analytics]')){const script=document.createElement('script');script.src='prediction-analytics.js?v=1';script.dataset.predictionAnalytics='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-prediction-analytics]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-analytics.css?v=2';link.dataset.predictionAnalytics='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-prediction-analytics]')){const script=document.createElement('script');script.src='prediction-analytics.js?v=2';script.dataset.predictionAnalytics='1';document.body.appendChild(script)}
 }
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
