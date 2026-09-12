@@ -50,6 +50,7 @@ jobs:
           node --check share-cards.js
           node --check personal-hub.js
           node --check personal-nav.js
+          node --check round-impact.js
           node --check personal-season-pro.js
           node --check squad-pro.js
           node --check playerhub.js
@@ -112,7 +113,7 @@ jobs:
           grep -q "rm_matchday_notes_v1_" matchday-pro.js
           grep -q "mdp-mobile-bar" matchday-pro.css
           grep -q "RMComparePro" compare-pro.js
-          grep -q "VEREDICTO ACTUAL" compare-pro.js
+          grep -q "MARCADOR GLOBAL" compare-pro.js
           grep -q "Duelos rápidos" compare-pro.js
           grep -q "Forma reciente" compare-pro.js
           grep -q "Min / punto" compare-pro.js
@@ -181,6 +182,12 @@ jobs:
           grep -q "personal-season-pro.js?v=1" personal-nav.js
           grep -q "personal-season-pro.css?v=1" personal-nav.js
           grep -q "loadPersonalSeasonPro" personal-nav.js
+          grep -q "round-impact.js?v=1" personal-nav.js
+          grep -q "round-impact.css?v=1" personal-nav.js
+          grep -q "loadRoundImpact" personal-nav.js
+          grep -q "RMRoundImpact" round-impact.js
+          grep -q "Qué cambió tras" round-impact.js
+          grep -q "Movimientos de jerarquía" round-impact.js
           grep -q "RMPersonalSeasonPro" personal-season-pro.js
           grep -q "MI TEMPORADA PRO" personal-season-pro.js
           grep -q "TUS JUGADORES" personal-season-pro.js
@@ -242,7 +249,7 @@ jobs:
           grep -q 'personal-hub.js?v=1' index.html
           grep -q 'personal-nav.js?v=1' index.html
           grep -q 'personal-hub.css?v=1' index.html
-          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js personal-season-pro.js squad-pro.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js matchday-pro.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js intelligence.js lineuplab.js accessibility.js command-palette.js; then
+          if grep -Eq "new MutationObserver|MutationObserver\\(" ux-cleanup.js ux-refine.js visual-system.js ux-dedupe.js mobile-ux.js personal-hub.js personal-nav.js round-impact.js personal-season-pro.js squad-pro.js playerhub.js player-experience.js site-guide.js personal-home.js matchday.js matchday-pro.js compare-pro.js stats-pro.js match-history-pro.js prediction-pro.js lineup-pro.js evolution-pro.js decisionradar.js hierarchy.js power-pro.js intelligence.js lineuplab.js accessibility.js command-palette.js; then
             echo "No se permiten observadores DOM en las capas de experiencia validadas"; exit 1;
           fi
 
