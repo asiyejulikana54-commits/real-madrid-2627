@@ -37,6 +37,10 @@ function loadScenarioLab(){
   if(!document.querySelector('link[data-scenario-lab]')){const link=document.createElement('link');link.rel='stylesheet';link.href='scenario-lab.css?v=1';link.dataset.scenarioLab='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-scenario-lab]')){const script=document.createElement('script');script.src='scenario-lab.js?v=1';script.dataset.scenarioLab='1';document.body.appendChild(script)}
 }
+function loadScenarioAudit(){
+  if(!document.querySelector('link[data-scenario-audit]')){const link=document.createElement('link');link.rel='stylesheet';link.href='scenario-audit.css?v=1';link.dataset.scenarioAudit='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-scenario-audit]')){const script=document.createElement('script');script.src='scenario-audit.js?v=1';script.dataset.scenarioAudit='1';document.body.appendChild(script)}
+}
 function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
@@ -56,8 +60,8 @@ function injectDesktop(){
 function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionActions();loadPredictionReadiness();loadScenarioLab();
-  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),390)};
+  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionActions();loadPredictionReadiness();loadScenarioLab();loadScenarioAudit();
+  const base=showSection;showSection=function(id){if(id==='mi-temporada')loadPersonalSeasonPro();base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),390);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMScenarioAudit?.render?.(),430)};
   if(document.querySelector('.section.active')?.id==='mi-temporada')loadPersonalSeasonPro();
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
