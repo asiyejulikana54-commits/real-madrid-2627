@@ -17,6 +17,7 @@ if(!js.includes('El coach nunca modifica tu XI automáticamente'))failures.push(
 for(const marker of ['.decision-coach','.dc-kpis','.dc-list','.dc-row','.dc-summary'])if(!css.includes(marker))failures.push(`decision-coach.css: falta ${marker}`);
 for(const marker of ['loadDecisionCoach','decision-coach.js?v=1','decision-coach.css?v=1','RMDecisionCoach?.render'])if(!nav.includes(marker))failures.push(`personal-nav.js: falta ${marker}`);
 if(!sw.includes("'decision-coach.js'")||!sw.includes("'decision-coach.css'"))failures.push('PWA no incluye el coach de decisiones');
-if(!sw.includes("rm2627-static-v36"))failures.push('PWA no ha incrementado la versión de caché para el coach');
+const cacheMatch=sw.match(/rm2627-static-v(\d+)/),cacheVersion=cacheMatch?Number(cacheMatch[1]):0;
+if(cacheVersion<36)failures.push('PWA no ha incrementado la versión de caché para el coach');
 if(failures.length){console.error('Decision coach audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
 console.log('Decision coach audit: OK · historial personal aplicado al XI actual sin convertirlo en probabilidad futura');
