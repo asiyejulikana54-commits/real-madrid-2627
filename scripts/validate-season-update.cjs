@@ -80,6 +80,21 @@ if(!efficiencyCss.includes('.efp-row')||!efficiencyCss.includes('.efp-sample')||
 if(!polish.includes('loadEfficiencyPro')||!polish.includes('efficiency-pro.js?v=1')||!polish.includes('efficiency-pro.css?v=1'))failures.push('Eficiencia PRO no está integrada en la experiencia pública');
 if(!sw.includes("'efficiency-pro.js'")||!sw.includes("'efficiency-pro.css'"))failures.push('Eficiencia PRO no está incluida en la PWA');
 
+// INICIO PRO: síntesis canónica sin crear un score nuevo ni depender de backend.
+const homeJs=fs.readFileSync(path.join(root,'home-pro.js'),'utf8');
+const homeCss=fs.readFileSync(path.join(root,'home-pro.css'),'utf8');
+try{new vm.Script(homeJs,{filename:'home-pro.js'})}catch(error){failures.push(`Inicio PRO no compila: ${error.message}`)}
+if(!homeJs.includes('RMHomePro'))failures.push('Inicio PRO no expone su API pública');
+if(!homeJs.includes('MAYOR SUBIDA · ESTRICTA')||!homeJs.includes('strictLastPair'))failures.push('Inicio PRO no usa cambio estricto de última jornada');
+if(!homeJs.includes('officialRatingEntry')||!homeJs.includes('MUESTRA A VIGILAR'))failures.push('Inicio PRO no protege la lectura oficial/muestra corta');
+if(!homeJs.includes('DUELO MÁS CERRADO · POWER')||!homeJs.includes('Solo mide cercanía en Power, no decide titularidad'))failures.push('Inicio PRO no separa duelo Power de jerarquía');
+if(!homeJs.includes('sourceAudit')||!homeJs.includes('fuentes cerradas'))failures.push('Inicio PRO no muestra procedencia/cierre de datos');
+if(/\bfetch\s*\(/.test(homeJs))failures.push('Inicio PRO realiza llamadas de red propias');
+if(/MutationObserver\s*\(/.test(homeJs))failures.push('Inicio PRO usa MutationObserver');
+if(!homeCss.includes('.hpro-signals')||!homeCss.includes('.hpro-decisions')||!homeCss.includes('.home-pro-ready #powerHome'))failures.push('faltan estilos estructurales de Inicio PRO');
+if(!polish.includes('loadHomePro')||!polish.includes('home-pro.js?v=1')||!polish.includes('home-pro.css?v=1'))failures.push('Inicio PRO no está integrado en la experiencia pública');
+if(!sw.includes("'home-pro.js'")||!sw.includes("'home-pro.css'"))failures.push('Inicio PRO no está incluido en la PWA');
+
 // HISTORIAL PRO: valida comparaciones estrictas, fechas date-only y PWA.
 const historyJs=fs.readFileSync(path.join(root,'match-history-pro.js'),'utf8');
 const historyCss=fs.readFileSync(path.join(root,'match-history-pro.css'),'utf8');
@@ -122,4 +137,4 @@ if(!predictionPro.includes("addEventListener('rm-mobile-nav-fallback',render)"))
 if(/MutationObserver\s*\(/.test(mobileUx)||/MutationObserver\s*\(/.test(predictionPro))failures.push('la recuperación móvil introduce MutationObserver');
 
 if(failures.length){console.error('Season update smoke test: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`Season update smoke test: OK · ${chronologicalData.matches.length} partidos · cronología canónica desde origen · MVP PRO + Eficiencia PRO + Historial PRO + Evolución PRO + navegación móvil validados`);
+console.log(`Season update smoke test: OK · ${chronologicalData.matches.length} partidos · cronología canónica desde origen · Inicio PRO + MVP PRO + Eficiencia PRO + Historial PRO + Evolución PRO + navegación móvil validados`);
