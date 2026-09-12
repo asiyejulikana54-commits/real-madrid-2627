@@ -1,0 +1,22 @@
+name: Validate PRO surface
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pro-surface-audit"
+  cancel-in-progress: true
+
+jobs:
+  validate-pro:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate PRO coverage
+        run: node scripts/validate-pro-surface.cjs
