@@ -1,7 +1,8 @@
 (()=>{
 const KEY='rm_analysis_context_v1';
+const STATS_KEY='rm_stats_pro_v2_state';
 const DEFAULTS={competition:'ALL',horizon:'ALL'};
-let installed=false,attempts=0;
+let installed=false,attempts=0,syncingStats=false;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function season(){return window.RMSeasonData||null}
 function allMatches(){return safe(()=>season()?.matches||[],[])||[]}
@@ -14,6 +15,9 @@ function sanitize(next={}){
   return {competition,horizon};
 }
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(current))}catch{}}
+function persistStats(){
+  try{const prior=JSON.parse(localStorage.getItem(STATS_KEY)||'{}')||{};localStorage.setItem(STATS_KEY,JSON.stringify({...prior,competition:current.competition,horizon:current.horizon}))}catch{}
+}
 function state(){return {...current}}
 function matches(){
   let rows=allMatches();
@@ -32,21 +36,45 @@ function emit(source='api'){
   document.dispatchEvent(new CustomEvent('rm-analysis-context-updated',{detail}));
   return detail;
 }
+function syncStats(render=true){
+  const api=window.RMStatsPro;if(!api?.state)return false;
+  api.state.competition=current.competition;api.state.horizon=current.horizon;persistStats();
+  if(render&&api.render&&!syncingStats){syncingStats=true;setTimeout(()=>{safe(()=>api.render());syncingStats=false},0)}
+  return true;
+}
 function set(next={},source='api'){
   const merged=sanitize({...current,...next}),changed=merged.competition!==current.competition||merged.horizon!==current.horizon;
-  current.competition=merged.competition;current.horizon=merged.horizon;persist();
+  current.competition=merged.competition;current.horizon=merged.horizon;persist();persistStats();
+  if(source!=='stats-render')syncStats(false);
   if(changed)emit(source);
   return state();
 }
 function reset(source='api'){return set(DEFAULTS,source)}
+function presetContext(id){if(id==='last3'||id==='attackform')return {competition:'ALL',horizon:'3'};return {...DEFAULTS}}
+function bindStatsBridge(){
+  document.addEventListener('change',e=>{
+    if(e.target?.id==='spCompetition')set({competition:e.target.value},'stats-ui');
+    if(e.target?.id==='spHorizon')set({horizon:e.target.value},'stats-ui');
+  },true);
+  document.addEventListener('click',e=>{
+    const preset=e.target?.closest?.('[data-sp-preset]');if(preset)set(presetContext(preset.dataset.spPreset),'stats-ui');
+    if(e.target?.closest?.('[data-sp-reset]'))reset('stats-ui');
+  },true);
+  document.addEventListener('rm-stats-pro-rendered',e=>{
+    const d=e.detail||{};
+    if(d.competition===current.competition&&String(d.horizon)===String(current.horizon))return;
+    syncStats(true);
+  });
+}
 function install(){
   if(installed)return;
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;Object.assign(current,sanitize(current));persist();
-  window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches});
+  installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();
+  window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
+  syncStats(true);
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
-['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();emit('season')}}));
+['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
 install();
 })();
