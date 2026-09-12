@@ -1,5 +1,5 @@
 (()=>{
-const ROUTE_KEYS=['section','player','a','b','anchor'];
+const ROUTE_KEYS=['section','player','a','b','anchor','pick'];
 let installed=false,attempts=0,lastRoute='';
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function activeSection(){return document.querySelector('.section.active')?.id||'inicio'}
@@ -41,19 +41,19 @@ function openCompare(a,b,tries=0){
 }
 function scrollAnchor(id,tries=0){if(!id)return false;const el=document.getElementById(id);if(el){setTimeout(()=>el.scrollIntoView?.({behavior:'smooth',block:'start'}),40);return true}if(tries<30)setTimeout(()=>scrollAnchor(id,tries+1),100);return false}
 function route(force=false){
-  const q=new URL(location.href).searchParams,requested=q.get('section'),player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor');
+  const q=new URL(location.href).searchParams,requested=q.get('section'),player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor'),pick=q.get('pick');
   if(!requested&&!player&&!a&&!b&&!anchor)return false;
   const section=requested||(player?'plantilla':a&&b?'comparador':activeSection());
-  const signature=[section,player,a,b,anchor].join('|');if(!force&&signature===lastRoute)return false;lastRoute=signature;
+  const signature=[section,player,a,b,anchor,pick].join('|');if(!force&&signature===lastRoute)return false;lastRoute=signature;
   if(!sectionExists(section))return false;
   safe(()=>showSection(section));
   if(section==='plantilla'&&player)setTimeout(()=>openPlayer(player),120);
   if(section==='comparador'&&a&&b)setTimeout(()=>openCompare(a,b),150);
   if(anchor)setTimeout(()=>scrollAnchor(anchor),180);
-  document.dispatchEvent(new CustomEvent('rm-deep-link-routed',{detail:{section,player,a,b,anchor}}));return true;
+  document.dispatchEvent(new CustomEvent('rm-deep-link-routed',{detail:{section,player,a,b,anchor,pick}}));return true;
 }
 function playerUrl(name){return url('plantilla',{player:name})}
-function compareUrl(a,b){return url('comparador',{a,b})}
+function compareUrl(a,b,pick=''){return url('comparador',{a,b,...(pick?{pick}:{})})}
 function sectionUrl(section,anchor=''){return url(section,anchor?{anchor}:{})}
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('inicio')){if(++attempts<100)setTimeout(install,80);return}
