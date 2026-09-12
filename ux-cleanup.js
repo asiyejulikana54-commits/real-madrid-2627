@@ -100,17 +100,21 @@ function loadPublicLayer(){
   if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=5';link.dataset.publicPolish='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=7';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
+function loadCompareLifecycle(){
+  if(!document.querySelector('link[data-compare-lifecycle]')){const link=document.createElement('link');link.rel='stylesheet';link.href='compare-lifecycle.css?v=1';link.dataset.compareLifecycle='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-compare-lifecycle]')){const script=document.createElement('script');script.src='compare-lifecycle.js?v=1';script.dataset.compareLifecycle='1';document.body.appendChild(script)}
+}
 
 function install(){
   if(uxInstalled)return;
   if(typeof sections==='undefined'||typeof showSection!=='function'||!UX_REQUIRED.every(id=>sections.some(s=>s[0]===id))){setTimeout(install,80);return}
   uxInstalled=true;document.body.classList.add('ux-clean');ensureMoreSheet();refreshUi();
-  const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id);setTimeout(cleanDenseCards,0)};
+  const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id);setTimeout(cleanDenseCards,0);if(id==='comparador'||id==='radar')setTimeout(()=>window.RMCompareLifecycle?.refresh?.(),0)};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
   document.addEventListener('rm-modules-ready',()=>{refreshMoreSheet();refreshUi()});
   document.addEventListener('rm-ranking-official-ready',()=>setTimeout(cleanDenseCards,0));
   [250,900,2200].forEach(ms=>setTimeout(refreshUi,ms));
-  loadRefineLayer();loadVisualLayer();loadPublicLayer();
+  loadRefineLayer();loadVisualLayer();loadPublicLayer();loadCompareLifecycle();
 }
 setTimeout(install,60);
 })();
