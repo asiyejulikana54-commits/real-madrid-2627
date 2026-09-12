@@ -75,9 +75,9 @@ function noteRowsHtml(rows){
   if(!rows.length)return '<div class="mdp-notes-empty"><b>Aún no hay notas del partido</b><span>Guarda aquí sensaciones, cambios que probarías o detalles a revisar después.</span></div>';
   return `<div class="mdp-note-list">${rows.map(n=>`<article><div><span>${esc(timeLabel(n.at))}${n.minute?` · ${esc(n.minute)}'`:''}</span>${n.tag?`<em>${esc(tagLabel(n.tag))}</em>`:''}</div><p>${esc(n.text)}</p><button type="button" data-mdp-delete="${esc(n.id)}" aria-label="Eliminar nota">×</button></article>`).join('')}</div>`;
 }
-function renderNotes(){
+function renderNotes(preserve=true){
   const shell=ensureShell();if(!shell)return;
-  if(shell.notebook.querySelector('#mdpNoteText'))persistComposer();
+  if(preserve&&shell.notebook.querySelector('#mdpNoteText'))persistComposer();
   const rows=notes(),supported=typeof navigator!=='undefined'&&'wakeLock'in navigator,draft=readDraft();selectedTag=draft.tag||selectedTag||'';
   shell.notebook.innerHTML=`<div class="section-head mdp-note-head" style="margin-top:0"><div><span class="mdp-label">BLOC DEL PARTIDO · LOCAL</span><h2>Apunta lo que quieras revisar después</h2><p>Se guarda solo en este dispositivo. El minuto es manual para no fingir un reloj de partido.</p><span id="mdpDraftState" class="mdp-draft-state ${hasDraft(draft)?'active':''}">${hasDraft(draft)?'Borrador recuperado · guardado en este dispositivo':'Sin borrador pendiente'}</span></div><div class="mdp-note-tools">${supported?`<button class="btn" type="button" id="mdpWake">${wakeLock?'✓ Pantalla activa':'Mantener pantalla activa'}</button>`:''}${rows.length?'<button class="btn" type="button" id="mdpCopyNotes">Copiar notas</button>':''}</div></div><div class="mdp-note-compose"><input class="input" id="mdpMinute" inputmode="numeric" maxlength="3" placeholder="Min. (opcional)" aria-label="Minuto manual" value="${esc(draft.minute)}"><textarea id="mdpNoteText" maxlength="500" placeholder="Ej.: Trent está entrando por dentro y Diomandé mantiene la amplitud…">${esc(draft.text)}</textarea><div class="mdp-tags"><button type="button" data-mdp-tag="observation" class="${selectedTag==='observation'?'active':''}">Observación</button><button type="button" data-mdp-tag="chance" class="${selectedTag==='chance'?'active':''}">Ocasión</button><button type="button" data-mdp-tag="change" class="${selectedTag==='change'?'active':''}">Cambio</button><button type="button" data-mdp-tag="key" class="${selectedTag==='key'?'active':''}">Clave</button><button type="button" data-mdp-tag="doubt" class="${selectedTag==='doubt'?'active':''}">Duda</button></div><button class="btn primary" type="button" id="mdpSaveNote">Guardar nota</button></div>${noteRowsHtml(rows)}<p class="mdp-local-note">🔒 Notas y borrador son locales: no se publican en Comunidad ni se envían a Netlify. Ctrl/Cmd + Enter guarda la nota.</p>`;
   const text=shell.notebook.querySelector('#mdpNoteText'),minute=shell.notebook.querySelector('#mdpMinute');
@@ -89,7 +89,7 @@ function renderNotes(){
 function addNote(){
   const text=document.getElementById('mdpNoteText')?.value.trim()||'',raw=document.getElementById('mdpMinute')?.value.trim()||'';if(!text){toastSafe('Escribe una nota primero');return}
   let minute=null;if(raw){const n=Number(raw);if(!Number.isInteger(n)||n<1||n>130){toastSafe('El minuto debe estar entre 1 y 130');return}minute=n}
-  const id=safe(()=>crypto.randomUUID(),`n_${Date.now()}_${Math.random().toString(36).slice(2)}`),row={id,at:new Date().toISOString(),minute,tag:selectedTag||'',text};writeNotes([row,...notes()]);selectedTag='';clearDraft();renderNotes();toastSafe('Nota guardada en este dispositivo');
+  const id=safe(()=>crypto.randomUUID(),`n_${Date.now()}_${Math.random().toString(36).slice(2)}`),row={id,at:new Date().toISOString(),minute,tag:selectedTag||'',text};writeNotes([row,...notes()]);selectedTag='';clearDraft();renderNotes(false);toastSafe('Nota guardada en este dispositivo');
 }
 function deleteNote(id){persistComposer();writeNotes(notes().filter(n=>n.id!==id));renderNotes();toastSafe('Nota eliminada')}
 async function copyNotes(){
