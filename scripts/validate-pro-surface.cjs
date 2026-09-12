@@ -12,6 +12,7 @@ const personalNav=read('personal-nav.js');
 const surfaces=[
   ['Inicio','home-pro.js','home-pro.css','RMHomePro','loadHomePro','public'],
   ['Plantilla','squad-pro.js','squad-pro.css','RMSquadPro','loadSquadPro','public'],
+  ['Ficha de jugador','player-intelligence.js','player-intelligence.css','RMPlayerIntelligence','loadPlayerIntelligence','public'],
   ['Estadísticas','stats-pro.js','stats-pro.css','RMStatsPro','loadStatsPro','public'],
   ['Eficiencia','efficiency-pro.js','efficiency-pro.css','RMEfficiencyPro','loadEfficiencyPro','public'],
   ['Power RM','power-pro.js','power-pro.css','RMPowerPro','loadPowerPro','public'],
@@ -47,6 +48,12 @@ for(const marker of ['COMUNIDAD PRO','MAPA DE CONSENSO','VOTO GLOBAL MULTIPOSICI
   if(!community.includes(marker))failures.push(`Comunidad PRO: falta ${marker}`);
 }
 if(/\bfetch\s*\(/.test(community))failures.push('Comunidad PRO no debe hacer llamadas de red propias; debe consumir RMCommunityData');
+
+const playerIntelligence=read('player-intelligence.js');
+for(const marker of ['PLAYER EXPERIENCE V2 · PRÓXIMO PARTIDO','HISTÓRICO AUDITADO','RMDecisionBoard','RMDecisionAudit','attempts<100','rm-player-intelligence-rendered']){
+  if(!playerIntelligence.includes(marker))failures.push(`Player Experience V2: falta ${marker}`);
+}
+if(/\bfetch\s*\(/.test(playerIntelligence))failures.push('Player Experience V2 no debe hacer llamadas de red propias; debe reutilizar las capas de datos existentes');
 
 const semantic=[
   ['Jerarquías','hierarchy.js','RMHierarchyPro','JERARQUÍAS PRO'],
