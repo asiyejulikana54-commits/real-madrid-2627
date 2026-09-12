@@ -1,4 +1,4 @@
-import { getStore } from "@netlify/blobs";
+import { getStore, getDeployStore } from "@netlify/blobs";
 import { randomBytes } from "node:crypto";
 
 const SLOTS = ["gk","lb","lcb","rcb","rb","dm1","dm2","am","lw","rw","st"];
@@ -19,9 +19,8 @@ const MATCHES = [
   { id:"rayo-2026-09-12", rival:"Rayo", closesAt:"2026-09-12T17:55:00Z", officialXI:null }
 ];
 
-function storeFor(){return getStore("rm-community", { consistency:"strong" })}
-function corsHeaders(){return {"access-control-allow-origin":"*","access-control-allow-methods":"GET, POST, OPTIONS","access-control-allow-headers":"content-type, accept","vary":"Origin"}}
-function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store",...corsHeaders()}})}
+function storeFor(){return Netlify.context?.deploy?.context==="production"?getStore("rm-community",{consistency:"strong"}):getDeployStore("rm-community")}
+function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}})}
 function cleanAlias(value){return String(value||"").replace(/[\u0000-\u001f\u007f]/g,"").trim().slice(0,24)}
 function cleanLeagueName(value){return String(value||"").replace(/[\u0000-\u001f\u007f]/g,"").trim().slice(0,32)}
 function validParticipantId(value){return typeof value==="string" && /^[A-Za-z0-9_-]{16,80}$/.test(value)}
@@ -88,8 +87,7 @@ async function addMember(store,code,participantId,alias){
   const now=new Date().toISOString();await store.setJSON(`league-members/${code}/${participantId}.json`,{participantId,alias,joinedAt:now});await store.setJSON(`participant-leagues/${participantId}/${code}.json`,{code,joinedAt:now});
 }
 
-export default async (req) => {
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders()});
+export default async (req: Request) => {
   const match=currentMatch();
   try{
     const store=storeFor(),url=new URL(req.url),participantId=url.searchParams.get("participantId")||"",leagueCode=normalizeCode(url.searchParams.get("league"));
@@ -115,6 +113,6 @@ export default async (req) => {
       if(body.matchId!==match.id)return json({error:"Partido no válido"},400);if(!validParticipantId(body.participantId))return json({error:"Identificador no válido"},400);const alias=cleanAlias(body.alias);if(alias.length<2)return json({error:"El apodo debe tener al menos 2 caracteres"},400);const xiError=validateXI(body.xi);if(xiError)return json({error:xiError},400);
       const key=`predictions/${match.id}/${body.participantId}.json`,previous=await store.get(key,{type:"json"});await store.setJSON(key,{matchId:match.id,participantId:body.participantId,alias,xi:body.xi,updatedAt:new Date().toISOString()});await syncMembershipAliases(store,body.participantId,alias);return json({ok:true,updated:Boolean(previous)})
     }
-    return new Response(null,{status:405,headers:{allow:"GET, POST, OPTIONS",...corsHeaders()}})
+    return new Response(null,{status:405,headers:{allow:"GET, POST"}})
   }catch(error){console.error("community-v2",error);return json({error:error instanceof Error?error.message:"Servicio comunitario temporalmente no disponible"},500)}
 };
