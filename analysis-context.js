@@ -66,12 +66,16 @@ function bindStatsBridge(){
     syncStats(true);
   });
 }
+function loadEngagementLoop(){
+  if(!document.querySelector('link[data-engagement-loop]')){const link=document.createElement('link');link.rel='stylesheet';link.href='engagement-loop.css?v=1';link.dataset.engagementLoop='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-engagement-loop]')){const script=document.createElement('script');script.src='engagement-loop.js?v=1';script.dataset.engagementLoop='1';document.body.appendChild(script)}
+}
 function install(){
   if(installed)return;
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
   installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();
   window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
-  syncStats(true);
+  syncStats(true);loadEngagementLoop();
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
 ['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));
