@@ -18,3 +18,5 @@ jobs:
         run: node scripts/validate-engagement.cjs
       - name: Validate decision profile
         run: node scripts/validate-decision-profile.cjs
+      - name: Validate decision coach
+        run: node scripts/validate-decision-coach.cjs
