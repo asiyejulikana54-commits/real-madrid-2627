@@ -100,8 +100,8 @@ function loadPublicLayer(){
   if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=11';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
 function loadCompareLifecycle(){
-  if(!document.querySelector('link[data-compare-lifecycle]')){const link=document.createElement('link');link.rel='stylesheet';link.href='compare-lifecycle.css?v=2';link.dataset.compareLifecycle='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-compare-lifecycle]')){const script=document.createElement('script');script.src='compare-lifecycle.js?v=2';script.dataset.compareLifecycle='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-compare-lifecycle]')){const link=document.createElement('link');link.rel='stylesheet';link.href='compare-lifecycle.css?v=1';link.dataset.compareLifecycle='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-compare-lifecycle]')){const script=document.createElement('script');script.src='compare-lifecycle.js?v=1';script.dataset.compareLifecycle='1';document.body.appendChild(script)}
 }
 
 function install(){
