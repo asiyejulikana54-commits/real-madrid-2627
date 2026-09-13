@@ -6,7 +6,7 @@ let manifest=null;try{manifest=JSON.parse(read('manifest.webmanifest'))}catch(e)
 if(!/const CACHE_VERSION=['"]rm2627-static-v\d+['"]/.test(sw))failures.push('sw.js necesita caché versionada');
 if(!sw.includes("url.pathname.includes('/.netlify/functions/')"))failures.push('sw.js debe excluir Netlify Functions');
 if(!sw.includes('networkFirst')||!sw.includes('staleWhileRevalidate'))failures.push('sw.js debe conservar estrategias de red/caché');
-if(!index.includes('rel="manifest" href="manifest.webmanifest"')||!index.includes('pwa.js?v=2'))failures.push('index.html no carga correctamente PWA/manifest');
+if(!index.includes('rel="manifest" href="manifest.webmanifest"')||!/<script src="pwa\.js\?v=\d+"><\/script>/.test(index))failures.push('index.html no carga correctamente PWA/manifest');
 if(!pwa.includes('window.RMPWA')||!pwa.includes('showInstallGuide'))failures.push('pwa.js no conserva su API pública');
 if(!ctx.includes('deep-links.js?v=1'))failures.push('analysis-context.js no carga deep links');
 if(!personal.includes('community-pro.js?v=2')||!personal.includes('community-league.js?v=1'))failures.push('personal-nav.js no integra la capa de comunidad');
