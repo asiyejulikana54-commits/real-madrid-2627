@@ -1,6 +1,6 @@
 (()=>{
   const endpoint='https://vvltmdedwgjtvlcmindn.supabase.co/functions/v1/community';
-  const match={id:'elche-2026-09-15',rival:'Elche',kickoff:'2026-09-15T21:30:00+02:00',deadline:'2026-09-15T20:25:00+02:00'};
+  const match={id:'elche-2026-09-15',rival:'Elche',kickoff:'2026-09-15T21:30:00+02:00',deadline:'2026-09-15T19:45:00+02:00'};
   const storageKey=`rm_prediction_${match.id}`;
   const apiUrl=params=>{const url=new URL(endpoint);for(const [key,value] of Object.entries(params||{}))if(value!==undefined&&value!==null&&value!=='')url.searchParams.set(key,String(value));return url.href};
 
@@ -21,7 +21,7 @@
     const focus=document.querySelector('#inicio .focus-box h3');if(focus)focus.textContent='Debates abiertos para el Elche';
     const notes=document.getElementById('notes');if(notes)notes.placeholder='Ej.: contra el Elche quiero comprobar rotaciones, descansos y cambios respecto al Rayo...';
     const predHead=document.querySelector('#prediccion .section-head h2');if(predHead)predHead.textContent='Predice el XI contra el Elche';
-    const rules=document.querySelector('#prediccion .prediction-rules');if(rules)rules.innerHTML='<b>ELCHE vs REAL MADRID</b><span>15 SEP · 21:30</span><span>Se cierra: 20:25</span>';
+    const rules=document.querySelector('#prediccion .prediction-rules');if(rules)rules.innerHTML='<b>ELCHE vs REAL MADRID</b><span>15 SEP · 21:30</span><span>Se cierra: 19:45</span>';
   }
 
   predictionIsClosed=closed;
