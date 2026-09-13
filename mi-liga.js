@@ -12,6 +12,10 @@ function ensureCommunityLeagueAssets(){
   if(window.RMCommunityLeague||document.querySelector('script[src*="community-league.js"]'))return;
   const script=document.createElement('script');script.src='community-league.js?v=4';script.dataset.communityLeague='1';script.async=false;document.head.appendChild(script);
 }
+function ensureWebAnalyticsAssets(){
+  if(window.RMWebAnalytics||document.querySelector('script[src*="web-analytics.js"]'))return;
+  const script=document.createElement('script');script.src='web-analytics.js?v=1';script.dataset.webAnalytics='1';script.async=false;document.head.appendChild(script);
+}
 function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function data(){return window.RMCommunityData||null}
 function participantId(){try{return window.RMCommunityApi?.participantId?.()||''}catch{return ''}}
@@ -143,7 +147,7 @@ function observeNavRoots(){
   observeRoot(document.getElementById('navDesktop'));
   observeRoot(document.getElementById('uxMoreSheet'));
 }
-window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active');scheduleCommunityPresentationFix(0)},0)};
-function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',()=>{render();scheduleCommunityPresentationFix(80)});document.addEventListener('rm-community-pro-rendered',()=>scheduleCommunityPresentationFix(0));document.addEventListener('rm-modules-ready',()=>{schedulePatch();scheduleCommunityPresentationFix(0)});new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>{setTimeout(schedulePatch,ms);setTimeout(()=>scheduleCommunityPresentationFix(0),ms)});setTimeout(()=>refresh(false),500)}
+window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active');scheduleCommunityPresentationFix(0);window.RMWebAnalytics?.summary?.()},0)};
+function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();ensureWebAnalyticsAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',()=>{render();scheduleCommunityPresentationFix(80)});document.addEventListener('rm-community-pro-rendered',()=>scheduleCommunityPresentationFix(0));document.addEventListener('rm-modules-ready',()=>{schedulePatch();scheduleCommunityPresentationFix(0)});new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>{setTimeout(schedulePatch,ms);setTimeout(()=>scheduleCommunityPresentationFix(0),ms)});setTimeout(()=>refresh(false),500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
