@@ -5,6 +5,10 @@ function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
 }
+function loadSimpleExperience(){
+  if(!document.querySelector('link[data-simple-experience]')){const link=document.createElement('link');link.rel='stylesheet';link.href='simple-mode.css?v=2';link.dataset.simpleExperience='1';document.head.appendChild(link)}
+  if(!window.RMSimpleExperience&&!document.querySelector('script[data-simple-experience]')){const script=document.createElement('script');script.src='simple-mode.js?v=2';script.dataset.simpleExperience='1';script.async=false;document.body.appendChild(script)}
+}
 function loadCommunityPro(){
   if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=3';link.dataset.communityPro='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=3';script.dataset.communityPro='1';document.body.appendChild(script)}
@@ -54,7 +58,7 @@ function refresh(){injectMore();injectDesktop()}
 function scheduleMenuRefresh(){clearTimeout(menuRefreshTimer);menuRefreshTimer=setTimeout(refresh,0)}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;refresh();loadCommunityLeague();
+  installed=true;refresh();loadSimpleExperience();loadCommunityLeague();
   new MutationObserver(scheduleMenuRefresh).observe(document.body,{childList:true});
   const base=showSection;showSection=function(id){
     if(id==='mi-temporada')loadPersonalSeasonPro();
