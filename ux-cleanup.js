@@ -4,19 +4,19 @@ const UX_GROUPS=[
   {label:'Equipo',ids:['plantilla','power','jerarquias']},
   {label:'Rendimiento',ids:['estadisticas','evolucion','partidos','mvp']},
   {label:'Decisiones',ids:['radar','comparador']},
-  {label:'Comunidad',ids:['comunidad','prediccion']}
+  {label:'Comunidad',ids:['mi-liga','comunidad','prediccion']}
 ];
 const UX_PRIMARY=[
   {id:'inicio',icon:'⌂',label:'Inicio'},
   {id:'partido',icon:'⚽',label:'Partido'},
   {id:'plantilla',icon:'◉',label:'Equipo'},
-  {id:'power',icon:'⚡',label:'Datos'}
+  {id:'mi-liga',icon:'🏆',label:'Mi Liga'}
 ];
-const UX_REQUIRED=['partido','power'];
+const UX_REQUIRED=[];
 let uxInstalled=false;
 
 function uxSection(id){return sections.find(s=>s[0]===id)}
-function uxEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function uxEsc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function uxActive(){return document.querySelector('.section.active')?.id||'inicio'}
 function uxGroupFor(id){return UX_GROUPS.find(g=>g.ids.includes(id))?.label||'Análisis'}
 
@@ -31,7 +31,7 @@ function renderNavs(){
   const desk=document.getElementById('navDesktop'),mobile=document.getElementById('navMobile');
   if(desk)desk.innerHTML=desktopNav();
   if(mobile){
-    const direct=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="showSection('${x.id}')"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
+    const direct=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="${x.id==='mi-liga'?'openMiLiga()':`showSection('${x.id}')`}"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
     mobile.innerHTML=`${direct}<button class="ux-more-tab" id="uxMoreTab" onclick="openUxMore()"><b>☰</b><small>Más</small></button>`;
   }
   syncNav(uxActive());
@@ -45,7 +45,7 @@ function syncNav(id){
 function ensureMoreSheet(){
   if(document.getElementById('uxMoreSheet'))return;
   const wrap=document.createElement('div');wrap.id='uxMoreSheet';wrap.className='ux-sheet';
-  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y datos</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
+  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="${s[0]==='mi-liga'?'openMiLiga()':`showSection('${s[0]}')`}"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y datos</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
   document.body.appendChild(wrap);
 }
 function refreshMoreSheet(){
@@ -112,8 +112,9 @@ function install(){
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
   document.addEventListener('rm-modules-ready',()=>{refreshMoreSheet();refreshUi()});
   document.addEventListener('rm-ranking-official-ready',()=>setTimeout(cleanDenseCards,0));
-  [250,900,2200].forEach(ms=>setTimeout(refreshUi,ms));
+  document.addEventListener('rm-community-updated',()=>setTimeout(refreshUi,0));
+  [120,350,900,2200].forEach(ms=>setTimeout(refreshUi,ms));
   loadRefineLayer();loadVisualLayer();loadPublicLayer();loadCompareLifecycle();
 }
-setTimeout(install,60);
+setTimeout(install,20);
 })();
