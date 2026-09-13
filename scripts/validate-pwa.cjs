@@ -14,7 +14,7 @@ if(miLiga.includes("observe(document.body,{childList:true,subtree:true})"))failu
 if(!miLiga.includes("if(btn.innerHTML!==html)btn.innerHTML=html"))failures.push('Mi Liga debe evitar reescrituras recursivas del botón móvil');
 if(!pwa.includes('window.RMPWA')||!pwa.includes('showInstallGuide'))failures.push('pwa.js no conserva su API pública');
 if(!ctx.includes('deep-links.js?v=1'))failures.push('analysis-context.js no carga deep links');
-if(!personal.includes('community-pro.js?v=2')||!personal.includes('community-league.js?v=1'))failures.push('personal-nav.js no integra la capa de comunidad');
+if(!/community-pro\.js\?v=\d+/.test(personal)||!/community-league\.js\?v=\d+/.test(personal))failures.push('personal-nav.js no integra la capa de comunidad');
 if(!community.includes('renderSimpleXiComparison'))failures.push('community.js no integra la comparación simple de XI');
 if(manifest&&!Array.isArray(manifest.icons))failures.push('manifest.webmanifest no define icons');
 const coreMatch=sw.match(/const CORE_PATHS=\[(.*?)\];/s);let quoted=[];
