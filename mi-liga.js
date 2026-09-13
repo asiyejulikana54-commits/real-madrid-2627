@@ -3,7 +3,14 @@ const SECTION_ID='mi-liga';
 let installed=false;
 let patchTimer=null;
 const observedRoots=new WeakSet();
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function ensureCommunityLeagueAssets(){
+  if(!document.querySelector('link[href*="community-league.css"]')){
+    const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=4';link.dataset.communityLeague='1';document.head.appendChild(link);
+  }
+  if(window.RMCommunityLeague||document.querySelector('script[src*="community-league.js"]'))return;
+  const script=document.createElement('script');script.src='community-league.js?v=4';script.dataset.communityLeague='1';script.async=false;document.head.appendChild(script);
+}
+function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function data(){return window.RMCommunityData||null}
 function participantId(){try{return window.RMCommunityApi?.participantId?.()||''}catch{return ''}}
 function me(d){const id=participantId();return d?.myCompetition||d?.leaderboard?.find(x=>x.participantId===id)||null}
@@ -55,6 +62,7 @@ async function refresh(force=false){
   render();
 }
 function openPrivate(code=''){
+  ensureCommunityLeagueAssets();
   showSection('comunidad');
   let tries=0;const open=()=>{
     const tab=document.querySelector('#communityLeague [data-cgl-tab="private"]');
@@ -91,6 +99,6 @@ function observeNavRoots(){
   observeRoot(document.getElementById('uxMoreSheet'));
 }
 window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active')},0)};
-function install(){if(installed)return;installed=true;addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',render);document.addEventListener('rm-modules-ready',schedulePatch);new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>setTimeout(schedulePatch,ms));setTimeout(()=>refresh(false),500)}
+function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',render);document.addEventListener('rm-modules-ready',schedulePatch);new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>setTimeout(schedulePatch,ms));setTimeout(()=>refresh(false),500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
