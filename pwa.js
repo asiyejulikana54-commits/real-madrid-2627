@@ -8,6 +8,10 @@ const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 const isAndroid=()=>/android/i.test(navigator.userAgent);
 const isInApp=()=>/wv|instagram|fban|fbav|line\//i.test(navigator.userAgent)||(!/chrome|crios|safari|firefox|edg/i.test(navigator.userAgent)&&isAndroid());
 function toastSafe(msg){try{if(typeof toast==='function')toast(msg);else console.info(msg)}catch{}}
+function loadBackupModule(){
+  if(window.RMBackup||document.querySelector('script[data-backup-pro]'))return;
+  const script=document.createElement('script');script.src='backup-pro.js?v=1';script.dataset.backupPro='1';script.async=false;document.body.appendChild(script)
+}
 function setMode(){
   document.documentElement.classList.toggle('pwa-standalone',isStandalone());
   document.documentElement.classList.toggle('pwa-offline',!navigator.onLine);
@@ -82,7 +86,7 @@ function openSectionFromUrl(attempt=0){
 }
 window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
 function install(){
-  if(installed)return;installed=true;setMode();ensureInstallButton();openSectionFromUrl();
+  if(installed)return;installed=true;loadBackupModule();setMode();ensureInstallButton();openSectionFromUrl();
   window.addEventListener('online',setMode);window.addEventListener('offline',setMode);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;ensureInstallButton()});
   window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;setMode();document.getElementById('pwaInstallBtn')?.remove();closeInstallGuide();toastSafe('RM 26/27 instalada')});
