@@ -15,14 +15,24 @@ function loadCommunityLeague(){
   if(!document.querySelector('script[data-community-league]')){const script=document.createElement('script');script.src='community-league.js?v=1';script.dataset.communityLeague='1';document.body.appendChild(script)}
   return true;
 }
+function openHowItWorks(){
+  window.closeUxMore?.();let tries=0;
+  const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(window.RMSiteGuide?.open){window.RMSiteGuide.open();return}if(++tries<25)setTimeout(open,80)};
+  open();
+}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
   const firstGroup=sheet.querySelector('.ux-sheet-groups section>div');if(firstGroup&&!sheet.querySelector('[data-section="mi-temporada"]'))firstGroup.insertAdjacentHTML('afterbegin',personalButton());
-  const tools=sheet.querySelector('.ux-sheet-tools');if(tools&&!document.getElementById('uxGlobalSearch')){
-    const search=document.createElement('button');search.id='uxGlobalSearch';search.innerHTML='⌕ Buscar en RM 26/27';search.onclick=()=>{window.closeUxMore?.();window.rmOpenSearch?.()};tools.insertBefore(search,tools.children[1]||null);
+  const tools=sheet.querySelector('.ux-sheet-tools');
+  if(tools){
+    const title=tools.querySelector(':scope > span');if(title)title.textContent='Ayuda, aplicación y datos';
+    if(!document.getElementById('uxHowRM')){const help=document.createElement('button');help.id='uxHowRM';help.innerHTML='? Cómo funciona la web';help.onclick=openHowItWorks;tools.insertBefore(help,tools.children[1]||null)}
+  }
+  if(tools&&!document.getElementById('uxGlobalSearch')){
+    const search=document.createElement('button');search.id='uxGlobalSearch';search.innerHTML='⌕ Buscar en RM 26/27';search.onclick=()=>{window.closeUxMore?.();window.rmOpenSearch?.()};const help=document.getElementById('uxHowRM');tools.insertBefore(search,help?.nextSibling||tools.children[1]||null);
   }
   if(tools&&!document.getElementById('uxShareScreen')){
-    const share=document.createElement('button');share.id='uxShareScreen';share.innerHTML='↗ Compartir esta pantalla';share.onclick=()=>{window.closeUxMore?.();window.rmShareCurrent?.()};const install=document.getElementById('uxInstallApp');tools.insertBefore(share,install||tools.children[2]||null);
+    const share=document.createElement('button');share.id='uxShareScreen';share.innerHTML='↗ Compartir esta pantalla';share.onclick=()=>{window.closeUxMore?.();window.rmShareCurrent?.()};const install=document.getElementById('uxInstallApp');tools.insertBefore(share,install||tools.children[3]||null);
   }
   return true;
 }
@@ -42,7 +52,7 @@ function install(){
     if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}
   };
   const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}
-  document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
+  document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 setTimeout(install,90);
 })();
