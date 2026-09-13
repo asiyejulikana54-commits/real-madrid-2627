@@ -16,7 +16,7 @@ const UX_REQUIRED=[];
 let uxInstalled=false;
 
 function uxSection(id){return sections.find(s=>s[0]===id)}
-function uxEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function uxEsc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function uxActive(){return document.querySelector('.section.active')?.id||'inicio'}
 function uxGroupFor(id){return UX_GROUPS.find(g=>g.ids.includes(id))?.label||'Análisis'}
 
@@ -45,7 +45,7 @@ function syncNav(id){
 function ensureMoreSheet(){
   if(document.getElementById('uxMoreSheet'))return;
   const wrap=document.createElement('div');wrap.id='uxMoreSheet';wrap.className='ux-sheet';
-  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="${s[0]==='mi-liga'?'openMiLiga()':`showSection('${s[0]}')`}"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y datos</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
+  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="${s[0]==='mi-liga'?'openMiLiga()':`showSection('${s[0]}')`}"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Ayuda, aplicación y datos</span><button onclick="openHowRM()">? Cómo funciona la web</button><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
   document.body.appendChild(wrap);
 }
 function refreshMoreSheet(){
@@ -53,6 +53,11 @@ function refreshMoreSheet(){
 }
 window.openUxMore=function(){ensureMoreSheet();document.getElementById('uxMoreSheet')?.classList.add('open');document.body.classList.add('ux-sheet-open');syncNav(uxActive())};
 window.closeUxMore=function(){document.getElementById('uxMoreSheet')?.classList.remove('open');document.body.classList.remove('ux-sheet-open')};
+window.openHowRM=function(){
+  closeUxMore();
+  if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}
+  let tries=0;const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(++tries<15)setTimeout(open,100);else if(typeof toast==='function')toast('La guía todavía se está cargando')};open();
+};
 window.uxInstallRM=function(){
   closeUxMore();
   if(window.RMPWA?.install){window.RMPWA.install();return}
