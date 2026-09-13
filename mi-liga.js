@@ -2,7 +2,9 @@
 const SECTION_ID='mi-liga';
 let installed=false;
 let patchTimer=null;
+let communityPresentationTimer=null;
 const observedRoots=new WeakSet();
+const COMMUNITY_SLOT_LABELS=Object.freeze({gk:'POR',lb:'LI',lcb:'DFC izq.',rcb:'DFC der.',rb:'LD',dm1:'MC izq.',dm2:'MC der.',am:'MP',lw:'EI',rw:'ED',st:'DC'});
 function ensureCommunityLeagueAssets(){
   if(!document.querySelector('link[href*="community-league.css"]')){
     const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=4';link.dataset.communityLeague='1';document.head.appendChild(link);
@@ -14,6 +16,48 @@ function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&
 function data(){return window.RMCommunityData||null}
 function participantId(){try{return window.RMCommunityApi?.participantId?.()||''}catch{return ''}}
 function me(d){const id=participantId();return d?.myCompetition||d?.leaderboard?.find(x=>x.participantId===id)||null}
+function numberFromText(value){const m=String(value??'').replace(',','.').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
+function canonicalPlayer(name){try{return window.RMSeasonData?.canonical?.(name)||String(name||'')}catch{return String(name||'')}}
+function rawCommunitySlotStates(){
+  const d=data();let defs=[];try{defs=typeof slots!=='undefined'?slots.map(s=>({key:s[0],label:s[1]})):[]}catch{}
+  return defs.map(slot=>{
+    const list=(d?.slotShares?.[slot.key]||[]).filter(x=>x?.name).slice(0,5),top=list[0]||null,second=list[1]||null;
+    const share=Number(top?.percentage)||0,secondShare=Number(second?.percentage)||0,margin=share-secondShare;
+    return {slot,list,top,second,share,secondShare,margin};
+  }).sort((a,b)=>a.share-b.share||a.margin-b.margin);
+}
+function cleanRedundantGlobalLabels(){
+  document.querySelectorAll('#communityPolls .poll-row b').forEach(b=>{
+    const small=b.querySelector('small');if(!small)return;
+    const local=numberFromText(b.childNodes[0]?.textContent||''),global=numberFromText(small.textContent);
+    if(Number.isFinite(local)&&Number.isFinite(global)&&Math.abs(local-global)<0.05)small.remove();
+  });
+  document.querySelectorAll('#communityPro .cpro-grid article').forEach(article=>{
+    const local=numberFromText(article.querySelector('strong')?.textContent||'');
+    [...article.querySelectorAll('p')].forEach(p=>{
+      if(!/^\s*Global:/i.test(p.textContent||''))return;
+      const global=numberFromText(p.textContent);if(Number.isFinite(local)&&Number.isFinite(global)&&Math.abs(local-global)<0.05)p.remove();
+    });
+  });
+}
+function fixConsensusDuplicateLeaders(){
+  const grid=document.querySelector('#communityPro .cpro-grid');if(!grid)return;
+  const articles=[...grid.querySelectorAll(':scope > article')],states=rawCommunitySlotStates();if(!states.length||articles.length!==states.length)return;
+  const rows=states.map((state,index)=>({state,index,article:articles[index],key:canonicalPlayer(state.top?.name).toLowerCase()}));
+  rows.forEach(row=>{const label=row.article.querySelector('div span');if(label)label.textContent=COMMUNITY_SLOT_LABELS[row.state.slot.key]||row.state.slot.label});
+  const groups=new Map();for(const row of rows){if(!row.key)continue;const list=groups.get(row.key)||[];list.push(row);groups.set(row.key,list)}
+  for(const group of groups.values()){
+    if(group.length<2)continue;
+    group.sort((a,b)=>b.state.share-a.state.share||a.index-b.index);const keeper=group[0];
+    const label=keeper.article.querySelector('div span'),labels=[...new Set(group.map(x=>COMMUNITY_SLOT_LABELS[x.state.slot.key]||x.state.slot.label))];if(label)label.textContent=labels.join(' / ');
+    group.slice(1).forEach(x=>x.article.remove());
+  }
+}
+function fixCommunityPresentation(){communityPresentationTimer=null;fixConsensusDuplicateLeaders();cleanRedundantGlobalLabels()}
+function scheduleCommunityPresentationFix(delay=0){
+  if(communityPresentationTimer!==null)clearTimeout(communityPresentationTimer);
+  communityPresentationTimer=setTimeout(fixCommunityPresentation,delay);
+}
 function addSection(){
   if(typeof sections!=='undefined'&&!sections.some(s=>s[0]===SECTION_ID))sections.push([SECTION_ID,'🏆','Mi Liga','Mi Liga','Tu clasificación, la comunidad y tus ligas privadas.']);
   if(document.getElementById(SECTION_ID))return;
@@ -56,6 +100,7 @@ function render(){
   root.querySelector('[data-mil-community]')?.addEventListener('click',()=>showSection('comunidad'));
   root.querySelector('[data-mil-manage]')?.addEventListener('click',openPrivate);
   root.querySelectorAll('[data-mil-league]').forEach(b=>b.addEventListener('click',()=>openPrivate(b.dataset.milLeague)));
+  scheduleCommunityPresentationFix(0);
 }
 async function refresh(force=false){
   addSection();if(force||!data())try{await window.RMCommunityApi?.refresh?.()}catch{}
@@ -98,7 +143,7 @@ function observeNavRoots(){
   observeRoot(document.getElementById('navDesktop'));
   observeRoot(document.getElementById('uxMoreSheet'));
 }
-window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active')},0)};
-function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',render);document.addEventListener('rm-modules-ready',schedulePatch);new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>setTimeout(schedulePatch,ms));setTimeout(()=>refresh(false),500)}
+window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active');scheduleCommunityPresentationFix(0)},0)};
+function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',()=>{render();scheduleCommunityPresentationFix(80)});document.addEventListener('rm-community-pro-rendered',()=>scheduleCommunityPresentationFix(0));document.addEventListener('rm-modules-ready',()=>{schedulePatch();scheduleCommunityPresentationFix(0)});new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>{setTimeout(schedulePatch,ms);setTimeout(()=>scheduleCommunityPresentationFix(0),ms)});setTimeout(()=>refresh(false),500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
