@@ -62,7 +62,11 @@ function openPrivate(code=''){
 }
 function patchNav(){
   const nav=document.getElementById('navMobile');
-  if(nav){const btn=nav.querySelector('[data-section="mi-liga"]');if(btn){btn.setAttribute('onclick','openMiLiga()');btn.innerHTML='<b>🏆</b><small>Mi Liga</small>'}}
+  if(nav){
+    let btn=nav.querySelector('[data-section="mi-liga"]');
+    if(!btn){btn=document.createElement('button');btn.dataset.section='mi-liga';const more=nav.querySelector('#uxMoreTab,.ux-more-tab');if(more)nav.insertBefore(btn,more);else nav.appendChild(btn)}
+    btn.setAttribute('onclick','openMiLiga()');btn.innerHTML='<b>🏆</b><small>Mi Liga</small>';
+  }
   const desk=document.getElementById('navDesktop');
   if(desk&&!desk.querySelector('[data-section="mi-liga"]')){
     const groups=[...desk.querySelectorAll('.ux-nav-group')];const group=groups.find(g=>g.querySelector('[data-section="comunidad"]'))||groups.at(-1);if(group){const b=document.createElement('button');b.dataset.section='mi-liga';b.onclick=()=>openMiLiga();b.innerHTML='<span>🏆</span><em>Mi Liga</em>';group.appendChild(b)}
