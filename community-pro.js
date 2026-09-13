@@ -1,12 +1,13 @@
 (()=>{
 const KEY='rm_community_pro_snapshots_v1';
+const SLOT_LABELS=Object.freeze({gk:'POR',lb:'LI',lcb:'DFC',rcb:'DFC',rb:'LD',dm1:'MC',dm2:'MC',am:'MP',lw:'EI',rw:'ED',st:'DC'});
 let installed=false,attempts=0;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),name)||name}
 function display(name){return safe(()=>typeof displayName==='function'?displayName(name):name,name)||name}
 function same(a,b){return Boolean(a&&b&&canonical(a)===canonical(b))}
-function defs(){return safe(()=>slots.map(s=>({key:s[0],label:s[1]})),[])||[]}
+function defs(){return safe(()=>slots.map(s=>({key:s[0],label:SLOT_LABELS[s[0]]||s[1]})),[])||[]}
 function data(){return window.RMCommunityData||null}
 function match(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
 function current(){return safe(()=>typeof currentPredictionXI==='function'?currentPredictionXI():null,null)}
