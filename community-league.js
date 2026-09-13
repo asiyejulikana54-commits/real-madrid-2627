@@ -1,12 +1,14 @@
 (()=>{
 const ALIAS_KEY='rm_league_alias_v1';
-let installed=false,attempts=0,tab='general',selectedLeague='',leagueViews=new Map(),loading=false;
+const XI_LAYOUT={gk:[50,91,'POR'],lb:[14,73,'LI'],lcb:[38,75,'DFC'],rcb:[62,75,'DFC'],rb:[86,73,'LD'],dm1:[36,55,'MC'],dm2:[64,55,'MC'],am:[50,37,'MP'],lw:[20,25,'EI'],rw:[80,25,'ED'],st:[50,12,'DC']};
+let installed=false,attempts=0,tab='general',selectedLeague='',leagueViews=new Map(),loading=false,selectedMemberByLeague=new Map();
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function api(){return window.RMCommunityApi||null}
 function data(){return window.RMCommunityData||null}
 function participantId(){return safe(()=>api()?.participantId?.(),safe(()=>getParticipantId(),''))||''}
 function mine(row){return Boolean(row&&row.participantId===participantId())}
+function display(v){return safe(()=>typeof displayName==='function'?displayName(v):v,v)||v}
 function savedAlias(){
   const stored=safe(()=>localStorage.getItem(ALIAS_KEY),'')||'';if(stored)return stored;
   const pred=safe(()=>typeof getSavedPrediction==='function'?getSavedPrediction():null,null),input=document.getElementById('predictionName');return String(pred?.name||input?.value||'').trim();
@@ -42,9 +44,30 @@ function leagueCards(d){
   const leagues=d?.myLeagues||[];if(!leagues.length)return `<div class="cgl-empty compact"><b>No estás en ninguna liga privada</b><span>Crea una para tu grupo o entra con un código.</span></div>`;
   return `<div class="cgl-leagues">${leagues.map(l=>`<button type="button" class="${selectedLeague===l.code?'active':''}" data-cgl-league="${esc(l.code)}"><span>${esc(l.name)}</span><b>${esc(l.code)}</b><small>${l.memberCount} miembro${l.memberCount===1?'':'s'}${l.owner?' · creada por ti':''}</small></button>`).join('')}</div>`;
 }
+function predTime(value){if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}
+function selectedLeagueMember(view){
+  const members=view?.members||[];if(!members.length)return null;let id=selectedMemberByLeague.get(view.code);
+  if(!members.some(m=>m.participantId===id)){
+    const preferred=members.find(m=>mine(m)&&m.currentPrediction?.xi)||members.find(m=>m.currentPrediction?.xi)||members.find(m=>mine(m))||members[0];id=preferred?.participantId||'';if(id)selectedMemberByLeague.set(view.code,id);
+  }
+  return members.find(m=>m.participantId===id)||null;
+}
+function memberPitch(member){
+  const pred=member?.currentPrediction,xi=pred?.xi;if(!xi)return `<div class="cgl-empty compact cgl-xi-empty"><b>${esc(member?.alias||'Este usuario')} todavía no ha publicado su XI</b><span>Cuando publique su predicción para el próximo partido aparecerá aquí.</span></div>`;
+  const players=Object.entries(XI_LAYOUT).filter(([slot])=>xi[slot]).map(([slot,[left,top,role]])=>`<div class="cgl-xi-player" style="left:${left}%;top:${top}%"><i>${role}</i><b>${esc(display(xi[slot]))}</b></div>`).join('');
+  const when=predTime(pred.updatedAt);return `<div class="cgl-xi-card"><div class="cgl-xi-meta"><div><span>XI DE ${esc(member.alias||'USUARIO')}</span><b>${mine(member)?'Tu predicción':`Predicción de ${esc(member.alias||'Usuario')}`}</b></div>${when?`<small>Actualizado ${esc(when)}</small>`:''}</div><div class="pitch cgl-xi-pitch">${players}</div></div>`;
+}
+function leaguePredictions(view){
+  if(!view?.amMember)return `<div class="cgl-empty compact cgl-xi-locked"><b>Los XI son privados para los miembros de la liga</b><span>Entra en la liga para poder ver las predicciones de sus participantes.</span></div>`;
+  const members=view.members||[];if(!members.length)return '';
+  const selected=selectedLeagueMember(view),rival=data()?.match?.rival||'el próximo partido';
+  return `<section class="cgl-xi-section"><div class="cgl-xi-head"><div><span>ONCES DE TU LIGA</span><b>Predicciones contra ${esc(rival)}</b><small>Toca un usuario para ver su XI publicado.</small></div><strong>${members.filter(m=>m.currentPrediction?.xi).length}/${members.length}<small>con XI</small></strong></div><div class="cgl-xi-members">${members.map(m=>`<button type="button" class="${selected?.participantId===m.participantId?'active':''} ${m.currentPrediction?.xi?'has-xi':'no-xi'}" data-cgl-member="${esc(m.participantId)}"><span>${esc(m.alias||'Usuario')}${mine(m)?'<small>Tú</small>':''}</span><b>${m.currentPrediction?.xi?'Ver XI':'Sin XI'}</b></button>`).join('')}</div>${memberPitch(selected)}</section>`;
+}
 function leagueRanking(view){
   if(!view)return `<div class="cgl-empty compact"><b>Elige una liga</b><span>Verás su clasificación general y el resultado de la última jornada.</span></div>`;
-  const rows=view.ranking||[];return `<div class="cgl-private-head"><div><span>LIGA PRIVADA</span><h3>${esc(view.name)}</h3><small>Código ${esc(view.code)} · ${view.memberCount} miembro${view.memberCount===1?'':'s'}</small></div><div class="cgl-private-actions"><button type="button" data-cgl-share="${esc(view.code)}">Compartir código</button>${view.amMember&&!view.amOwner?`<button type="button" class="danger" data-cgl-leave="${esc(view.code)}">Salir</button>`:''}</div></div>${rows.length?`<div class="cgl-table private"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Puntos</span><span>Media</span><span>Racha 8+</span><span>J.</span></div>${rows.map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span>${esc(r.alias)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}</strong><em>${fmt(r.avg)}</em><em>${r.streak8||0}</em><em>${r.scoredMatches||0}</em></div>`).join('')}</div>`:`<div class="cgl-empty compact"><b>La liga está preparada</b><span>La clasificación empezará cuando sus miembros tengan jornadas puntuadas.</span></div>`}`;
+  const rows=view.ranking||[];
+  const ranking=rows.length?`<div class="cgl-table private"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Puntos</span><span>Media</span><span>Racha 8+</span><span>J.</span></div>${rows.map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span>${esc(r.alias)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}</strong><em>${fmt(r.avg)}</em><em>${r.streak8||0}</em><em>${r.scoredMatches||0}</em></div>`).join('')}</div>`:`<div class="cgl-empty compact"><b>La liga está preparada</b><span>La clasificación empezará cuando sus miembros tengan jornadas puntuadas.</span></div>`;
+  return `<div class="cgl-private-head"><div><span>LIGA PRIVADA</span><h3>${esc(view.name)}</h3><small>Código ${esc(view.code)} · ${view.memberCount} miembro${view.memberCount===1?'':'s'}</small></div><div class="cgl-private-actions"><button type="button" data-cgl-share="${esc(view.code)}">Compartir código</button>${view.amMember&&!view.amOwner?`<button type="button" class="danger" data-cgl-leave="${esc(view.code)}">Salir</button>`:''}</div></div>${ranking}${leaguePredictions(view)}`;
 }
 function privatePanel(d){
   const alias=savedAlias(),view=selectedLeague?leagueViews.get(selectedLeague):null;
@@ -79,7 +102,7 @@ async function joinLeague(){
   try{const result=await post({action:'joinLeague',participantId:participantId(),alias,code});selectedLeague=result.league.code;tab='private';leagueViews.delete(selectedLeague);await refresh(true);await loadLeague(selectedLeague,true);safe(()=>toast(`Ya estás en ${result.league.name}`))}catch(error){safe(()=>toast(error.message||'No se pudo entrar en la liga'))}
 }
 async function leaveLeague(code){
-  try{await post({action:'leaveLeague',participantId:participantId(),code});leagueViews.delete(code);selectedLeague='';await refresh(true);safe(()=>toast('Has salido de la liga'))}catch(error){safe(()=>toast(error.message||'No se pudo salir'))}
+  try{await post({action:'leaveLeague',participantId:participantId(),code});leagueViews.delete(code);selectedMemberByLeague.delete(code);selectedLeague='';await refresh(true);safe(()=>toast('Has salido de la liga'))}catch(error){safe(()=>toast(error.message||'No se pudo salir'))}
 }
 async function loadLeague(code,force=false){
   code=String(code||'').toUpperCase();if(!code)return null;selectedLeague=code;if(!force&&leagueViews.has(code)){render();return leagueViews.get(code)}
@@ -93,6 +116,7 @@ async function shareCode(code){
 function bind(root){
   root.querySelectorAll('[data-cgl-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.cglTab;render()}));
   root.querySelectorAll('[data-cgl-league]').forEach(b=>b.addEventListener('click',()=>loadLeague(b.dataset.cglLeague)));
+  root.querySelectorAll('[data-cgl-member]').forEach(b=>b.addEventListener('click',()=>{if(!selectedLeague)return;selectedMemberByLeague.set(selectedLeague,b.dataset.cglMember);render()}));
   root.querySelector('[data-cgl-create]')?.addEventListener('click',createLeague);root.querySelector('[data-cgl-join]')?.addEventListener('click',joinLeague);
   root.querySelectorAll('[data-cgl-share]').forEach(b=>b.addEventListener('click',()=>shareCode(b.dataset.cglShare)));root.querySelectorAll('[data-cgl-leave]').forEach(b=>b.addEventListener('click',()=>leaveLeague(b.dataset.cglLeave)));
 }
