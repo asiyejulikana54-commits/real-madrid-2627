@@ -6,8 +6,8 @@ function loadPersonalSeasonPro(){
   if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
 }
 function loadCommunityPro(){
-  if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=2';link.dataset.communityPro='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=2';script.dataset.communityPro='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=3';link.dataset.communityPro='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=3';script.dataset.communityPro='1';document.body.appendChild(script)}
 }
 function loadCommunityLeague(){
   if(window.RMCommunityApi&&!window.RMCommunityApi.available?.())return false;
