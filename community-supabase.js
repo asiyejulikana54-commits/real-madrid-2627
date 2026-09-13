@@ -35,7 +35,30 @@
     const section=document.getElementById('prediccion');if(!section)return;let root=document.getElementById('simpleXiComparison');if(!root){root=document.createElement('section');root.id='simpleXiComparison';root.className='card';root.style.marginTop='16px';section.appendChild(root)}
     const mine=simpleValidXi(saved()?.xi)?saved().xi:(simpleValidXi(currentPredictionXI())?currentPredictionXI():null),community=simpleCommunityXi(data);if(!mine&&!community){root.hidden=true;root.innerHTML='';return}root.hidden=false;if(!mine){root.innerHTML='<div class="section-head" style="margin-top:0"><div><h2>Tu XI vs Comunidad</h2><p>Completa y publica tus 11 para compararlos con el consenso.</p></div></div>';return}if(!community){root.innerHTML='<div class="section-head" style="margin-top:0"><div><h2>Tu XI vs Comunidad</h2><p>Tu XI está listo. El cruce aparecerá cuando exista un consenso comunitario válido de 11 jugadores.</p></div></div>';return}const d=simpleXiDiff(mine,community),chips=(list,kind='')=>`<div class="prediction-list ${kind}">${list.length?list.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join(''):'<span>—</span>'}</div>`;root.innerHTML=`<div class="section-head" style="margin-top:0"><div><h2>Tu XI vs Comunidad</h2><p>Comparación por jugadores elegidos; la posición exacta no cambia el 0–11.</p></div></div><div class="grid cols-3"><div class="kpi"><div class="label">Coincidencias</div><div class="value">${d.same.length}/11</div><div class="hint">mismos jugadores</div></div><div class="kpi"><div class="label">Solo en tu XI</div><div class="value">${d.onlyA.length}</div><div class="hint">diferencias tuyas</div></div><div class="kpi"><div class="label">Solo comunidad</div><div class="value">${d.onlyB.length}</div><div class="hint">diferencias del consenso</div></div></div>${d.onlyA.length||d.onlyB.length?`<div class="result-breakdown" style="margin-top:14px"><b>Solo en tu XI</b>${chips(d.onlyA,'good')}<b>Solo en la comunidad</b>${chips(d.onlyB,'bad')}</div>`:''}`;
   };
+
+  function installMiLigaTab(){
+    const nav=document.getElementById('navMobile');if(!nav)return;
+    const patch=()=>{
+      const btn=nav.querySelector('[data-section="power"],[data-section="mi-liga"]');if(!btn)return;
+      btn.dataset.section='mi-liga';btn.setAttribute('onclick','openMiLiga()');btn.innerHTML='<b>🏆</b><small>Mi Liga</small>';
+    };
+    patch();new MutationObserver(patch).observe(nav,{childList:true});
+  }
+  window.openMiLiga=function(){
+    if(typeof showSection==='function')showSection('comunidad');
+    let tries=0;
+    const open=()=>{
+      const privateTab=document.querySelector('#communityLeague [data-cgl-tab="private"]');
+      if(privateTab){
+        privateTab.click();
+        const nav=document.getElementById('navMobile');nav?.querySelectorAll('button').forEach(btn=>btn.classList.toggle('active',btn.dataset.section==='mi-liga'));document.getElementById('uxMoreTab')?.classList.remove('active');
+        setTimeout(()=>document.getElementById('communityLeague')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+      }else if(++tries<30)setTimeout(open,100);
+    };
+    setTimeout(open,80);
+  };
+
   window.RMCommunityApi=Object.freeze({url:apiUrl,available:communityBackendAvailable,participantId:getParticipantId,refresh:()=>loadCommunity(true),match:Object.freeze({...match})});
-  syncCopy();restorePrediction();renderPredictionStatus();
-  if(document.readyState!=='loading')setTimeout(()=>loadCommunity(true),0);else document.addEventListener('DOMContentLoaded',()=>{syncCopy();restorePrediction();renderPredictionStatus();loadCommunity(true)},{once:true});
+  syncCopy();restorePrediction();renderPredictionStatus();installMiLigaTab();
+  if(document.readyState!=='loading')setTimeout(()=>loadCommunity(true),0);else document.addEventListener('DOMContentLoaded',()=>{syncCopy();restorePrediction();renderPredictionStatus();installMiLigaTab();loadCommunity(true)},{once:true});
 })();
