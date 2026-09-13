@@ -5,6 +5,12 @@ function api(){return window.RMCommunityApi||null}
 function participantId(){try{return api()?.participantId?.()||''}catch{return ''}}
 function sessionId(){let id=sessionStorage.getItem(SESSION_KEY);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`s_${Date.now()}_${Math.random().toString(36).slice(2)}`);sessionStorage.setItem(SESSION_KEY,id)}return id}
 function activeSection(){return document.querySelector('.section.active')?.id||new URLSearchParams(location.search).get('section')||'inicio'}
+function loadLeagueInviteAssets(){
+  let code='';try{code=new URL(location.href).searchParams.get('league')||''}catch{}if(!code)return;
+  if(!document.querySelector('link[href*="league-invite.css"]')){const link=document.createElement('link');link.rel='stylesheet';link.href='league-invite.css?v=1';link.dataset.leagueInvite='1';document.head.appendChild(link)}
+  if(window.RMLeagueInvite||document.querySelector('script[src*="league-invite.js"]'))return;
+  const script=document.createElement('script');script.src='league-invite.js?v=1';script.dataset.leagueInvite='1';script.async=false;document.head.appendChild(script);
+}
 async function post(body){
   const endpoint=api()?.url?.();if(!endpoint)return null;
   const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),data=await response.json().catch(()=>({}));
@@ -45,11 +51,11 @@ async function loadSummary(){
 }
 function maybeSummary(){if(document.getElementById('mi-liga')?.classList.contains('active'))loadSummary()}
 function install(){
-  if(installed)return;installed=true;
+  if(installed)return;installed=true;loadLeagueInviteAssets();
   ping(true);setInterval(()=>ping(false),60000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){ping(true);maybeSummary()}});
   document.addEventListener('click',e=>{const nav=e.target.closest?.('[data-section]');if(nav)setTimeout(()=>{ping(true);maybeSummary()},50)});
-  window.addEventListener('popstate',()=>setTimeout(()=>ping(true),50));
+  window.addEventListener('popstate',()=>setTimeout(()=>{loadLeagueInviteAssets();ping(true)},50));
   document.addEventListener('rm-community-updated',maybeSummary);
   [700,1800].forEach(ms=>setTimeout(()=>{ping(false);maybeSummary()},ms));
   setInterval(maybeSummary,60000);
