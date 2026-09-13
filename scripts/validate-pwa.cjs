@@ -1,12 +1,17 @@
 const fs=require('fs');const path=require('path');const vm=require('vm');
 const root=path.join(__dirname,'..'),failures=[];const read=f=>fs.readFileSync(path.join(root,f),'utf8'),exists=f=>fs.existsSync(path.join(root,f));
-const sw=read('sw.js'),index=read('index.html'),pwa=read('pwa.js'),ctx=read('analysis-context.js'),personal=read('personal-nav.js'),community=read('community.js');
-for(const [name,src] of [['sw.js',sw],['pwa.js',pwa],['analysis-context.js',ctx],['personal-nav.js',personal],['community.js',community]])try{new vm.Script(src,{filename:name})}catch(e){failures.push(`${name} no compila: ${e.message}`)}
+const sw=read('sw.js'),index=read('index.html'),pwa=read('pwa.js'),ctx=read('analysis-context.js'),personal=read('personal-nav.js'),community=read('community.js'),miLiga=read('mi-liga.js');
+for(const [name,src] of [['sw.js',sw],['pwa.js',pwa],['analysis-context.js',ctx],['personal-nav.js',personal],['community.js',community],['mi-liga.js',miLiga]])try{new vm.Script(src,{filename:name})}catch(e){failures.push(`${name} no compila: ${e.message}`)}
 let manifest=null;try{manifest=JSON.parse(read('manifest.webmanifest'))}catch(e){failures.push(`manifest.webmanifest no es JSON válido: ${e.message}`)}
 if(!/const CACHE_VERSION=['"]rm2627-static-v\d+['"]/.test(sw))failures.push('sw.js necesita caché versionada');
 if(!sw.includes("url.pathname.includes('/.netlify/functions/')"))failures.push('sw.js debe excluir Netlify Functions');
 if(!sw.includes('networkFirst')||!sw.includes('staleWhileRevalidate'))failures.push('sw.js debe conservar estrategias de red/caché');
 if(!index.includes('rel="manifest" href="manifest.webmanifest"')||!/<script src="pwa\.js\?v=\d+"><\/script>/.test(index))failures.push('index.html no carga correctamente PWA/manifest');
+if(!index.includes('mi-liga.js?v=3'))failures.push('index.html no carga la corrección actual de Mi Liga');
+const cacheVersion=sw.match(/rm2627-static-v(\d+)/)?.[1],workerVersion=pwa.match(/SW_VERSION=['"](\d+)['"]/)?.[1];
+if(!cacheVersion||cacheVersion!==workerVersion)failures.push('PWA y service worker no comparten la versión restaurada');
+if(miLiga.includes("observe(document.body,{childList:true,subtree:true})"))failures.push('Mi Liga vuelve a observar todo el documento y puede bloquear la app');
+if(!miLiga.includes("if(btn.innerHTML!==html)btn.innerHTML=html"))failures.push('Mi Liga debe evitar reescrituras recursivas del botón móvil');
 if(!pwa.includes('window.RMPWA')||!pwa.includes('showInstallGuide'))failures.push('pwa.js no conserva su API pública');
 if(!ctx.includes('deep-links.js?v=1'))failures.push('analysis-context.js no carga deep links');
 if(!personal.includes('community-pro.js?v=2')||!personal.includes('community-league.js?v=1'))failures.push('personal-nav.js no integra la capa de comunidad');

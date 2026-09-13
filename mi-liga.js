@@ -1,6 +1,8 @@
 (()=>{
 const SECTION_ID='mi-liga';
 let installed=false;
+let patchTimer=null;
+const observedRoots=new WeakSet();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function data(){return window.RMCommunityData||null}
 function participantId(){try{return window.RMCommunityApi?.participantId?.()||''}catch{return ''}}
@@ -65,7 +67,8 @@ function patchNav(){
   if(nav){
     let btn=nav.querySelector('[data-section="mi-liga"]');
     if(!btn){btn=document.createElement('button');btn.dataset.section='mi-liga';const more=nav.querySelector('#uxMoreTab,.ux-more-tab');if(more)nav.insertBefore(btn,more);else nav.appendChild(btn)}
-    btn.setAttribute('onclick','openMiLiga()');btn.innerHTML='<b>🏆</b><small>Mi Liga</small>';
+    if(btn.getAttribute('onclick')!=='openMiLiga()')btn.setAttribute('onclick','openMiLiga()');
+    const html='<b>🏆</b><small>Mi Liga</small>';if(btn.innerHTML!==html)btn.innerHTML=html;
   }
   const desk=document.getElementById('navDesktop');
   if(desk&&!desk.querySelector('[data-section="mi-liga"]')){
@@ -74,7 +77,20 @@ function patchNav(){
   const sheet=document.getElementById('uxMoreSheet');
   if(sheet&&!sheet.querySelector('[data-section="mi-liga"]')){const groups=[...sheet.querySelectorAll('.ux-sheet-groups section')],group=groups.find(g=>/Comunidad/i.test(g.querySelector('h3')?.textContent||''));const wrap=group?.querySelector('div');if(wrap){const b=document.createElement('button');b.dataset.section='mi-liga';b.onclick=()=>{openMiLiga();window.closeUxMore?.()};b.innerHTML='<span>🏆</span><b>Mi Liga</b><small>Clasificación, comunidad y ligas privadas.</small>';wrap.prepend(b)}}
 }
+function schedulePatch(){
+  if(patchTimer!==null)return;
+  patchTimer=setTimeout(()=>{patchTimer=null;patchNav();observeNavRoots()},0);
+}
+function observeRoot(root){
+  if(!root||observedRoots.has(root))return;
+  observedRoots.add(root);new MutationObserver(schedulePatch).observe(root,{childList:true,subtree:true});
+}
+function observeNavRoots(){
+  observeRoot(document.getElementById('navMobile'));
+  observeRoot(document.getElementById('navDesktop'));
+  observeRoot(document.getElementById('uxMoreSheet'));
+}
 window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active')},0)};
-function install(){if(installed)return;installed=true;addSection();patchNav();render();document.addEventListener('rm-community-updated',render);document.addEventListener('rm-modules-ready',()=>setTimeout(patchNav,0));new MutationObserver(()=>patchNav()).observe(document.body,{childList:true,subtree:true});setTimeout(()=>refresh(false),500)}
+function install(){if(installed)return;installed=true;addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',render);document.addEventListener('rm-modules-ready',schedulePatch);new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>setTimeout(schedulePatch,ms));setTimeout(()=>refresh(false),500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
