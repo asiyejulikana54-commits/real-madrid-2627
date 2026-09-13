@@ -4,7 +4,7 @@ let installed=false;
 let patchTimer=null;
 let communityPresentationTimer=null;
 const observedRoots=new WeakSet();
-const COMMUNITY_SLOT_LABELS=Object.freeze({gk:'POR',lb:'LI',lcb:'DFC izq.',rcb:'DFC der.',rb:'LD',dm1:'MC izq.',dm2:'MC der.',am:'MP',lw:'EI',rw:'ED',st:'DC'});
+const COMMUNITY_SLOT_LABELS=Object.freeze({gk:'POR',lb:'LI',lcb:'DFC',rcb:'DFC',rb:'LD',dm1:'MC',dm2:'MC',am:'MP',lw:'EI',rw:'ED',st:'DC'});
 function ensureCommunityLeagueAssets(){
   if(!document.querySelector('link[href*="community-league.css"]')){
     const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=4';link.dataset.communityLeague='1';document.head.appendChild(link);
@@ -67,7 +67,7 @@ function addSection(){
   if(document.getElementById(SECTION_ID))return;
   const section=document.createElement('section');section.className='section';section.id=SECTION_ID;
   section.innerHTML=`<div class="section-head mil-head"><div><h2>Mi Liga</h2><p>Tu zona de competición: comunidad, clasificación y ligas privadas.</p></div><button class="btn" id="milRefresh">Actualizar</button></div><div id="milContent"><div class="card mil-loading">Cargando datos de la comunidad…</div></div>`;
-  const main=document.querySelector('main');if(main)main.appendChild(section);
+  const main=document.querySelector('main');if(main)main.appendChild(section);else document.body.appendChild(section);
   section.querySelector('#milRefresh')?.addEventListener('click',()=>refresh(true));
 }
 function popularNames(d){
