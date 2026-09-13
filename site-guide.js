@@ -18,6 +18,16 @@ const GUIDE={
   partidos:{title:'El archivo de la temporada',copy:'Aquí están los encuentros ya incorporados al seguimiento, para que sepas exactamente qué partidos alimentan rankings y tendencias.',look:['Solo los partidos integrados en el sistema afectan a las métricas.','Una nueva jornada entra cuando minutos y estados de las tres fuentes están cerrados.','SC significa “comprobado sin calificación”, no un cero.'],action:['evolucion','Ver evolución']},
   'mi-temporada':{title:'Tu historial personal',copy:'Esta zona recuerda tus predicciones y calcula tu media de aciertos, récords y logros. Todo vive en este dispositivo.',look:['No necesitas crear una cuenta.','Cada jornada puntuada añade tus aciertos al historial.','Tu nivel personal evoluciona a medida que acumulas predicciones.'],action:['prediccion','Hacer una predicción']}
 };
+const OVERVIEW=[
+ ['⚽','Cada jornada','Antes del partido haces tu XI, ves la previa y comparas dudas. Cuando sale el once oficial se puntúa tu predicción y, después, la jornada actualiza el resto de la app.'],
+ ['📊','Datos y rendimiento','SofaScore, FotMob y StatMuse alimentan la media. Aporte combina nota y minutos; Min/punto mide eficiencia y Power RM añade la fiabilidad de la muestra.'],
+ ['👥','Equipo y decisiones','Plantilla, Evolución, Jerarquías, Radar y Comparador sirven para entender quién está mejor, quién gana terreno y por qué una posición sigue abierta.'],
+ ['⭐','Predice el XI','Elige 11 jugadores distintos. Cada titular acertado vale 1 punto, aunque lo hayas colocado en otra posición. Puedes modificar tu XI hasta el cierre.'],
+ ['🌍','Comunidad','Los XI publicados forman el once más votado, los porcentajes por posición y el ranking general de pronosticadores.'],
+ ['🏆','Mi Liga','Puedes crear ligas privadas, compartir un enlace y competir con amigos. Los miembros de una liga pueden consultar los XI de los demás para esa jornada.'],
+ ['👤','Tu temporada','La app guarda tu media de aciertos, récord, racha 8+ y evolución como predictor. Racha 8+ cuenta jornadas consecutivas con 8 o más aciertos.'],
+ ['🔒','Privacidad','Tus notas, favoritos y comentario privado permanecen en tu dispositivo. En comunidad se comparte lo necesario para competir, como apodo y XI.']
+];
 const GLOSSARY=[
  ['Media','Rendimiento acumulado de las valoraciones registradas. Se calcula con las notas publicadas y queda ponderado por los minutos que tienen valoración.'],
  ['Power RM','Índice interno: media × (0,75 + 0,25 × muestra). La muestra aumenta con los minutos hasta un máximo de 450.'],
@@ -29,7 +39,7 @@ const GLOSSARY=[
  ['Forma reciente','Media de hasta los tres últimos partidos del jugador que tienen una valoración oficial disponible.'],
  ['Jerarquía','Índice interno para visualizar ventajas y duelos. No pretende adivinar automáticamente el once del entrenador.']
 ];
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function activeId(){return document.querySelector('.section.active')?.id||'inicio'}
 function sectionName(id){try{return sections.find(s=>s[0]===id)?.[2]||id}catch{return id}}
 function ensureButton(){
@@ -43,21 +53,28 @@ function ensurePanel(){
 }
 function fallbackGuide(id){return {title:sectionName(id),copy:'Esta pantalla forma parte del análisis RM 26/27. La guía se irá adaptando a las herramientas que estén disponibles.',look:['Mira primero el dato principal de la cabecera.','Usa los controles de la propia sección para profundizar.','Puedes volver a abrir esta guía cuando cambies de pantalla.'],action:['inicio','Volver al inicio']}}
 function glossaryHtml(){return `<div class="sg-block"><span>DICCIONARIO RÁPIDO</span><div class="sg-glossary">${GLOSSARY.map(([term,def])=>`<div class="sg-term"><button type="button"><span>${esc(term)}</span><span>+</span></button><div class="sg-definition">${esc(def)}</div></div>`).join('')}</div></div>`}
+function bindTerms(root){root?.querySelectorAll('.sg-term button').forEach(btn=>btn.addEventListener('click',()=>{const term=btn.closest('.sg-term');const open=term.classList.toggle('open');btn.querySelector('span:last-child').textContent=open?'−':'+'}))}
 function renderGuide(id=activeId()){
  const root=document.getElementById('siteGuideContent');if(!root)return;const g=GUIDE[id]||fallbackGuide(id);const actionExists=document.getElementById(g.action[0]);
  root.innerHTML=`<div class="sg-kicker">GUÍA · ${esc(sectionName(id).toUpperCase())}</div><h2 class="sg-title">${esc(g.title)}</h2><p class="sg-copy">${esc(g.copy)}</p><div class="sg-now"><span>EN 10 SEGUNDOS</span><b>${esc(g.look[0])}</b><small>${esc(g.look[1])}</small></div><div class="sg-block"><span>QUÉ MIRAR</span><div class="sg-points">${g.look.map((x,i)=>`<div class="sg-point"><i>${i+1}</i><div><b>${esc(x)}</b>${i===0?'<small>Empieza por aquí y profundiza solo si te interesa.</small>':''}</div></div>`).join('')}</div>${actionExists?`<button class="btn primary sg-action" type="button" data-sg-go="${esc(g.action[0])}">${esc(g.action[1])}</button>`:''}</div>${glossaryHtml()}`;
- root.querySelector('[data-sg-go]')?.addEventListener('click',e=>{const id=e.currentTarget.dataset.sgGo;closeGuide();if(typeof showSection==='function')showSection(id)});
- root.querySelectorAll('.sg-term button').forEach(btn=>btn.addEventListener('click',()=>{const term=btn.closest('.sg-term');const open=term.classList.toggle('open');btn.querySelector('span:last-child').textContent=open?'−':'+'}));
+ root.querySelector('[data-sg-go]')?.addEventListener('click',e=>{const id=e.currentTarget.dataset.sgGo;closeGuide();if(typeof showSection==='function')showSection(id)});bindTerms(root);
 }
-function openGuide(){ensurePanel();renderGuide();const root=document.getElementById('siteGuide');root.classList.add('open');root.setAttribute('aria-hidden','false');document.body.classList.add('site-guide-open');try{localStorage.setItem(SEEN_KEY,'1')}catch{};removeNudge()}
+function renderOverview(){
+ const root=document.getElementById('siteGuideContent');if(!root)return;
+ root.innerHTML=`<div class="sg-kicker">RM 26/27 · AYUDA</div><h2 class="sg-title">Cómo funciona la web</h2><p class="sg-copy">RM 26/27 combina seguimiento de la temporada, análisis de jugadores y un juego social de predicciones. La idea es que vuelvas antes y después de cada partido.</p><div class="sg-now"><span>EL CICLO DE CADA JORNADA</span><b>Previo → tu XI → comunidad → XI oficial → puntuación → análisis</b><small>Una sola jornada alimenta tus puntos, rankings, forma, evolución y debates de la siguiente.</small></div><div class="sg-block"><span>LO ESENCIAL</span><div class="sg-points">${OVERVIEW.map(([icon,title,copy])=>`<div class="sg-point"><i>${esc(icon)}</i><div><b>${esc(title)}</b><small>${esc(copy)}</small></div></div>`).join('')}</div><button class="btn primary sg-action" type="button" data-sg-go="prediccion">Hacer mi predicción</button></div>${glossaryHtml()}`;
+ root.querySelector('[data-sg-go]')?.addEventListener('click',e=>{const id=e.currentTarget.dataset.sgGo;closeGuide();if(typeof showSection==='function')showSection(id)});bindTerms(root);
+}
+function showPanel(){const root=document.getElementById('siteGuide');root.classList.add('open');root.setAttribute('aria-hidden','false');document.body.classList.add('site-guide-open');try{localStorage.setItem(SEEN_KEY,'1')}catch{};removeNudge()}
+function openGuide(){ensurePanel();renderGuide();showPanel()}
+function openOverview(){ensurePanel();renderOverview();showPanel()}
 function closeGuide(){const root=document.getElementById('siteGuide');if(!root)return;root.classList.remove('open');root.setAttribute('aria-hidden','true');document.body.classList.remove('site-guide-open')}
 function removeNudge(){document.getElementById('siteGuideNudge')?.remove()}
 function maybeNudge(){
  let seen=false;try{seen=localStorage.getItem(SEEN_KEY)==='1'}catch{};if(seen||activeId()!=='inicio'||document.getElementById('siteGuideNudge'))return;
- const n=document.createElement('div');n.id='siteGuideNudge';n.className='sg-first-nudge';n.innerHTML='<div><b>¿Primera vez aquí?</b><small>Te explico cualquier pantalla y todas las métricas en lenguaje normal.</small></div><button type="button">Ver guía</button>';document.body.appendChild(n);n.querySelector('button').addEventListener('click',openGuide);setTimeout(()=>{if(document.getElementById('siteGuideNudge')===n)n.remove()},12000);
+ const n=document.createElement('div');n.id='siteGuideNudge';n.className='sg-first-nudge';n.innerHTML='<div><b>¿Primera vez aquí?</b><small>Te explico cualquier pantalla y todas las métricas en lenguaje normal.</small></div><button type="button">Ver guía</button>';document.body.appendChild(n);n.querySelector('button').addEventListener('click',openOverview);setTimeout(()=>{if(document.getElementById('siteGuideNudge')===n)n.remove()},12000);
 }
 function install(){
- if(installed)return;if(typeof showSection!=='function'||!document.querySelector('.topbar .actions')){setTimeout(install,100);return}installed=true;ensureButton();ensurePanel();const base=showSection;showSection=function(id){base(id);closeGuide();removeNudge();setTimeout(ensureButton,0)};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGuide();if(e.key==='?'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){e.preventDefault();openGuide()}});setTimeout(maybeNudge,1800);window.RMSiteGuide=Object.freeze({open:openGuide,close:closeGuide,render:renderGuide});
+ if(installed)return;if(typeof showSection!=='function'||!document.querySelector('.topbar .actions')){setTimeout(install,100);return}installed=true;ensureButton();ensurePanel();const base=showSection;showSection=function(id){base(id);closeGuide();removeNudge();setTimeout(ensureButton,0)};document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGuide();if(e.key==='?'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){e.preventDefault();openGuide()}});setTimeout(maybeNudge,1800);window.RMSiteGuide=Object.freeze({open:openGuide,openOverview,close:closeGuide,render:renderGuide,renderOverview});
 }
 setTimeout(install,80);
 })();
