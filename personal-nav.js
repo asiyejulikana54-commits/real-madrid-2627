@@ -20,16 +20,26 @@ function openHowItWorks(){
   const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(window.RMSiteGuide?.open){window.RMSiteGuide.open();return}if(++tries<25)setTimeout(open,80)};
   open();
 }
+function ensureSingleHelpButton(tools){
+  if(!tools)return null;
+  const matches=[...tools.querySelectorAll('button')].filter(b=>/cómo funciona la web/i.test(b.textContent||''));
+  let help=matches[0]||null;
+  if(!help){help=document.createElement('button');tools.insertBefore(help,tools.children[1]||null)}
+  help.id='uxHowRM';help.innerHTML='? Cómo funciona la web';help.onclick=openHowItWorks;
+  matches.slice(1).forEach(b=>b.remove());
+  return help;
+}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
   const firstGroup=sheet.querySelector('.ux-sheet-groups section>div');if(firstGroup&&!sheet.querySelector('[data-section="mi-temporada"]'))firstGroup.insertAdjacentHTML('afterbegin',personalButton());
   const tools=sheet.querySelector('.ux-sheet-tools');
+  let help=null;
   if(tools){
     const title=tools.querySelector(':scope > span');if(title)title.textContent='Ayuda, aplicación y datos';
-    if(!document.getElementById('uxHowRM')){const help=document.createElement('button');help.id='uxHowRM';help.innerHTML='? Cómo funciona la web';help.onclick=openHowItWorks;tools.insertBefore(help,tools.children[1]||null)}
+    help=ensureSingleHelpButton(tools);
   }
   if(tools&&!document.getElementById('uxGlobalSearch')){
-    const search=document.createElement('button');search.id='uxGlobalSearch';search.innerHTML='⌕ Buscar en RM 26/27';search.onclick=()=>{window.closeUxMore?.();window.rmOpenSearch?.()};const help=document.getElementById('uxHowRM');tools.insertBefore(search,help?.nextSibling||tools.children[1]||null);
+    const search=document.createElement('button');search.id='uxGlobalSearch';search.innerHTML='⌕ Buscar en RM 26/27';search.onclick=()=>{window.closeUxMore?.();window.rmOpenSearch?.()};tools.insertBefore(search,help?.nextSibling||tools.children[1]||null);
   }
   if(tools&&!document.getElementById('uxShareScreen')){
     const share=document.createElement('button');share.id='uxShareScreen';share.innerHTML='↗ Compartir esta pantalla';share.onclick=()=>{window.closeUxMore?.();window.rmShareCurrent?.()};const install=document.getElementById('uxInstallApp');tools.insertBefore(share,install||tools.children[3]||null);
