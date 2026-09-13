@@ -1,6 +1,8 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
+const SW_VERSION='55';
+const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 const isAndroid=()=>/android/i.test(navigator.userAgent);
@@ -50,15 +52,27 @@ async function installApp(){
   }
   showInstallGuide();
 }
+function reloadOnNewController(){
+  if(sessionStorage.getItem(SW_RELOAD_KEY))return;
+  sessionStorage.setItem(SW_RELOAD_KEY,'1');
+  location.reload();
+}
 async function registerServiceWorker(){
   if(!('serviceWorker' in navigator)||!/^https?:$/.test(location.protocol))return;
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+    navigator.serviceWorker.addEventListener('controllerchange',reloadOnNewController,{once:true});
+    const reg=await navigator.serviceWorker.register(`./sw.js?v=${SW_VERSION}`,{scope:'./',updateViaCache:'none'});
     if(reg.waiting)reg.waiting.postMessage('SKIP_WAITING');
     reg.addEventListener('updatefound',()=>{
       const worker=reg.installing;if(!worker)return;
-      worker.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)toastSafe('Nueva versión preparada para la próxima apertura')});
+      worker.addEventListener('statechange',()=>{
+        if(worker.state==='installed'&&navigator.serviceWorker.controller){
+          toastSafe('Actualizando RM 26/27…');
+          worker.postMessage('SKIP_WAITING');
+        }
+      });
     });
+    await reg.update();
   }catch(error){console.warn('PWA service worker:',error)}
 }
 function openSectionFromUrl(attempt=0){
@@ -66,7 +80,7 @@ function openSectionFromUrl(attempt=0){
   if(typeof showSection==='function'&&document.getElementById(id)){showSection(id);return}
   if(attempt<40)setTimeout(()=>openSectionFromUrl(attempt+1),150);
 }
-window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid()})});
+window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
 function install(){
   if(installed)return;installed=true;setMode();ensureInstallButton();openSectionFromUrl();
   window.addEventListener('online',setMode);window.addEventListener('offline',setMode);
