@@ -12,7 +12,12 @@ function establishedUser(){
 }
 function mode(){const stored=storedMode();return stored||(establishedUser()?'pro':'simple')}
 function persistInitialMode(){if(storedMode())return;try{localStorage.setItem(KEY,establishedUser()?'pro':'simple')}catch{}}
-function official(){return safe(()=>typeof officialXI!=='undefined'&&Array.isArray(officialXI)&&officialXI.length===11,false)}
+function official(){
+  const currentId=safe(()=>window.RMCommunityApi?.match?.id,'')||'';
+  const baseId=safe(()=>typeof predictionMatch!=='undefined'?predictionMatch.id:'','')||'';
+  if(currentId&&baseId&&currentId!==baseId)return false;
+  return safe(()=>typeof officialXI!=='undefined'&&Array.isArray(officialXI)&&officialXI.length===11,false)
+}
 function active(){return document.querySelector('.section.active')?.id||'inicio'}
 function sectionExists(id){return Boolean(document.getElementById(id))}
 function go(id){if(id==='mi-liga'&&typeof openMiLiga==='function'){safe(()=>openMiLiga());return}safe(()=>showSection(id))}
@@ -83,7 +88,7 @@ function adaptIntro(){
   const kicker=root.querySelector('.public-kicker'),title=root.querySelector('.public-copy h2'),copy=root.querySelector('.public-copy>p');
   if(kicker)kicker.textContent=c.kicker;if(title)title.textContent=c.title;if(copy)copy.textContent=c.copy;
   const p=root.querySelector('#publicPredict'),s=root.querySelector('#publicPerformance');
-  if(p){p.textContent=c.primary;p.onclick=()=>go(official()?'prediccion':'prediccion')}if(s){s.textContent=c.secondary;s.onclick=()=>go(official()?'partido':'mi-liga')}
+  if(p){p.textContent=c.primary;p.onclick=()=>go('prediccion')}if(s){s.textContent=c.secondary;s.onclick=()=>go(official()?'partido':'mi-liga')}
   const guide=root.querySelector('.public-guide');if(!guide)return;
   if(official()){
     guide.innerHTML=`<div class="public-guide-title">Tres accesos y listo</div><button data-sx-go="prediccion"><i>1</i><span><b>Revisa tu predicción</b><small>Comprueba tus aciertos frente al XI oficial.</small></span><strong>›</strong></button><button data-sx-go="partido"><i>2</i><span><b>Abre el partido</b><small>Once, contexto y seguimiento del encuentro.</small></span><strong>›</strong></button><button data-sx-go="mi-liga"><i>3</i><span><b>Mira Mi Liga</b><small>Clasificación, amigos y onces de tu liga.</small></span><strong>›</strong></button>`;
@@ -140,7 +145,7 @@ function wrapNavigation(){
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('navDesktop')||!document.getElementById('inicio')){if(++attempts<120)setTimeout(install,100);return}
   installed=true;persistInitialMode();wrapNavigation();apply();maybeWelcome();
-  ['rm-modules-ready','rm-analysis-context-ready','rm-official-xi-review-rendered','rm-post-xi-center-rendered','rm-season-data-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(apply,60)));
+  ['rm-modules-ready','rm-analysis-context-ready','rm-official-xi-review-rendered','rm-post-xi-center-rendered','rm-season-data-ready','rm-community-updated'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(apply,60)));
   window.addEventListener('storage',e=>{if(!e.key||e.key===KEY)setTimeout(apply,40)});
   [300,900,2200].forEach(ms=>setTimeout(apply,ms));
   window.RMSimpleExperience=Object.freeze({mode,setMode,render:apply,official,welcome});
