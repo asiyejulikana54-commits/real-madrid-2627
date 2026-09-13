@@ -5,69 +5,9 @@ function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
   if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
 }
-function loadRoundImpact(){
-  if(!document.querySelector('link[data-round-impact]')){const link=document.createElement('link');link.rel='stylesheet';link.href='round-impact.css?v=1';link.dataset.roundImpact='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-round-impact]')){const script=document.createElement('script');script.src='round-impact.js?v=1';script.dataset.roundImpact='1';document.body.appendChild(script)}
-}
-function loadPredictionAnalytics(){
-  if(!document.querySelector('link[data-prediction-analytics]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-analytics.css?v=2';link.dataset.predictionAnalytics='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-prediction-analytics]')){const script=document.createElement('script');script.src='prediction-analytics.js?v=2';script.dataset.predictionAnalytics='1';document.body.appendChild(script)}
-}
-function loadXiStability(){
-  if(!document.querySelector('link[data-xi-stability]')){const link=document.createElement('link');link.rel='stylesheet';link.href='xi-stability.css?v=1';link.dataset.xiStability='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-xi-stability]')){const script=document.createElement('script');script.src='xi-stability.js?v=1';script.dataset.xiStability='1';document.body.appendChild(script)}
-}
-function loadDecisionBoard(){
-  if(!document.querySelector('link[data-decision-board]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-board.css?v=1';link.dataset.decisionBoard='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-board]')){const script=document.createElement('script');script.src='decision-board.js?v=1';script.dataset.decisionBoard='1';document.body.appendChild(script)}
-}
-function loadDecisionAudit(){
-  if(!document.querySelector('link[data-decision-audit]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-audit.css?v=1';link.dataset.decisionAudit='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-audit]')){const script=document.createElement('script');script.src='decision-audit.js?v=1';script.dataset.decisionAudit='1';document.body.appendChild(script)}
-}
-function loadDecisionProfile(){
-  if(!document.querySelector('link[data-decision-profile]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-profile.css?v=1';link.dataset.decisionProfile='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-profile]')){const script=document.createElement('script');script.src='decision-profile.js?v=1';script.dataset.decisionProfile='1';document.body.appendChild(script)}
-}
-function loadDecisionCoach(){
-  if(!document.querySelector('link[data-decision-coach]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-coach.css?v=1';link.dataset.decisionCoach='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-coach]')){const script=document.createElement('script');script.src='decision-coach.js?v=1';script.dataset.decisionCoach='1';document.body.appendChild(script)}
-}
-function loadDecisionCenter(){
-  if(!document.querySelector('link[data-decision-center]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-center.css?v=1';link.dataset.decisionCenter='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-center]')){const script=document.createElement('script');script.src='decision-center.js?v=1';script.dataset.decisionCenter='1';document.body.appendChild(script)}
-}
-function loadDecisionActions(){
-  if(!document.querySelector('link[data-decision-actions]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-actions.css?v=1';link.datasetDecisionActions='1';link.dataset.decisionActions='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-actions]')){const script=document.createElement('script');script.src='decision-actions.js?v=1';script.dataset.decisionActions='1';document.body.appendChild(script)}
-}
-function loadPredictionReadiness(){
-  if(!document.querySelector('link[data-prediction-readiness]')){const link=document.createElement('link');link.rel='stylesheet';link.href='prediction-readiness.css?v=1';link.dataset.predictionReadiness='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-prediction-readiness]')){const script=document.createElement('script');script.src='prediction-readiness.js?v=1';script.dataset.predictionReadiness='1';document.body.appendChild(script)}
-}
-function loadScenarioLab(){
-  if(!document.querySelector('link[data-scenario-lab]')){const link=document.createElement('link');link.rel='stylesheet';link.href='scenario-lab.css?v=1';link.dataset.scenarioLab='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-scenario-lab]')){const script=document.createElement('script');script.src='scenario-lab.js?v=1';script.dataset.scenarioLab='1';document.body.appendChild(script)}
-}
-function loadScenarioAudit(){
-  if(!document.querySelector('link[data-scenario-audit]')){const link=document.createElement('link');link.rel='stylesheet';link.href='scenario-audit.css?v=1';link.dataset.scenarioAudit='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-scenario-audit]')){const script=document.createElement('script');script.src='scenario-audit.js?v=1';script.dataset.scenarioAudit='1';document.body.appendChild(script)}
-}
-function loadOfficialXiReview(){
-  if(!document.querySelector('link[data-official-xi-review]')){const link=document.createElement('link');link.rel='stylesheet';link.href='official-xi-review.css?v=1';link.dataset.officialXiReview='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-official-xi-review]')){const script=document.createElement('script');script.src='official-xi-review.js?v=1';script.dataset.officialXiReview='1';document.body.appendChild(script)}
-}
-function loadReviewArchive(){
-  if(!document.querySelector('link[data-review-archive]')){const link=document.createElement('link');link.rel='stylesheet';link.href='review-archive.css?v=1';link.dataset.reviewArchive='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-review-archive]')){const script=document.createElement('script');script.src='review-archive.js?v=1';script.dataset.reviewArchive='1';document.body.appendChild(script)}
-}
-function loadConsensusXI(){
-  if(!document.querySelector('link[data-consensus-xi]')){const link=document.createElement('link');link.rel='stylesheet';link.href='consensus-xi.css?v=1';link.dataset.consensusXi='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-consensus-xi]')){const script=document.createElement('script');script.src='consensus-xi.js?v=1';script.dataset.consensusXi='1';document.body.appendChild(script)}
-}
 function loadCommunityPro(){
-  if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=1';link.dataset.communityPro='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=1';script.dataset.communityPro='1';document.body.appendChild(script)}
+  if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=2';link.dataset.communityPro='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=2';script.dataset.communityPro='1';document.body.appendChild(script)}
 }
 function loadCommunityLeague(){
   if(window.RMCommunityApi&&!window.RMCommunityApi.available?.())return false;
@@ -75,7 +15,6 @@ function loadCommunityLeague(){
   if(!document.querySelector('script[data-community-league]')){const script=document.createElement('script');script.src='community-league.js?v=1';script.dataset.communityLeague='1';document.body.appendChild(script)}
   return true;
 }
-function scheduleRoundImpact(){const run=()=>loadRoundImpact();if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:1800});else setTimeout(run,700)}
 function injectMore(){
   const sheet=document.getElementById('uxMoreSheet');if(!sheet)return false;
   const firstGroup=sheet.querySelector('.ux-sheet-groups section>div');if(firstGroup&&!sheet.querySelector('[data-section="mi-temporada"]'))firstGroup.insertAdjacentHTML('afterbegin',personalButton());
@@ -94,9 +33,15 @@ function injectDesktop(){
 function refresh(){injectMore();injectDesktop()}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;refresh();loadPredictionAnalytics();scheduleRoundImpact();loadXiStability();loadDecisionBoard();loadDecisionAudit();loadDecisionProfile();loadDecisionCoach();loadDecisionActions();loadPredictionReadiness();loadScenarioLab();loadConsensusXI();loadDecisionCenter();loadScenarioAudit();loadOfficialXiReview();loadReviewArchive();loadCommunityLeague();
-  const base=showSection;showSection=function(id){if(id==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile();loadReviewArchive()}if(id==='prediccion'){loadDecisionCoach();loadDecisionCenter()}if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}base(id);setTimeout(refresh,0);if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMPredictionAnalytics?.render?.(),140);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMXIStability?.render?.(),180);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMDecisionBoard?.render?.(),240);if(id==='prediccion')setTimeout(()=>window.RMDecisionActions?.render?.(),290);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMPredictionReadiness?.render?.(),320);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMScenarioLab?.render?.(),345);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMConsensusXI?.render?.(),370);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionAudit?.render?.(),410);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMScenarioAudit?.render?.(),455);if(id==='prediccion'||id==='mi-temporada')setTimeout(()=>window.RMDecisionProfile?.render?.(),520);if(id==='prediccion')setTimeout(()=>window.RMDecisionCoach?.render?.(),545);if(id==='prediccion'||id==='partido')setTimeout(()=>window.RMOfficialXIReview?.render?.(),580);if(id==='prediccion')setTimeout(()=>window.RMDecisionCenter?.render?.(),610);if(id==='mi-temporada')setTimeout(()=>window.RMReviewArchive?.render?.(),650)};
-  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile();loadReviewArchive()}if(active==='prediccion'){loadDecisionCoach();loadDecisionCenter()}if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}
+  installed=true;refresh();loadCommunityLeague();
+  const base=showSection;showSection=function(id){
+    if(id==='mi-temporada')loadPersonalSeasonPro();
+    if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}
+    base(id);setTimeout(refresh,0);
+    if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);
+    if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}
+  };
+  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 setTimeout(install,90);

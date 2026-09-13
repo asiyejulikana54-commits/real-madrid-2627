@@ -116,7 +116,7 @@ function install(){
   if(!season()){if(++attempts<80)setTimeout(install,100);return}
   installed=true;Object.assign(current,sanitize(current));persist();persistStats();bindStatsBridge();bindQuickPicksNav();
   window.RMAnalysisContext=Object.freeze({state,matches,label,set,reset,competitions,allMatches,syncStats});
-  syncStats(true);loadEngagementLoop();loadEngagementRewards();loadQuickPicks();loadFavoriteWatch();loadActivityCenter();loadNavigationHistory();loadDeepLinks();loadSharedEntry();loadMomentumPro();loadPostXiCenter();loadSimpleMode();
+  syncStats(true);loadNavigationHistory();loadDeepLinks();
   document.dispatchEvent(new CustomEvent('rm-analysis-context-ready',{detail:{state:state(),label:label()}}));
 }
 ['rm-season-data-ready','rm-season-extension-ready','rm-season-order-corrected'].forEach(ev=>document.addEventListener(ev,()=>{if(installed){Object.assign(current,sanitize(current));persist();persistStats();syncStats(false);emit('season')}}));

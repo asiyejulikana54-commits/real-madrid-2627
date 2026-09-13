@@ -3,7 +3,7 @@ const UX_GROUPS=[
   {label:'Resumen',ids:['inicio','partido']},
   {label:'Equipo',ids:['plantilla','power','jerarquias']},
   {label:'Rendimiento',ids:['estadisticas','evolucion','partidos','mvp']},
-  {label:'Decisiones',ids:['radar','comparador','laboratorio','once']},
+  {label:'Decisiones',ids:['radar','comparador']},
   {label:'Comunidad',ids:['comunidad','prediccion']}
 ];
 const UX_PRIMARY=[
@@ -45,7 +45,7 @@ function syncNav(id){
 function ensureMoreSheet(){
   if(document.getElementById('uxMoreSheet'))return;
   const wrap=document.createElement('div');wrap.id='uxMoreSheet';wrap.className='ux-sheet';
-  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y proyecto</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
+  wrap.innerHTML=`<div class="ux-sheet-backdrop" onclick="closeUxMore()"></div><div class="ux-sheet-panel"><div class="ux-sheet-head"><div><div class="eyebrow">NAVEGACIÓN</div><h2>Todo el panel</h2></div><button onclick="closeUxMore()" aria-label="Cerrar">×</button></div><div class="ux-sheet-groups">${UX_GROUPS.map(group=>{const items=group.ids.map(uxSection).filter(Boolean);return items.length?`<section><h3>${group.label}</h3><div>${items.map(s=>`<button data-section="${s[0]}" onclick="showSection('${s[0]}')"><span>${s[1]}</span><b>${uxEsc(s[2])}</b><small>${uxEsc(s[4])}</small></button>`).join('')}</div></section>`:''}).join('')}</div><div class="ux-sheet-tools"><span>Aplicación y datos</span><button id="uxInstallApp" onclick="uxInstallRM()">⬇ Instalar RM 26/27</button><button onclick="exportData();closeUxMore()">⇩ Exportar datos</button><button onclick="document.getElementById('importFile')?.click();closeUxMore()">⇧ Importar datos</button></div></div>`;
   document.body.appendChild(wrap);
 }
 function refreshMoreSheet(){
@@ -66,8 +66,7 @@ function simplifyTopbar(){
     if(click.includes('exportData')||el.getAttribute?.('for')==='importFile'||el.id==='importFile')el.classList.add('ux-hidden-tool');
   });
   const prediction=[...actions.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("prediccion"));
-  const lineup=[...actions.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("once"));
-  if(prediction)prediction.textContent='Predecir XI';if(lineup)lineup.textContent='Crear XI';
+  if(prediction)prediction.textContent='Predecir XI';
   if(!actions.querySelector('.ux-top-more')){const more=document.createElement('button');more.className='btn ux-top-more';more.textContent='•••';more.setAttribute('aria-label','Más opciones');more.onclick=openUxMore;actions.appendChild(more)}
 }
 
@@ -98,7 +97,7 @@ function loadRefineLayer(){
 function loadVisualLayer(){if(document.querySelector('script[data-visual-system]'))return;const script=document.createElement('script');script.src='visual-system.js?v=2';script.dataset.visualSystem='1';document.body.appendChild(script)}
 function loadPublicLayer(){
   if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=5';link.dataset.publicPolish='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=7';script.dataset.publicPolish='1';document.body.appendChild(script)}
+  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=10';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
 function loadCompareLifecycle(){
   if(!document.querySelector('link[data-compare-lifecycle]')){const link=document.createElement('link');link.rel='stylesheet';link.href='compare-lifecycle.css?v=1';link.dataset.compareLifecycle='1';document.head.appendChild(link)}

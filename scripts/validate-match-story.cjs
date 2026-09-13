@@ -9,7 +9,7 @@ if(js.includes('MutationObserver'))fail.push('La memoria del partido no debe usa
 if(!js.includes('attempts<120'))fail.push('La instalación debe tener reintentos acotados');
 if(!js.includes('window.RMMatchStory=Object.freeze'))fail.push('Falta API RMMatchStory');
 if(!js.includes("surface:'partido'")||!js.includes("surface:'partidos'"))fail.push('La ficha debe renderizar en Partido e Historial');
-if(!pub.includes('function loadMatchStory()')||!pub.includes("id==='partido'){loadMatchdayPro();loadMatchStory()}")||!pub.includes("id==='partidos'){loadMatchHistoryPro();loadMatchStory()}"))fail.push('public-polish no integra la memoria en ambas superficies');
+if(!pub.includes('function loadMatchStory()')||!pub.includes("if(id==='partido')loadMatchStory()")||!pub.includes("id==='partidos'){loadMatchHistoryPro();loadMatchStory()}"))fail.push('public-polish no integra la memoria en ambas superficies');
 if(!css.includes('.ms-evidence-grid')||!css.includes('.ms-halves')||!css.includes('.ms-player-grid'))fail.push('Faltan estilos estructurales de la ficha');
 const cacheVersion=Number((sw.match(/rm2627-static-v(\d+)/)||[])[1]||0);if(cacheVersion<43)fail.push(`La PWA debe usar caché v43 o posterior; actual: v${cacheVersion}`);
 if(!sw.includes("'match-story.css'")||!sw.includes("'match-story.js'"))fail.push('La PWA no precachea la memoria del partido');

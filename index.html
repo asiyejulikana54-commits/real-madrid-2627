@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#071421">
-<meta name="description" content="Datos, rendimiento, onces, comparaciones y comunidad del Real Madrid 2026/27 en un proyecto independiente y no oficial.">
+<meta name="description" content="Datos, rendimiento, onces, comparaciones y comunidad del Real Madrid 2026/27 en un panel independiente y no oficial.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,20 +27,20 @@
   <aside class="sidebar">
     <div class="brand"><div class="crest">RM</div><div><b>RM 26/27</b><small>Centro de análisis</small></div></div>
     <nav class="nav" id="navDesktop"></nav>
-    <div class="side-bottom"><b style="color:#fff">Proyecto personalizado</b><br>No oficial. Datos, criterios, onces y conclusiones de nuestro seguimiento de la temporada.</div>
+    <div class="side-bottom"><b style="color:#fff">Panel independiente</b><br>No oficial. Datos, rendimiento, onces y comunidad del Real Madrid 2026/27.</div>
   </aside>
 
   <main>
     <div class="topbar">
       <div><div class="eyebrow">Real Madrid · Temporada 2026/27</div><h1 id="pageTitle">Centro de mando</h1><div class="sub" id="pageSub">Todo el seguimiento del equipo en un único sitio.</div></div>
-      <div class="actions"><button class="btn" onclick="exportData()">Exportar datos</button><label class="btn" for="importFile">Importar</label><input id="importFile" type="file" accept="application/json" hidden><button class="btn" onclick="showSection('prediccion')">Predice el XI</button><button class="btn primary" onclick="showSection('once')">Crear once</button></div>
+      <div class="actions"><button class="btn" onclick="exportData()">Exportar datos</button><label class="btn" for="importFile">Importar</label><input id="importFile" type="file" accept="application/json" hidden><button class="btn primary" onclick="showSection('prediccion')">Predice el XI</button></div>
     </div>
 
     <section class="section active" id="inicio">
       <div class="card hero">
         <div class="next-match">
           <div><div class="eyebrow">Próximo partido</div><div class="match-title">REAL MADRID <span>vs</span> RAYO</div><div class="match-meta"><span class="pill">12 SEP 2026 · 21:00</span><span class="pill">LALIGA</span><span class="pill">SANTIAGO BERNABÉU</span></div></div>
-          <div class="actions" style="justify-content:flex-start"><button class="btn primary" onclick="showSection('prediccion')">Haz tu predicción</button><button class="btn" onclick="loadPreset('rayo')">Cargar once que estamos valorando</button></div>
+          <div class="actions" style="justify-content:flex-start"><button class="btn primary" onclick="showSection('prediccion')">Haz tu predicción</button><button class="btn" onclick="showSection('comunidad')">Ver comunidad</button></div>
         </div>
         <div class="focus-box">
           <h3>Debates abiertos para el Rayo</h3>
@@ -49,7 +49,6 @@
             <div class="focus-item"><span>Central</span><b>Rüdiger / Huijsen / Konaté</b></div>
             <div class="focus-item"><span>Medio con posible descanso</span><b>Valverde / Bellingham</b></div>
             <div class="focus-item"><span>Banda / ataque</span><b>Diomandé / Brahim</b></div>
-            <div class="focus-item"><span>Fijos en nuestra previsión</span><b>Courtois · Mbappé · Güler · Vini</b></div>
           </div>
         </div>
       </div>
@@ -67,14 +66,14 @@
           <div class="ranking" id="ratingBars"></div>
         </div>
         <div class="card quick-notes">
-          <div class="section-head" style="margin-top:0"><div><h2>Bloc del proyecto</h2><p>Apunta ideas sobre onces, descansos, cambios o dudas tácticas. Se guarda solo en este dispositivo.</p></div><span class="pill" id="saveState">Guardado</span></div>
+          <div class="section-head" style="margin-top:0"><div><h2>Mis notas</h2><p>Apunta ideas sobre onces, descansos, cambios o dudas tácticas. Se guarda solo en este dispositivo.</p></div><span class="pill" id="saveState">Guardado</span></div>
           <textarea id="notes" placeholder="Ej.: contra el Rayo quiero comprobar si Trent puede jugar por dentro con Diomandé abierto..."></textarea>
         </div>
       </div>
     </section>
 
     <section class="section" id="plantilla">
-      <div class="section-head"><div><h2>Plantilla actual</h2><p>Plantilla del Real Madrid 2026/27 que estamos siguiendo en el proyecto.</p></div><span class="pill" id="playerCount"></span></div>
+      <div class="section-head"><div><h2>Plantilla actual</h2><p>Plantilla del Real Madrid 2026/27 y su estado actual.</p></div><span class="pill" id="playerCount"></span></div>
       <div class="player-toolbar"><input class="input" id="playerSearch" placeholder="Buscar jugador…"><select class="select" id="positionFilter"><option value="ALL">Todas las posiciones</option><option value="POR">Porteros</option><option value="DEF">Defensas</option><option value="MED">Centrocampistas</option><option value="ATA">Atacantes</option></select></div>
       <div class="players" id="playersGrid"></div>
     </section>
@@ -95,7 +94,7 @@
     </section>
 
     <section class="section" id="comparador">
-      <div class="section-head"><div><h2>Comparador de jugadores</h2><p>Útil para nuestras dudas recurrentes de jerarquía y once.</p></div></div>
+      <div class="section-head"><div><h2>Comparador de jugadores</h2><p>Compara jugadores directamente por rendimiento, minutos y eficiencia.</p></div></div>
       <div class="card">
         <div class="player-toolbar"><select class="select" id="compareA"></select><select class="select" id="compareB"></select></div>
         <div class="compare-grid" id="compareView"></div>
@@ -122,7 +121,7 @@
           <input class="input" id="predictionName" style="width:100%;min-width:0" placeholder="Ej.: Pedro" maxlength="24">
           <h3>Comentario <span class="muted" style="font-weight:400">(privado)</span></h3>
           <textarea id="predictionComment" placeholder="Ej.: creo que descansará Valverde y entrará Camavinga..."></textarea>
-          <div class="actions prediction-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" id="savePredictionBtn" onclick="savePrediction()">Publicar predicción</button><button class="btn" onclick="loadPredictionPreset()">Usar nuestra idea</button><button class="btn" onclick="clearPrediction()">Vaciar</button><button class="btn" onclick="sharePrediction()">Compartir</button></div>
+          <div class="actions prediction-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" id="savePredictionBtn" onclick="savePrediction()">Publicar predicción</button><button class="btn" onclick="clearPrediction()">Vaciar</button><button class="btn" onclick="sharePrediction()">Compartir</button></div>
           <div id="predictionSummary" class="prediction-summary"></div>
           <div id="predictionResult" class="prediction-result"></div>
           <p class="privacy-note">🔒 Solo se publica tu apodo y tu XI. El comentario no sale de tu dispositivo.</p>
@@ -155,30 +154,17 @@
         <div id="communityLeaderboard" class="community-leaderboard"><div class="muted">El ranking aparecerá cuando haya al menos un once oficial puntuado.</div></div>
       </div>
     </section>
-
-    <section class="section" id="once">
-      <div class="section-head"><div><h2>Constructor de once</h2><p>Formación 4-2-3-1 adaptable. El once queda guardado en el navegador.</p></div><div class="actions"><button class="btn" onclick="loadPreset('base')">Once base</button><button class="btn" onclick="loadPreset('rayo')">Idea Rayo</button></div></div>
-      <div class="pitch-wrap">
-        <div class="pitch" id="pitch"></div>
-        <div class="card lineup-side">
-          <div class="eyebrow">Guardar escenario</div><h3 style="margin-top:6px">Nombre del once</h3><input class="input" id="lineupName" style="width:100%;min-width:0" placeholder="Ej.: Rayo · opción agresiva">
-          <h3>Comentario táctico</h3><textarea id="lineupComment" placeholder="Por qué jugaría este once, quién descansaría, cambios previstos…"></textarea>
-          <div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" onclick="saveLineup()">Guardar once</button><button class="btn" onclick="clearLineup()">Vaciar</button></div>
-          <div class="section-head"><div><h2 style="font-size:16px">Onces guardados</h2></div></div><div id="savedLineups"></div>
-        </div>
-      </div>
-    </section>
   </main>
 </div>
 <nav class="mobile-nav" id="navMobile"></nav>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 <script src="season-data.js?v=6" data-season-data="1"></script>
 <script src="minute-sync.js?v=4"></script>
-<script src="community.js?v=3"></script>
+<script src="community.js?v=10"></script>
 <script src="personal-hub.js?v=1"></script>
-<script src="ux-cleanup.js?v=7"></script>
-<script src="personal-nav.js?v=1"></script>
+<script src="ux-cleanup.js?v=10"></script>
+<script src="personal-nav.js?v=3"></script>
 <script src="pwa.js?v=2"></script>
 </body>
 </html>

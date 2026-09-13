@@ -1,52 +1,24 @@
-const fs=require('fs');
-const path=require('path');
-const vm=require('vm');
-const root=path.join(__dirname,'..');
-const failures=[];
-const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const exists=file=>fs.existsSync(path.join(root,file));
-
-const sw=read('sw.js'),index=read('index.html'),pwa=read('pwa.js'),personalNav=read('personal-nav.js'),officialReview=read('official-xi-review.js'),quick=read('quick-picks.js'),activity=read('activity-center.js'),deep=read('deep-links.js'),ctx=read('analysis-context.js'),momentum=read('momentum-pro.js'),postXi=read('post-xi-center.js');
-try{new vm.Script(sw,{filename:'sw.js'})}catch(error){failures.push(`sw.js no compila: ${error.message}`)}
-try{new vm.Script(pwa,{filename:'pwa.js'})}catch(error){failures.push(`pwa.js no compila: ${error.message}`)}
-try{new vm.Script(officialReview,{filename:'official-xi-review.js'})}catch(error){failures.push(`official-xi-review.js no compila: ${error.message}`)}
-try{new vm.Script(quick,{filename:'quick-picks.js'})}catch(error){failures.push(`quick-picks.js no compila: ${error.message}`)}
-try{new vm.Script(activity,{filename:'activity-center.js'})}catch(error){failures.push(`activity-center.js no compila: ${error.message}`)}
-try{new vm.Script(deep,{filename:'deep-links.js'})}catch(error){failures.push(`deep-links.js no compila: ${error.message}`)}
-try{new vm.Script(momentum,{filename:'momentum-pro.js'})}catch(error){failures.push(`momentum-pro.js no compila: ${error.message}`)}
-try{new vm.Script(postXi,{filename:'post-xi-center.js'})}catch(error){failures.push(`post-xi-center.js no compila: ${error.message}`)}
-let manifest=null;try{manifest=JSON.parse(read('manifest.webmanifest'))}catch(error){failures.push(`manifest.webmanifest no es JSON válido: ${error.message}`)}
-
-if(!/const CACHE_VERSION=['"]rm2627-static-v\d+['"]/.test(sw))failures.push('sw.js necesita una versión de caché rm2627-static-vN');
-if(!sw.includes("url.pathname.includes('/.netlify/functions/')"))failures.push('sw.js debe excluir el backend de Netlify de la caché');
-if(!sw.includes('networkFirst')||!sw.includes('staleWhileRevalidate'))failures.push('sw.js debe conservar las estrategias de red y caché');
-if(!index.includes('rel="manifest" href="manifest.webmanifest"'))failures.push('index.html no enlaza el manifest');
-if(!index.includes('pwa.js?v=2')||!index.includes('pwa.css?v=2'))failures.push('index.html no carga la capa PWA esperada');
+const fs=require('fs');const path=require('path');const vm=require('vm');
+const root=path.join(__dirname,'..'),failures=[];const read=f=>fs.readFileSync(path.join(root,f),'utf8'),exists=f=>fs.existsSync(path.join(root,f));
+const sw=read('sw.js'),index=read('index.html'),pwa=read('pwa.js'),ctx=read('analysis-context.js'),personal=read('personal-nav.js'),community=read('community.js');
+for(const [name,src] of [['sw.js',sw],['pwa.js',pwa],['analysis-context.js',ctx],['personal-nav.js',personal],['community.js',community]])try{new vm.Script(src,{filename:name})}catch(e){failures.push(`${name} no compila: ${e.message}`)}
+let manifest=null;try{manifest=JSON.parse(read('manifest.webmanifest'))}catch(e){failures.push(`manifest.webmanifest no es JSON válido: ${e.message}`)}
+if(!/const CACHE_VERSION=['"]rm2627-static-v\d+['"]/.test(sw))failures.push('sw.js necesita caché versionada');
+if(!sw.includes("url.pathname.includes('/.netlify/functions/')"))failures.push('sw.js debe excluir Netlify Functions');
+if(!sw.includes('networkFirst')||!sw.includes('staleWhileRevalidate'))failures.push('sw.js debe conservar estrategias de red/caché');
+if(!index.includes('rel="manifest" href="manifest.webmanifest"')||!index.includes('pwa.js?v=2'))failures.push('index.html no carga correctamente PWA/manifest');
 if(!pwa.includes('window.RMPWA')||!pwa.includes('showInstallGuide'))failures.push('pwa.js no conserva su API pública');
-if(!personalNav.includes('official-xi-review.js?v=1')||!personalNav.includes('official-xi-review.css?v=1'))failures.push('personal-nav.js no carga la revisión del XI oficial');
-if(!officialReview.includes('window.RMOfficialXIReview')||!officialReview.includes('REVISIÓN DEL XI OFICIAL'))failures.push('official-xi-review.js no conserva su API o interfaz principal');
-if(!ctx.includes('quick-picks.js?v=1')||!ctx.includes('quick-picks.css?v=1'))failures.push('analysis-context.js no carga Quick Picks');
-if(!ctx.includes('activity-center.js?v=1')||!ctx.includes('activity-center.css?v=1'))failures.push('analysis-context.js no carga el centro de novedades');
-if(!ctx.includes('deep-links.js?v=1'))failures.push('analysis-context.js no carga los enlaces profundos');
-if(!ctx.includes('momentum-pro.js?v=1')||!ctx.includes('momentum-pro.css?v=1'))failures.push('analysis-context.js no carga Momentum PRO');
-if(!ctx.includes('post-xi-center.js?v=1')||!ctx.includes('post-xi-center.css?v=1'))failures.push('analysis-context.js no carga el centro post-XI');
-if(!quick.includes('window.RMQuickPicks')||!quick.includes('QUICK PICKS'))failures.push('quick-picks.js no conserva su API o interfaz principal');
-if(!activity.includes('window.RMActivityCenter')||!activity.includes('AHORA EN RM 26/27'))failures.push('activity-center.js no conserva su API o interfaz principal');
-if(!deep.includes('window.RMDeepLinks')||!deep.includes('window.rmShareCurrent'))failures.push('deep-links.js no conserva su API pública de rutas y compartir');
-if(!momentum.includes('window.RMMomentumPro')||!momentum.includes('MOMENTUM PRO · FORMA VS TEMPORADA'))failures.push('momentum-pro.js no conserva su API o interfaz principal');
-if(!postXi.includes('window.RMPostXiCenter')||!postXi.includes('CENTRO POST-XI'))failures.push('post-xi-center.js no conserva su API o interfaz principal');
+if(!ctx.includes('deep-links.js?v=1'))failures.push('analysis-context.js no carga deep links');
+if(!personal.includes('community-pro.js?v=2')||!personal.includes('community-league.js?v=1'))failures.push('personal-nav.js no integra la capa de comunidad');
+if(!community.includes('renderSimpleXiComparison'))failures.push('community.js no integra la comparación simple de XI');
 if(manifest&&!Array.isArray(manifest.icons))failures.push('manifest.webmanifest no define icons');
-
-const coreMatch=sw.match(/const CORE_PATHS=\[(.*?)\];/s);
-let quoted=[];
-if(!coreMatch)failures.push('sw.js no define CORE_PATHS');
-else{
-  quoted=[...coreMatch[1].matchAll(/(['"])(.*?)\1/g)].map(m=>m[2]);
-  const unique=new Set(quoted);
-  if(unique.size!==quoted.length)failures.push('CORE_PATHS contiene rutas duplicadas');
-  for(const file of quoted){if(file&&!exists(file))failures.push(`CORE_PATHS apunta a un archivo inexistente: ${file}`)}
-  for(const required of ['personal-hub.js','personal-nav.js','personal-home.js','engagement-loop.js','engagement-loop.css','engagement-rewards.js','engagement-rewards.css','quick-picks.js','quick-picks.css','favorite-watch.js','favorite-watch.css','activity-center.js','activity-center.css','deep-links.js','momentum-pro.js','momentum-pro.css','post-xi-center.js','post-xi-center.css','community-league.js','community-league.css','official-xi-review.js','official-xi-review.css','stats-pro.js','compare-pro.js','player-experience.js','manifest.webmanifest','app-icon.svg'])if(!unique.has(required))failures.push(`PWA no incluye ${required}`);
+const coreMatch=sw.match(/const CORE_PATHS=\[(.*?)\];/s);let quoted=[];
+if(!coreMatch)failures.push('sw.js no define CORE_PATHS');else{
+  quoted=[...coreMatch[1].matchAll(/(['"])(.*?)\1/g)].map(m=>m[2]);const unique=new Set(quoted);if(unique.size!==quoted.length)failures.push('CORE_PATHS contiene rutas duplicadas');
+  for(const file of quoted)if(file&&!exists(file))failures.push(`CORE_PATHS apunta a archivo inexistente: ${file}`);
+  for(const required of ['personal-hub.js','personal-nav.js','personal-home.js','deep-links.js','community.js','community-pro.js','community-pro.css','community-league.js','community-league.css','matchday.js','matchday.css','hierarchy.js','hierarchy.css','stats-pro.js','compare-pro.js','player-experience.js','manifest.webmanifest','app-icon.svg'])if(!unique.has(required))failures.push(`PWA no incluye ${required}`);
+  const retired=['decision-board.js','scenario-lab.js','consensus-xi.js','official-xi-review.js','prediction-analytics.js','matchday-pro.js','prediction-pro.js','lineup-pro.js','player-intelligence.js','lineuplab.js','intelligence.js','post-xi-center.js'];
+  for(const file of retired)if(unique.has(file))failures.push(`PWA aún precachea módulo retirado: ${file}`);
 }
-
 if(failures.length){console.error('PWA audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log(`PWA audit: OK · ${quoted.length} recursos · caché versionada · engagement, Momentum PRO, Quick Picks, watchlist, novedades, deep links, centro post-XI y revisión oficial offline incluidos`);
+console.log(`PWA audit: OK · ${quoted.length} recursos · flujo simplificado Tu XI/Comunidad/Oficial`);

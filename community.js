@@ -45,6 +45,7 @@ const resultBox=document.getElementById('predictionResult');if(resultBox)resultB
 
 let communityCache=window.RMCommunityData||null;
 function renderCommunityUnavailable(){
+  renderSimpleXiComparison(null);
   const total=document.getElementById('communityTotal');if(total)total.textContent='—';
   const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">La comunidad en vivo se activa en la versión conectada a Netlify. Tu predicción local sigue funcionando.</div>';
   const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo en espera</b><span>GitHub Pages sigue siendo la versión pública de verificación y no llama a funciones externas.</span></div>';
@@ -59,8 +60,31 @@ function pollBlock(title,slotData){
   const items=(slotData||[]).slice(0,4);if(!items.length)return `<div class="community-poll"><h3>${title}</h3><div class="muted">Sin votos todavía</div></div>`;
   return `<div class="community-poll"><h3>${title}</h3>${items.map(x=>`<div class="poll-row"><div><span>${escapeHtml(displayName(x.name))}</span><b>${x.percentage}%${x.multiPosition?` <small>(global ${x.globalPercentage}%)</small>`:''}</b></div><div class="poll-bar"><i style="width:${x.percentage}%"></i></div></div>`).join('')}</div>`
 }
+function simpleXiValues(xi){return Object.values(xi||{}).filter(Boolean)}
+function simpleValidXi(xi){const v=simpleXiValues(xi);return v.length===11&&new Set(v).size===11}
+function simpleCommunityXi(data){
+  const xi={};for(const s of slots){const row=data?.popularXI?.[s[0]];xi[s[0]]=typeof row==='string'?row:row?.name||''}return simpleValidXi(xi)?xi:null;
+}
+function simpleXiDiff(a,b){
+  const A=new Set(simpleXiValues(a)),B=new Set(simpleXiValues(b));return {same:[...A].filter(n=>B.has(n)),onlyA:[...A].filter(n=>!B.has(n)),onlyB:[...B].filter(n=>!A.has(n))};
+}
+function simpleOfficialScore(xi){
+  if(!simpleValidXi(xi)||!Array.isArray(officialXI))return null;const actual=new Set(officialXI);return simpleXiValues(xi).filter(n=>actual.has(n)).length;
+}
+function renderSimpleXiComparison(data=communityCache){
+  const section=document.getElementById('prediccion');if(!section)return;let root=document.getElementById('simpleXiComparison');
+  if(!root){root=document.createElement('section');root.id='simpleXiComparison';root.className='card';root.style.marginTop='16px';section.appendChild(root)}
+  const saved=typeof getSavedPrediction==='function'?getSavedPrediction():null,mine=simpleValidXi(saved?.xi)?saved.xi:(typeof currentPredictionXI==='function'&&simpleValidXi(currentPredictionXI())?currentPredictionXI():null),community=simpleCommunityXi(data);
+  if(!mine&&!community){root.hidden=true;root.innerHTML='';return}root.hidden=false;
+  if(!mine){root.innerHTML='<div class="section-head" style="margin-top:0"><div><h2>Tu XI vs Comunidad</h2><p>Completa y guarda tus 11 para compararlos con el consenso.</p></div></div>';return}
+  if(!community){root.innerHTML='<div class="section-head" style="margin-top:0"><div><h2>Tu XI vs Comunidad</h2><p>Tu XI está listo. El cruce aparecerá cuando exista un consenso comunitario válido de 11 jugadores.</p></div></div>';return}
+  const d=simpleXiDiff(mine,community),userScore=simpleOfficialScore(mine),communityScore=simpleOfficialScore(community),officialReady=Array.isArray(officialXI);
+  const chips=(list,kind='')=>`<div class="prediction-list ${kind}">${list.length?list.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join(''):'<span>—</span>'}</div>`;
+  root.innerHTML=`<div class="section-head" style="margin-top:0"><div><h2>${officialReady?'Tu XI · Comunidad · Oficial':'Tu XI vs Comunidad'}</h2><p>${officialReady?'La misma regla para ambos: 1 punto por cada titular que aparezca en el XI oficial.':'Comparación por jugadores elegidos; la posición exacta no cambia el 0–11.'}</p></div></div><div class="grid cols-3"><div class="kpi"><div class="label">${officialReady?'Tu resultado':'Coincidencias'}</div><div class="value">${officialReady?`${userScore}/11`:`${d.same.length}/11`}</div><div class="hint">${officialReady?'titulares acertados':'mismos jugadores'}</div></div><div class="kpi"><div class="label">${officialReady?'Comunidad':'Solo en tu XI'}</div><div class="value">${officialReady?`${communityScore}/11`:d.onlyA.length}</div><div class="hint">${officialReady?'titulares acertados':'diferencias tuyas'}</div></div><div class="kpi"><div class="label">${officialReady?'Coincidís':'Solo comunidad'}</div><div class="value">${officialReady?`${d.same.length}/11`:d.onlyB.length}</div><div class="hint">${officialReady?'entre vosotros':'diferencias del consenso'}</div></div></div>${d.onlyA.length||d.onlyB.length?`<div class="result-breakdown" style="margin-top:14px"><b>Solo en tu XI</b>${chips(d.onlyA,'good')}<b>Solo en la comunidad</b>${chips(d.onlyB,'bad')}</div>`:''}`;
+}
+
 function renderCommunity(data){
-  if(!data)return;communityCache=data;window.RMCommunityData=data;const total=data.totalPredictions||0;
+  if(!data)return;communityCache=data;renderSimpleXiComparison(data);window.RMCommunityData=data;const total=data.totalPredictions||0;
   document.getElementById('communityTotal').textContent=total;document.getElementById('communityScoredMatches').textContent=data.scoredMatches||0;
   const rb=data.slotShares?.rb?.[0],rw=data.slotShares?.rw?.[0];
   document.getElementById('communityRB').textContent=rb?displayName(rb.name):'—';document.getElementById('communityRBShare').textContent=rb?`${rb.percentage}% de los pronósticos`:'Esperando votos';
@@ -77,6 +101,8 @@ async function loadCommunity(force=false){
   try{const response=await fetch(communityApiUrl({participantId:getParticipantId()}),{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}));return data}
   catch{const total=document.getElementById('communityTotal');if(total)total.textContent='—';const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>No se pudo cargar la comunidad</b><span>Pulsa “Actualizar” para volver a intentarlo.</span></div>';return null}
 }
+document.getElementById('prediccion')?.addEventListener('change',e=>{if(e.target?.matches?.('[id^="pred_"]'))setTimeout(()=>renderSimpleXiComparison(communityCache),0)});
+document.addEventListener('rm-local-prediction-updated',()=>setTimeout(()=>renderSimpleXiComparison(communityCache),0));
 document.addEventListener('rm-community-updated',event=>{if(event.detail){communityCache=event.detail;window.RMCommunityData=event.detail;if(document.getElementById('comunidad')?.classList.contains('active'))renderCommunity(event.detail)}});
 window.RMCommunityApi=Object.freeze({url:communityApiUrl,available:communityBackendAvailable,participantId:getParticipantId,refresh:()=>loadCommunity(true)});
 
@@ -101,9 +127,7 @@ const deferredModules=[
   {script:'season-extension.js?v=1',scriptKey:'season-extension'},
   {css:'history.css?v=1',cssKey:'history',script:'history.js?v=2',scriptKey:'history'},
   {css:'analytics.css?v=1',cssKey:'analytics',script:'analytics.js?v=2',scriptKey:'analytics'},
-  {css:'lineuplab.css?v=1',cssKey:'lineuplab',script:'lineuplab.js?v=1',scriptKey:'lineuplab'},
   {css:'decisionradar.css?v=1',cssKey:'decisionradar',script:'decisionradar.js?v=1',scriptKey:'decisionradar'},
-  {css:'intelligence.css?v=1',cssKey:'intelligence',script:'intelligence.js?v=1',scriptKey:'intelligence'},
   {css:'hierarchy.css?v=1',cssKey:'hierarchy',script:'hierarchy.js?v=3',scriptKey:'hierarchy'}
 ];
 async function loadDeferredModules(){
@@ -112,7 +136,7 @@ async function loadDeferredModules(){
 }
 async function loadCriticalModules(){
   await afterFirstPaint();
-  await loadModule({script:'matchday.js?v=3',scriptKey:'matchday'});
+  await loadModule({script:'matchday.js?v=4',scriptKey:'matchday'});
   await loadModule({css:'playerhub.css?v=2',cssKey:'playerhub',script:'playerhub.js?v=2',scriptKey:'playerhub'});
   await loadModule({css:'player-experience.css?v=1',cssKey:'player-experience',script:'player-experience.js?v=1',scriptKey:'player-experience'});
   document.dispatchEvent(new CustomEvent('rm-critical-modules-ready'));

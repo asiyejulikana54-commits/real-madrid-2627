@@ -11,10 +11,6 @@ function data(){return window.RMCommunityData||null}
 function match(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
 function current(){return safe(()=>typeof currentPredictionXI==='function'?currentPredictionXI():null,null)}
 function validXi(xi){const d=defs();if(d.length!==11||!xi)return false;const v=d.map(s=>xi[s.key]).filter(Boolean);return v.length===11&&new Set(v.map(canonical)).size===11}
-function project(){
-  const candidates=[safe(()=>window.RMCurrentMatchIdea,null),safe(()=>typeof rayoXI!=='undefined'?rayoXI:null,null),safe(()=>typeof baseXI!=='undefined'?baseXI:null,null)];
-  return candidates.find(validXi)||null;
-}
 function popularXi(d){
   const out={};for(const slot of defs()){const row=d?.popularXI?.[slot.key];out[slot.key]=typeof row==='string'?row:row?.name||''}
   return out;
@@ -73,7 +69,7 @@ function state(){
   const d=data(),total=Number(d?.totalPredictions)||0;if(!d||!total)return {available:false,data:d,total};
   capture(d);const slotsState=slotState(d),prev=previousSnapshot(d),movers=moverRows(d,prev),popular=popularXi(d),avg=slotsState.reduce((s,r)=>s+r.share,0)/(slotsState.length||1);
   const sorted=[...slotsState].sort((a,b)=>a.share-b.share||a.margin-b.margin),weakest=sorted[0],strongest=sorted.at(-1);
-  return {available:true,data:d,total,closed:Boolean(d?.match?.closed),slots:slotsState,prev,movers,popular,avg,strongest,weakest,project:compareXi(project(),popular),mine:compareXi(current(),popular),multi:globalPlayers(d)}
+  return {available:true,data:d,total,closed:Boolean(d?.match?.closed),slots:slotsState,prev,movers,popular,avg,strongest,weakest,mine:compareXi(current(),popular),multi:globalPlayers(d)}
 }
 function ensure(){
   const section=document.getElementById('comunidad');if(!section)return null;let root=document.getElementById('communityPro');if(root)return root;
@@ -88,7 +84,7 @@ function comparisonCard(title,c){
   return `<div class="cpro-compare"><span>${esc(title)}</span><b>${c.presence}/11 titulares</b><small>${c.exact}/11 también coinciden en el puesto</small></div>`;
 }
 function renderUnavailable(root){
-  root.innerHTML=`<div class="cpro-head"><div><span>COMUNIDAD PRO</span><h3>Lectura avanzada del consenso</h3><p>Esta capa analiza fuerza del consenso, puestos divididos, cambios entre actualizaciones y coincidencia con Tú/Proyecto.</p></div><b>Sin datos en vivo</b></div><div class="cpro-unavailable"><strong>La versión pública de GitHub Pages no consulta Netlify.</strong><span>Cuando exista RMCommunityData, Comunidad PRO se activa sin inventar porcentajes ni usar datos antiguos como si fueran actuales.</span></div>`;
+  root.innerHTML=`<div class="cpro-head"><div><span>COMUNIDAD PRO</span><h3>Lectura avanzada del consenso</h3><p>Esta capa analiza fuerza del consenso, puestos divididos, cambios entre actualizaciones y coincidencia con tu XI.</p></div><b>Sin datos en vivo</b></div><div class="cpro-unavailable"><strong>La versión pública de GitHub Pages no consulta Netlify.</strong><span>Cuando exista RMCommunityData, Comunidad PRO se activa sin inventar porcentajes ni usar datos antiguos como si fueran actuales.</span></div>`;
 }
 function render(){
   const root=ensure();if(!root)return;const s=state();if(!s.available){renderUnavailable(root);return}
@@ -96,7 +92,7 @@ function render(){
   root.innerHTML=`<div class="cpro-head"><div><span>COMUNIDAD PRO</span><h3>Qué está realmente decidido y qué sigue abierto</h3><p>Los porcentajes son votos por puesto. El porcentaje global solo se muestra aparte cuando un jugador fue elegido en varias posiciones.</p></div><b>${s.closed?'Consenso final':'Consenso provisional'}</b></div>
   <div class="cpro-kpis"><div><span>Muestra</span><b>${s.total}</b><small>pronósticos</small></div><div><span>Acuerdo medio</span><b>${s.avg.toFixed(0)}%</b><small>líder por puesto</small></div><div><span>Más firme</span><b>${esc(s.strongest?.slot.label||'—')}</b><small>${s.strongest?`${s.strongest.share}% · ${display(s.strongest.top?.name)}`:'—'}</small></div><div><span>Más dividido</span><b>${esc(s.weakest?.slot.label||'—')}</b><small>${s.weakest?`${s.weakest.share}% · margen ${s.weakest.margin} pp`:'—'}</small></div></div>
   <div class="cpro-main"><section><div class="cpro-title"><span>MAPA DE CONSENSO</span><b>De más abierto a más firme</b></div><div class="cpro-grid">${ordered.map(r=>`<article class="${r.tone}"><div><span>${esc(r.slot.label)}</span><em>${esc(r.level)}</em></div><b>${r.top?esc(display(r.top.name)):'—'}</b><strong>${r.share}%</strong><small>${r.second?`${esc(display(r.second.name))} ${r.secondShare}% · margen ${r.margin} pp`:'Sin segunda opción'}</small>${r.top?.multiPosition&&Number.isFinite(Number(r.top.globalPercentage))?`<p>Global: ${Number(r.top.globalPercentage)}%</p>`:''}</article>`).join('')}</div></section>
-  <aside><div class="cpro-title"><span>CRUCE DE PERSPECTIVAS</span><b>Comunidad vs nuestros XI</b></div>${comparisonCard('Proyecto',s.project)}${comparisonCard('Tu borrador',s.mine)}
+  <aside><div class="cpro-title"><span>CRUCE DE PERSPECTIVAS</span><b>Comunidad vs tu XI</b></div>${comparisonCard('Tu XI',s.mine)}
   <div class="cpro-movers"><span>DESDE LA ÚLTIMA FOTO</span>${s.movers.length?s.movers.slice(0,5).map(r=>`<div class="${r.leaderChanged?'changed':r.delta>0?'up':'down'}"><b>${esc(r.slot.label)}</b><small>${esc(movementText(r))}</small></div>`).join(''):'<p>Necesitamos otra actualización distinta para medir movimientos reales.</p>'}</div></aside></div>
   ${s.multi.length?`<div class="cpro-global"><div><span>VOTO GLOBAL MULTIPOSICIÓN</span><b>Evita infravalorar a quien aparece repartido entre puestos</b></div><div>${s.multi.map(p=>`<button type="button" data-cpro-player="${esc(p.name)}"><b>${esc(display(p.name))}</b><span>${p.globalPercentage}% global</span><small>${esc([...new Set(p.positions)].join(' · '))}</small></button>`).join('')}</div></div>`:''}
   <p class="cpro-note">Consenso fuerte no significa “probabilidad de titularidad”. Solo describe concentración de votos. Los movimientos se calculan entre snapshots locales del mismo partido y nunca reconstruyen retrospectivamente lo que la comunidad pensaba antes.</p>`;
