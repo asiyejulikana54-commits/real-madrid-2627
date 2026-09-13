@@ -1,5 +1,5 @@
 (()=>{
-let installed=false,attempts=0;
+let installed=false,attempts=0,menuRefreshTimer=null;
 function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, favoritos, actividad y progreso personal.</small></button>'}
 function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
@@ -25,7 +25,7 @@ function ensureSingleHelpButton(tools){
   const matches=[...tools.querySelectorAll('button')].filter(b=>/cómo funciona la web/i.test(b.textContent||''));
   let help=matches[0]||null;
   if(!help){help=document.createElement('button');tools.insertBefore(help,tools.children[1]||null)}
-  help.id='uxHowRM';help.innerHTML='? Cómo funciona la web';help.onclick=openHowItWorks;
+  help.id='uxHowRM';if(help.innerHTML!=='? Cómo funciona la web')help.innerHTML='? Cómo funciona la web';help.onclick=openHowItWorks;
   matches.slice(1).forEach(b=>b.remove());
   return help;
 }
@@ -35,7 +35,7 @@ function injectMore(){
   const tools=sheet.querySelector('.ux-sheet-tools');
   let help=null;
   if(tools){
-    const title=tools.querySelector(':scope > span');if(title)title.textContent='Ayuda, aplicación y datos';
+    const title=tools.querySelector(':scope > span');if(title&&title.textContent!=='Ayuda, aplicación y datos')title.textContent='Ayuda, aplicación y datos';
     help=ensureSingleHelpButton(tools);
   }
   if(tools&&!document.getElementById('uxGlobalSearch')){
@@ -51,9 +51,11 @@ function injectDesktop(){
   const firstGroup=nav.querySelector('.ux-nav-group');if(!firstGroup)return;const inicio=firstGroup.querySelector('[data-section="inicio"]');const b=document.createElement('button');b.dataset.section='mi-temporada';b.onclick=()=>showSection('mi-temporada');b.innerHTML='<span>◎</span><em>Mi temporada</em>';if(inicio)inicio.insertAdjacentElement('afterend',b);else firstGroup.appendChild(b)
 }
 function refresh(){injectMore();injectDesktop()}
+function scheduleMenuRefresh(){clearTimeout(menuRefreshTimer);menuRefreshTimer=setTimeout(refresh,0)}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
   installed=true;refresh();loadCommunityLeague();
+  new MutationObserver(scheduleMenuRefresh).observe(document.body,{childList:true});
   const base=showSection;showSection=function(id){
     if(id==='mi-temporada')loadPersonalSeasonPro();
     if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}
