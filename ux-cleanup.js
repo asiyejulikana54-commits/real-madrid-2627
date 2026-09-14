@@ -8,9 +8,9 @@ const UX_GROUPS=[
 ];
 const UX_PRIMARY=[
   {id:'inicio',icon:'⌂',label:'Inicio'},
-  {id:'partido',icon:'⚽',label:'Partido'},
+  {id:'mi-liga',icon:'🏆',label:'Mi Liga'},
   {id:'plantilla',icon:'◉',label:'Equipo'},
-  {id:'mi-liga',icon:'🏆',label:'Mi Liga'}
+  {id:'partido',icon:'⚽',label:'Partido'}
 ];
 const UX_REQUIRED=[];
 let uxInstalled=false;
@@ -27,14 +27,22 @@ function desktopNav(){
     return `<div class="ux-nav-group"><div class="ux-nav-label">${group.label}</div>${items.map(s=>`<button data-section="${s[0]}" onclick="${s[0]==='mi-liga'?'openMiLiga()':`showSection('${s[0]}')`}"><span>${s[1]}</span><em>${s[2]}</em></button>`).join('')}</div>`;
   }).join('');
 }
-function renderNavs(){
-  const desk=document.getElementById('navDesktop'),mobile=document.getElementById('navMobile');
-  if(desk)desk.innerHTML=desktopNav();
-  if(mobile){
-    const direct=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="${x.id==='mi-liga'?'openMiLiga()':`showSection('${x.id}')`}"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
-    mobile.innerHTML=direct;
-    mobile.style.gridTemplateColumns='repeat(4,1fr)';
+function mobileNavCanonical(mobile){
+  if(!mobile)return false;
+  const expected=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>x.id),buttons=[...mobile.children].filter(x=>x.tagName==='BUTTON');
+  return buttons.length===expected.length&&buttons.every((b,i)=>b.dataset.section===expected[i])&&!mobile.querySelector('#uxMoreTab,.ux-more-tab');
+}
+function renderMobileNav(){
+  const mobile=document.getElementById('navMobile');if(!mobile)return;
+  if(!mobileNavCanonical(mobile)){
+    mobile.innerHTML=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="${x.id==='mi-liga'?'openMiLiga()':`showSection('${x.id}')`}"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
   }
+  mobile.style.gridTemplateColumns='repeat(4,1fr)';
+}
+function renderNavs(){
+  const desk=document.getElementById('navDesktop');
+  if(desk)desk.innerHTML=desktopNav();
+  renderMobileNav();
   syncNav(uxActive());
 }
 function syncNav(id){
@@ -114,6 +122,7 @@ function install(){
   if(typeof sections==='undefined'||typeof showSection!=='function'||!UX_REQUIRED.every(id=>sections.some(s=>s[0]===id))){setTimeout(install,80);return}
   uxInstalled=true;document.body.classList.add('ux-clean');ensureMoreSheet();refreshUi();
   const previousShow=showSection;showSection=function(id){previousShow(id);closeUxMore();renderNavs();syncNav(id);setTimeout(cleanDenseCards,0);if(id==='comparador'||id==='radar')setTimeout(()=>window.RMCompareLifecycle?.refresh?.(),0)};
+  const mobile=document.getElementById('navMobile');if(mobile)new MutationObserver(()=>{if(!mobileNavCanonical(mobile))queueMicrotask(()=>{renderMobileNav();syncNav(uxActive())})}).observe(mobile,{childList:true});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeUxMore()});
   document.addEventListener('rm-modules-ready',()=>{refreshMoreSheet();refreshUi()});
   document.addEventListener('rm-ranking-official-ready',()=>setTimeout(cleanDenseCards,0));
