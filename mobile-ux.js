@@ -51,9 +51,8 @@ function observeMoreSheet(){
   if(sheet!==observedMoreSheet){moreObserver?.disconnect();observedMoreSheet=sheet;moreObserver=new MutationObserver(syncMoreState);moreObserver.observe(sheet,{attributes:true,attributeFilter:['class']})}
   syncMoreState();
 }
-function toggleMoreMenu(){
-  const sheet=document.getElementById('uxMoreSheet'),open=Boolean(sheet?.classList.contains('open'));
-  try{if(open&&typeof window.closeUxMore==='function')window.closeUxMore();else if(!open&&typeof window.openUxMore==='function')window.openUxMore();else if(!open&&typeof openUxMore==='function')openUxMore()}catch(error){console.warn('Menú Más recuperado',error)}
+function openMoreMenu(){
+  try{if(typeof window.openUxMore==='function')window.openUxMore();else if(typeof openUxMore==='function')openUxMore()}catch(error){console.warn('Menú Más recuperado',error)}
   requestAnimationFrame(()=>{observeMoreSheet();syncMoreState()});
   return false;
 }
@@ -69,7 +68,7 @@ function hardenNav(){
   nav.addEventListener('pointerdown',e=>{if(!e.target.closest?.('button'))return;try{window.getSelection()?.removeAllRanges()}catch{}},{passive:true});
   nav.addEventListener('click',e=>{
     const btn=e.target.closest?.('button');if(!btn||!nav.contains(btn))return;
-    if(btn.matches('.ux-more-tab,#uxMoreTab')){e.preventDefault();e.stopImmediatePropagation();toggleMoreMenu();return}
+    if(btn.matches('.ux-more-tab,#uxMoreTab')){e.preventDefault();e.stopImmediatePropagation();openMoreMenu();return}
     if(!btn.dataset.section)return;e.preventDefault();e.stopPropagation();robustNavigate(btn.dataset.section)
   },true);
 }
@@ -82,7 +81,7 @@ function install(){
   const previous=window.showSection;if(typeof previous==='function')window.showSection=function(id){previous(id);schedule(30)};
   ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-community-updated','rm-matchday-polls-updated'].forEach(name=>document.addEventListener(name,()=>schedule(30)));
   [350,1300,3000].forEach(ms=>setTimeout(enhanceMobile,ms));
-  window.RMMobileUX=Object.freeze({navigate:robustNavigate,fallback:directActivate,refresh:enhanceMobile,toggleMore:toggleMoreMenu});
+  window.RMMobileUX=Object.freeze({navigate:robustNavigate,fallback:directActivate,refresh:enhanceMobile,openMore:openMoreMenu});
 }
 setTimeout(install,130);
 })();
