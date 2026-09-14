@@ -8,7 +8,8 @@ function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),
 function display(name){return safe(()=>typeof displayName==='function'?displayName(name):name,name)||name}
 function params(){return new URL(location.href).searchParams}
 function routeState(){
-  const q=params(),requested=q.get('section'),player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor'),pick=q.get('pick');
+  const q=params();if(q.get('shared')!=='1')return null;
+  const requested=q.get('section'),player=q.get('player'),a=q.get('a'),b=q.get('b'),anchor=q.get('anchor'),pick=q.get('pick');
   if(!requested&&!player&&!a&&!b&&!anchor)return null;
   const section=requested||(player?'plantilla':a&&b?'comparador':'inicio');
   return {section,player,a,b,anchor,pick:matchOption(pick,a,b)};
@@ -60,7 +61,7 @@ function openTarget(s){
 }
 async function shareVote(s,pick){
   if(!s.a||!s.b||!pick)return false;
-  const link=safe(()=>window.RMDeepLinks?.compareUrl?.(s.a,s.b,pick),null)||(()=>{const u=new URL(location.href);u.searchParams.set('section','comparador');u.searchParams.set('a',s.a);u.searchParams.set('b',s.b);u.searchParams.set('pick',pick);return u.href})();
+  const link=safe(()=>window.RMDeepLinks?.compareUrl?.(s.a,s.b,pick),null)||(()=>{const u=new URL(location.href);u.searchParams.set('section','comparador');u.searchParams.set('a',s.a);u.searchParams.set('b',s.b);u.searchParams.set('pick',pick);u.searchParams.set('shared','1');return u.href})();
   const title=`${display(s.a)} vs ${display(s.b)} · RM 26/27`,text=`Yo me quedo con ${display(pick)}. ¿Tú con quién?`;
   try{if(navigator.share){await navigator.share({title,text,url:link});return true}if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);safe(()=>toast('Enlace con tu elección copiado'));return true}}catch(e){if(e?.name==='AbortError')return false}
   safe(()=>toast('No se pudo compartir tu elección'));return false;
