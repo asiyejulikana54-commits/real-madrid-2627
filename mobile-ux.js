@@ -1,6 +1,6 @@
 (()=>{
 const mq=window.matchMedia('(max-width:780px)');
-let installed=false,timer=null,moreObserver=null,observedMoreSheet=null,moreGuardTimer=null;
+let installed=false,timer=null,moreGuardTimer=null;
 const MODULE_APIS=Object.freeze({partido:'RMMatchdayPro',plantilla:'RMSquadPro',power:'RMPowerPro',comparador:'RMComparePro',estadisticas:'RMStatsPro',partidos:'RMMatchHistoryPro',prediccion:'RMPredictionPro',once:'RMLineupPro',evolucion:'RMEvolutionPro',eficiencia:'RMEfficiencyPro'});
 function setClass(el,name,on=true){if(!el)return;if(on&&!el.classList.contains(name))el.classList.add(name);if(!on&&el.classList.contains(name))el.classList.remove(name)}
 function makeSecondary(node,title,sub){if(!node||node.closest('.mobile-secondary'))return;const d=document.createElement('details');d.className='mobile-secondary';d.dataset.mobileWrap='1';d.innerHTML=`<summary><div>${title}${sub?`<span>${sub}</span>`:''}</div><b>+</b></summary>`;node.replaceWith(d);d.appendChild(node)}
@@ -46,11 +46,7 @@ function syncMoreState(){
   tab.setAttribute('aria-label','Más opciones');tab.setAttribute('aria-haspopup','dialog');tab.setAttribute('aria-controls','uxMoreSheet');tab.setAttribute('aria-expanded',open?'true':'false');
   tab.classList.toggle('active',open||Boolean(activeId&&!primary));
 }
-function observeMoreSheet(){
-  const sheet=document.getElementById('uxMoreSheet');if(!sheet){syncMoreState();return}
-  if(sheet!==observedMoreSheet){moreObserver?.disconnect();observedMoreSheet=sheet;moreObserver=new MutationObserver(syncMoreState);moreObserver.observe(sheet,{attributes:true,attributeFilter:['class']})}
-  syncMoreState();
-}
+function observeMoreSheet(){syncMoreState()}
 function guardMoreBackdrop(){
   const sheet=document.getElementById('uxMoreSheet'),backdrop=sheet?.querySelector('.ux-sheet-backdrop');if(!backdrop)return;
   clearTimeout(moreGuardTimer);backdrop.style.pointerEvents='none';
