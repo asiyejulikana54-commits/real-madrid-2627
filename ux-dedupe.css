@@ -3,6 +3,8 @@
 
 /* Inicio: inteligencia + accesos + bloc; no repetimos mini versiones de otras pantallas */
 .ux-duplicate-home,.ux-duplicate-block{display:none!important}.ux-home-more-body>.grid.cols-2{grid-template-columns:1fr!important}.ux-home-more-body>.grid.cols-2>.quick-notes{display:block}.ux-home-more-body{padding-top:0}.ux-home-routes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0 2px}.ux-home-routes>span{font-size:8px;font-weight:900;letter-spacing:.12em;color:#64778d;margin-right:3px}.ux-home-routes button{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface-1);color:#c7d2de;border-radius:999px;padding:7px 10px;font-size:9px;font-weight:800;cursor:pointer}.ux-home-routes button:hover{border-color:#38516c;color:#fff}.ux-home-routes button b{color:var(--gold);font-size:11px}
+/* La watchlist es la única tarjeta “Tus jugadores” de Inicio. */
+#personalizedHome .personal-home-card.favorites{display:none!important}
 
 /* Power posee el ranking; los números base pertenecen a Estadísticas */
 .ux-power-deduped .power-head,.ux-power-deduped .power-row{grid-template-columns:42px minmax(150px,1fr) 88px minmax(110px,.7fr)}.ux-power-deduped .power-head>span:nth-child(4),.ux-power-deduped .power-head>span:nth-child(5),.ux-power-deduped .power-head>span:nth-child(6),.ux-power-deduped .power-row>span:nth-child(4),.ux-power-deduped .power-row>span:nth-child(5),.ux-power-deduped .power-row>span:nth-child(6){display:none}.ux-power-deduped .power-row>.power-level{display:block}.ux-power-deduped .ux-power-ranking{margin-top:12px}
