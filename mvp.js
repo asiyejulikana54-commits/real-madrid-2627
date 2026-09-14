@@ -1,5 +1,6 @@
 (()=>{
 const MVP_KEY='rm_mvp_personal_v2';
+const MVP_ENDPOINT='https://vvltmdedwgjtvlcmindn.supabase.co/functions/v1/mvp';
 const mvpSection=['mvp','🏆','MVP','MVP PRO','MVP por nota oficial, tu elección y evolución de la temporada.'];
 let installed=false,communityCache=null,selectedMatchId=null;
 
@@ -8,7 +9,7 @@ function esc(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;
 function display(name){return safe(()=>typeof displayName==='function'?displayName(name):name,name)||name}
 function season(){return window.RMSeasonData||null}
 function playerList(){return safe(()=>typeof players==='undefined'?[]:players,[])||[]}
-function backendAvailable(){return /^https?:$/.test(location.protocol)&&!location.hostname.endsWith('github.io')}
+function backendAvailable(){return /^https?:$/.test(location.protocol)}
 function canonical(name){return safe(()=>season()?.canonical?.(name),name)||name}
 function fmt(v){return Number.isFinite(v)?Number(v).toFixed(2):'—'}
 function readPicks(){try{const x=JSON.parse(localStorage.getItem(MVP_KEY)||'{}');return x&&typeof x==='object'?x:{}}catch{return {}}}
@@ -63,8 +64,8 @@ function options(rows,selected){return '<option value="">Elige tu MVP…</option
 
 function podRow(row,i,matchId){return `<button class="mvp-pro-podium-row" type="button" data-mvp-player="${esc(row.name)}"><i>#${i+1}</i><div><b>${esc(display(row.name))}</b><small>${esc(row.pos)} · nota oficial</small></div><strong>${fmt(row.value)}</strong></button>`}
 function communityMini(matchId){
-  if(!backendAvailable())return '<div class="mvp-pro-community-note"><b>Comunidad en pausa</b><span>GitHub Pages no hace llamadas a Netlify.</span></div>';
-  const cm=communityMatch(matchId);if(!cm)return '<div class="mvp-pro-community-note"><b>Comunidad no cargada</b><span>Se consultará al abrir/actualizar MVP en la versión conectada.</span></div>';
+  if(!backendAvailable())return '<div class="mvp-pro-community-note"><b>Comunidad en pausa</b><span>Abre la versión publicada para cargar los votos.</span></div>';
+  const cm=communityMatch(matchId);if(!cm)return '<div class="mvp-pro-community-note"><b>Comunidad no cargada</b><span>Se consultará al abrir o actualizar MVP.</span></div>';
   const top=(cm.ranking||[]).slice(0,3);return `<div class="mvp-pro-community-note"><b>${cm.totalVotes||0} votos comunitarios</b><span>${top.length?`Líder: ${esc(display(top[0].player))} · ${top[0].percentage}%`:'Aún sin votos'}</span></div>`;
 }
 function matchCard(item){
@@ -85,7 +86,7 @@ function methodology(){return `<div class="mvp-pro-method"><b>Cómo leer MVP PRO
 function render(){
   ensureSection();const section=document.getElementById('mvp');if(!section)return;const matches=analyzedMatches();
   if(!matches.length){section.innerHTML='<div class="section-head"><div><h2>MVP PRO</h2><p>Mejor nota oficial, tu MVP y evolución de la temporada.</p></div></div><div class="card mvp-empty"><b>Aún no hay partidos con valoración oficial.</b><span>Esta pantalla se completará cuando entren notas a la base de temporada.</span></div>';return}
-  section.innerHTML=`<div class="section-head"><div><h2>MVP PRO</h2><p>Separa el rendimiento oficial, tu elección personal y —cuando esté conectada— la opinión de la comunidad.</p></div>${backendAvailable()?'<button class="btn" type="button" id="mvpRefreshCommunity">Actualizar comunidad</button>':'<span class="pill">Modo local · sin Netlify</span>'}</div>${hero(matches)}${methodology()}${timeline(matches)}<div class="section-head"><div><h2>Partido a partido</h2><p>Podio por nota oficial y tu elección personal independiente.</p></div></div><div class="mvp-pro-match-grid">${matches.map(matchCard).join('')}</div>${seasonTable(matches)}`;
+  section.innerHTML=`<div class="section-head"><div><h2>MVP PRO</h2><p>Separa el rendimiento oficial, tu elección personal y —cuando esté conectada— la opinión de la comunidad.</p></div>${backendAvailable()?'<button class="btn" type="button" id="mvpRefreshCommunity">Actualizar comunidad</button>':'<span class="pill">Modo local</span>'}</div>${hero(matches)}${methodology()}${timeline(matches)}<div class="section-head"><div><h2>Partido a partido</h2><p>Podio por nota oficial y tu elección personal independiente.</p></div></div><div class="mvp-pro-match-grid">${matches.map(matchCard).join('')}</div>${seasonTable(matches)}`;
   bind(section);if(selectedMatchId)setTimeout(()=>document.getElementById(`mvp_${CSS.escape(selectedMatchId)}`)?.scrollIntoView({behavior:'smooth',block:'center'}),20);
 }
 function bind(root){
@@ -99,14 +100,14 @@ async function savePick(matchId){
   const select=document.querySelector(`[data-mvp-select="${CSS.escape(matchId)}"]`),name=select?.value;if(!name){safe(()=>toast('Elige un jugador antes de guardar tu MVP'));return}
   const picks=readPicks();picks[matchId]=name;writePicks(picks);safe(()=>toast(`Tu MVP: ${display(name)}`));document.dispatchEvent(new CustomEvent('rm-mvp-personal-updated',{detail:{matchId,player:name}}));
   if(backendAvailable()){
-    try{const response=await fetch('/.netlify/functions/mvp',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:safe(()=>getParticipantId(),''),matchId,player:name})});if(response.ok){communityCache=null;await loadCommunityMvp(true)}}catch{}
+    try{const response=await fetch(MVP_ENDPOINT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({participantId:safe(()=>getParticipantId(),''),matchId,player:name})});if(response.ok){communityCache=null;await loadCommunityMvp(true)}}catch{}
   }
   render();
 }
 async function loadCommunityMvp(force=false){
   if(!backendAvailable()){render();return null}
   if(communityCache&&!force){render();return communityCache}
-  try{const response=await fetch(`/.netlify/functions/mvp?participantId=${encodeURIComponent(safe(()=>getParticipantId(),''))}`,{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');communityCache=data;render();return data}catch{safe(()=>toast('No se pudo cargar la comunidad MVP'));render();return null}
+  try{const response=await fetch(`${MVP_ENDPOINT}?participantId=${encodeURIComponent(safe(()=>getParticipantId(),''))}`,{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');communityCache=data;render();return data}catch{safe(()=>toast('No se pudo cargar la comunidad MVP'));render();return null}
 }
 function openMatch(matchId){selectedMatchId=matchId;safe(()=>showSection('mvp'));setTimeout(render,0)}
 function sectionOpened(){render();if(backendAvailable())loadCommunityMvp(false)}
