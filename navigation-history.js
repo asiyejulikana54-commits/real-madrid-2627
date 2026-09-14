@@ -1,5 +1,5 @@
 (()=>{
-const ROUTE_KEYS=['section','player','a','b','anchor','pick'];
+const ROUTE_KEYS=['section','player','a','b','anchor','pick','shared'];
 let installed=false,attempts=0,restoring=false,wrapped=false;
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function active(){return document.querySelector('.section.active')?.id||'inicio'}
