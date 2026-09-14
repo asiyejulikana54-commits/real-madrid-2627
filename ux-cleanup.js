@@ -32,13 +32,13 @@ function renderNavs(){
   if(desk)desk.innerHTML=desktopNav();
   if(mobile){
     const direct=UX_PRIMARY.filter(x=>uxSection(x.id)).map(x=>`<button data-section="${x.id}" onclick="${x.id==='mi-liga'?'openMiLiga()':`showSection('${x.id}')`}"><b>${x.icon}</b><small>${x.label}</small></button>`).join('');
-    mobile.innerHTML=`${direct}<button class="ux-more-tab" id="uxMoreTab" onclick="openUxMore()"><b>☰</b><small>Más</small></button>`;
+    mobile.innerHTML=direct;
+    mobile.style.gridTemplateColumns='repeat(4,1fr)';
   }
   syncNav(uxActive());
 }
 function syncNav(id){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
-  const more=document.getElementById('uxMoreTab');if(more)more.classList.toggle('active',!UX_PRIMARY.some(x=>x.id===id));
   const eyebrow=document.querySelector('.topbar .eyebrow');if(eyebrow)eyebrow.textContent=`Real Madrid · ${uxGroupFor(id)}`;
 }
 
