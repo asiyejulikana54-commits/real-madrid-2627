@@ -1,5 +1,5 @@
 (()=>{
-const ROUTE_KEYS=['section','player','a','b','anchor','pick'];
+const ROUTE_KEYS=['section','player','a','b','anchor','pick','shared'];
 let installed=false,attempts=0,lastRoute='';
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function activeSection(){return document.querySelector('.section.active')?.id||'inicio'}
@@ -10,13 +10,14 @@ function url(section=activeSection(),params={}){
   for(const [key,value] of Object.entries(params||{})){if(value!==undefined&&value!==null&&String(value)!=='')u.searchParams.set(key,String(value))}
   return u.href;
 }
+function sharedUrl(section=activeSection(),params={}){const u=new URL(url(section,params));u.searchParams.set('shared','1');return u.href}
 function compareParams(){const A=document.getElementById('compareA'),B=document.getElementById('compareB');return A?.value&&B?.value?{a:A.value,b:B.value}:{} }
 function contextual(section=activeSection()){
   const params={};
   if(section==='comparador')Object.assign(params,compareParams());
   if(section==='prediccion'&&document.getElementById('officialXiReview')&&!document.getElementById('officialXiReview')?.hidden)params.anchor='officialXiReview';
   if(section==='partido'&&document.getElementById('officialXiReviewMatchday')&&!document.getElementById('officialXiReviewMatchday')?.hidden)params.anchor='officialXiReviewMatchday';
-  return {section,params,url:url(section,params)};
+  return {section,params,url:sharedUrl(section,params)};
 }
 async function shareCurrent(){
   const c=contextual(),title=`RM 26/27 · ${safe(()=>sections.find(s=>s[0]===c.section)?.[2],c.section)||c.section}`;
@@ -50,14 +51,14 @@ function route(force=false){
   if(section==='plantilla'&&player)setTimeout(()=>openPlayer(player),120);
   if(section==='comparador'&&a&&b)setTimeout(()=>openCompare(a,b),150);
   if(anchor)setTimeout(()=>scrollAnchor(anchor),180);
-  document.dispatchEvent(new CustomEvent('rm-deep-link-routed',{detail:{section,player,a,b,anchor,pick}}));return true;
+  document.dispatchEvent(new CustomEvent('rm-deep-link-routed',{detail:{section,player,a,b,anchor,pick,shared:q.get('shared')==='1'}}));return true;
 }
-function playerUrl(name){return url('plantilla',{player:name})}
-function compareUrl(a,b,pick=''){return url('comparador',{a,b,...(pick?{pick}:{})})}
-function sectionUrl(section,anchor=''){return url(section,anchor?{anchor}:{})}
+function playerUrl(name){return sharedUrl('plantilla',{player:name})}
+function compareUrl(a,b,pick=''){return sharedUrl('comparador',{a,b,...(pick?{pick}:{})})}
+function sectionUrl(section,anchor=''){return sharedUrl(section,anchor?{anchor}:{})}
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('inicio')){if(++attempts<100)setTimeout(install,80);return}
-  installed=true;window.rmShareCurrent=shareCurrent;window.RMDeepLinks=Object.freeze({url,contextual,route,shareCurrent,playerUrl,compareUrl,sectionUrl});
+  installed=true;window.rmShareCurrent=shareCurrent;window.RMDeepLinks=Object.freeze({url,sharedUrl,contextual,route,shareCurrent,playerUrl,compareUrl,sectionUrl});
   route(true);window.addEventListener('popstate',()=>route(true));document.dispatchEvent(new CustomEvent('rm-deep-links-ready'));
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
