@@ -57,10 +57,13 @@ function cleanEvolution(){const s=document.getElementById('evolucion');if(!s)ret
 function cleanHierarchy(){addClass(document.getElementById('jerarquias'),'ux-hierarchy-deduped')}
 function cleanCommunity(){const s=document.getElementById('comunidad');if(!s)return;addClass(s,'ux-community-deduped');setText(s.querySelector(':scope > .section-head p'),'Predicciones de alineación y ranking de aciertos. El mejor jugador de cada partido se vota en MVP.')}
 function cleanMvp(){addClass(document.getElementById('mvp'),'ux-mvp-deduped')}
-function routeButton(id,icon,label){return `<button type="button" data-home-route="${id}"><b>${icon}</b>${label}</button>`}
+function routeButton(id,icon,label,description){return `<button type="button" data-home-route="${id}"><b>${icon}</b><span><strong>${label}</strong><small>${description}</small></span></button>`}
+function predictionButton(){return `<button type="button" class="ux-home-predict" data-home-route="prediccion"><b>★</b><span><em>PRÓXIMO PARTIDO</em><strong>Predice el XI del Real Madrid</strong><small>Elige tus 11, compáralos con la comunidad y suma aciertos cuando salga el once oficial.</small></span><i>Hacer mi XI →</i></button>`}
 function addHomeMap(){
   const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
-  if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Accesos rápidos de Inicio');routes.innerHTML=`<span>IR DIRECTO</span>${routeButton('prediccion','★','Predecir XI')}${routeButton('partido','⚽','Partido')}${routeButton('mi-liga','🏆','Mi Liga')}${routeButton('power','↗','Power')}${routeButton('evolucion','⌁','Evolución')}`}
+  if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Apartados principales de la aplicación')}
+  const markup=`${predictionButton()}<span class="ux-home-routes-label">APARTADOS PRINCIPALES</span>${routeButton('partido','⚽','Partido','Previa, XI y seguimiento')}${routeButton('plantilla','👥','Equipo','Plantilla, Power y jerarquías')}${routeButton('estadisticas','📊','Rendimiento','Datos, eficiencia y evolución')}${routeButton('radar','🎯','Decisiones','Radar, comparador y XI')}${routeButton('comunidad','🌐','Comunidad','Tendencias y predicciones')}${routeButton('mi-liga','🏆','Mi Liga','Clasificación y ligas privadas')}${routeButton('mi-temporada','👤','Mi temporada','Historial, aciertos y progreso')}`;
+  if(routes.dataset.homeVersion!=='3'){routes.innerHTML=markup;routes.dataset.homeVersion='3'}
   const next=document.querySelector('#personalizedHome .personal-next'),personal=document.getElementById('personalizedHome'),intel=document.getElementById('intelligenceHome');
   if(next&&routes.previousElementSibling!==next)next.insertAdjacentElement('afterend',routes);else if(!routes.isConnected&&personal)personal.prepend(routes);else if(!routes.isConnected&&intel)intel.insertAdjacentElement('beforebegin',routes);else if(!routes.isConnected)home.prepend(routes);
   routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
@@ -79,7 +82,7 @@ function addMvpHome(){
 }
 function organizeHome(){
   const home=document.getElementById('inicio'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
-  const next=home.querySelector('#personalizedHome .personal-next');if(next)next.classList.toggle('prediction-priority',next.dataset.homeGo==='prediccion');
+  const next=home.querySelector('#personalizedHome .personal-next');if(next){const prediction=next.dataset.homeGo==='prediccion';next.classList.toggle('ux-duplicate-home',prediction);next.classList.remove('prediction-priority')}
   if(personal&&pulse&&personal.nextElementSibling!==pulse)personal.insertAdjacentElement('afterend',pulse);
   if(pulse&&intel&&pulse.nextElementSibling!==intel)pulse.insertAdjacentElement('afterend',intel);
   if(more&&more.parentElement===home&&home.lastElementChild!==more)home.appendChild(more);
