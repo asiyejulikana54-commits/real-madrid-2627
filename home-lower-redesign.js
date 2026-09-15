@@ -1,5 +1,5 @@
 (()=>{
-let installed=false,timer=null;
+let installed=false,timer=null,readyQueued=false;
 const HIDDEN_IDS=['personalizedHome','publicPulse','intelligenceHome','uxHomeMore'];
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
@@ -60,20 +60,28 @@ function styles(){
 @media(max-width:430px){.ux-lower-grid{grid-template-columns:1fr 1fr}.ux-lower-grid>.ux-lower-card:last-child{grid-column:1/-1}.ux-lower-card strong,.ux-lower-now .ux-lower-card strong{font-size:16px}}
 `;document.head.appendChild(s)}
 function navButton(id,title,copy){return `<button type="button" data-lower-go="${id}"><b>${esc(title)}</b><small>${esc(copy)}</small></button>`}
+function revealWhenReady(){
+  if(readyQueued||document.body.classList.contains('home-ready'))return;readyQueued=true;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{document.body.classList.add('home-ready');document.dispatchEvent(new CustomEvent('rm-home-final-ready'))}));
+}
+function bindRoutes(root){root.querySelectorAll('[data-lower-go]').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.lowerGo)))}
 function render(){
   const home=document.getElementById('inicio'),poll=document.getElementById('homePollTeaser');if(!home||!poll)return false;styles();home.classList.add('home-lower-redesigned');
   HIDDEN_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.setAttribute('aria-hidden','true')});
-  document.getElementById('uxHomeNow')?.remove();
-  let root=document.getElementById('uxHomeBelow');if(!root){root=document.createElement('section');root.id='uxHomeBelow';root.className='ux-home-below';poll.insertAdjacentElement('afterend',root)}else if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
+  let root=document.getElementById('uxHomeBelow');if(!root){root=document.createElement('section');root.id='uxHomeBelow';root.className='ux-home-below'}
+  if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
   const p=personalSummary(),power=powerRows()[0],form=formLeader(),riser=topRiser(),duel=duelInfo(),community=communityInfo();
   const latestScore=p.latest?(Number.isFinite(p.latest.score)?`${p.latest.score}/11`:'Pendiente'):'Sin XI';
-  const now=document.createElement('section');now.id='uxHomeNow';now.className='ux-lower-section ux-lower-now';now.innerHTML=`<div class="ux-lower-head"><div><span>AHORA MISMO</span><h2>Quién está marcando la temporada.</h2></div><p>Rendimiento puro, sin llenar Inicio de tablas.</p></div><div class="ux-lower-grid">
+  let now=document.getElementById('uxHomeNow');if(!now){now=document.createElement('section');now.id='uxHomeNow';now.className='ux-lower-section ux-lower-now'}
+  const nowMarkup=`<div class="ux-lower-head"><div><span>AHORA MISMO</span><h2>Quién está marcando la temporada.</h2></div><p>Rendimiento puro, sin llenar Inicio de tablas.</p></div><div class="ux-lower-grid">
     <button class="ux-lower-card button" type="button" data-lower-go="power"><span class="k">LÍDER POWER</span><strong>${esc(display(power?.name||'—'))}</strong><em>${Number.isFinite(power?.power)?Number(power.power).toFixed(2):'—'}</em><small>El jugador más fuerte en el ranking actual.</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MEJOR FORMA</span><strong>${esc(display(form?.name||'—'))}</strong><em>${Number.isFinite(form?.value)?Number(form.value).toFixed(2):'—'}</em><small>${form?`media en sus últimos ${form.n} partidos`:'Esperando más muestra'}</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MAYOR SUBIDA</span><strong>${esc(display(riser?.name||'—'))}</strong><em>${Number.isFinite(riser?.delta)?`+${riser.delta.toFixed(2)}`:'—'}</em><small>El cambio positivo más fuerte del último corte.</small></button>
   </div>`;
-  const mvp=document.getElementById('uxHomeMvp');if(mvp)mvp.insertAdjacentElement('afterend',now);else poll.insertAdjacentElement('beforebegin',now);
-  root.innerHTML=`
+  if(now.__rmMarkup!==nowMarkup){now.innerHTML=nowMarkup;now.__rmMarkup=nowMarkup;bindRoutes(now)}
+  const mvp=document.getElementById('uxHomeMvp');if(mvp&&now.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',now);else if(!mvp&&now.previousElementSibling!==poll)poll.insertAdjacentElement('beforebegin',now);
+  if(now.nextElementSibling!==poll)now.insertAdjacentElement('afterend',poll);
+  const rootMarkup=`
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>DEBATE Y COMUNIDAD</span><h2>Dos cosas para mirar rápido.</h2></div><p>Sin repetir toda la sección Comunidad.</p></div><div class="ux-lower-community">
     <button class="ux-lower-card button" type="button" data-lower-go="radar"><span class="k">DUELO ABIERTO</span><b>${esc(duel.title)}</b><span>${esc(duel.copy)}</span><i>${esc(duel.action)} →</i></button>
     <button class="ux-lower-card button" type="button" data-lower-go="comunidad"><span class="k">PULSO DE LA COMUNIDAD</span><b>${esc(community.title)}</b><span>${esc(community.copy)}</span><i>Ver comunidad →</i></button>
@@ -84,8 +92,9 @@ function render(){
     <button class="ux-lower-card button" type="button" data-lower-go="plantilla"><span class="k">TUS JUGADORES</span><strong>${p.fav.length}</strong><small>${p.fav.length?'favoritos bajo seguimiento':'Marca favoritos desde la plantilla'}</small></button>
   </div></section>
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>SEGUIR EXPLORANDO</span><h2>Atajos secundarios.</h2></div></div><div class="ux-lower-links">${navButton('power','Power RM','Ranking y forma')}${navButton('evolucion','Evolución','Cambios por jornada')}${navButton('comparador','Comparador','Jugador contra jugador')}${navButton('partidos','Partidos','Archivo y análisis')}</div><div class="ux-lower-note"><span>El resto de herramientas sigue disponible desde <b>•••</b>. Inicio se queda solo con lo útil para volver cada día.</span><button type="button" data-lower-more>Ver todo el panel →</button></div></section>`;
-  home.querySelectorAll('#uxHomeNow [data-lower-go],#uxHomeBelow [data-lower-go]').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.lowerGo)));
-  root.querySelector('[data-lower-more]')?.addEventListener('click',()=>{if(typeof window.openUxMore==='function')window.openUxMore();else if(typeof openUxMore==='function')openUxMore()});
+  if(root.__rmMarkup!==rootMarkup){root.innerHTML=rootMarkup;root.__rmMarkup=rootMarkup;bindRoutes(root);root.querySelector('[data-lower-more]')?.addEventListener('click',()=>{if(typeof window.openUxMore==='function')window.openUxMore();else if(typeof openUxMore==='function')openUxMore()})}
+  if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
+  revealWhenReady();
   return true;
 }
 function schedule(delay=60){clearTimeout(timer);timer=setTimeout(render,delay)}
