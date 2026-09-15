@@ -63,7 +63,7 @@ function addHomeMap(){
   const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
   if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Apartados principales de la aplicación')}
   const markup=`${predictionButton()}<span class="ux-home-routes-label">APARTADOS PRINCIPALES</span>${routeButton('partido','⚽','Partido','Previa, XI y seguimiento')}${routeButton('plantilla','👥','Equipo','Plantilla, Power y jerarquías')}${routeButton('estadisticas','📊','Rendimiento','Datos, eficiencia y evolución')}${routeButton('radar','🎯','Decisiones','Radar, comparador y XI')}${routeButton('comunidad','🌐','Comunidad','Tendencias y predicciones')}${routeButton('mi-liga','🏆','Mi Liga','Clasificación y ligas privadas')}${routeButton('mi-temporada','👤','Mi temporada','Historial, aciertos y progreso')}`;
-  if(routes.dataset.homeVersion!=='5'){routes.innerHTML=markup;routes.dataset.homeVersion='5'}
+  if(routes.dataset.homeVersion!=='6'){routes.innerHTML=markup;routes.dataset.homeVersion='6'}
   const personal=document.getElementById('personalizedHome');
   if(personal){if(routes.nextElementSibling!==personal)personal.insertAdjacentElement('beforebegin',routes)}else if(!routes.isConnected)home.prepend(routes);
   routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
@@ -76,14 +76,15 @@ function addMvpHome(){
   const home=document.getElementById('inicio'),routes=addHomeMap();if(!home||!routes)return;
   const hasMvp=safe(()=>sections.some(s=>s[0]==='mvp'),Boolean(document.getElementById('mvp')));if(!hasMvp)return;
   let card=document.getElementById('uxHomeMvp');if(!card){card=document.createElement('button');card.id='uxHomeMvp';card.type='button';card.className='ux-home-mvp'}
-  const predict=routes.querySelector('.ux-home-predict');if(predict&&card.previousElementSibling!==predict)predict.insertAdjacentElement('afterend',card);
+  if(card.previousElementSibling!==routes)routes.insertAdjacentElement('afterend',card);
   const match=latestRatedMatch(),picks=safe(()=>window.RMMvpPro?.picks?.(),{})||{},pick=match?picks[match.id]:null,label=match?.short||match?.label||'último partido';
   card.innerHTML=`<div><span>${pick?'TU MVP':'VOTA EL MVP'}</span><b>${pick?`${esc(display(pick))} · ${esc(label)}`:`¿Quién fue el mejor de ${esc(label)}?`}</b><small>${pick?'Puedes cambiar tu voto o consultar el resultado de la comunidad.':'Elige tu MVP de cada partido y compáralo con la comunidad y las notas.'}</small></div><strong>${pick?'Ver / cambiar':'Votar ahora'} →</strong>`;
   if(!card.dataset.homeBound){card.dataset.homeBound='1';card.addEventListener('click',()=>{const current=latestRatedMatch();go('mvp');setTimeout(()=>{if(current&&window.RMMvpPro?.openMatch)window.RMMvpPro.openMatch(current.id)},80)})}
 }
 function organizeHome(){
   const home=document.getElementById('inicio'),routes=document.getElementById('uxHomeRoutes'),mvp=document.getElementById('uxHomeMvp'),poll=document.getElementById('homePollTeaser'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
-  if(routes&&mvp&&poll&&poll.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',poll);
+  if(routes&&mvp&&mvp.previousElementSibling!==routes)routes.insertAdjacentElement('afterend',mvp);
+  if(mvp&&poll&&poll.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',poll);
   const next=home.querySelector('#personalizedHome .personal-next');if(next){const prediction=next.dataset.homeGo==='prediccion';next.classList.toggle('ux-duplicate-home',prediction);next.classList.remove('prediction-priority')}
   if(personal&&pulse&&personal.nextElementSibling!==pulse)personal.insertAdjacentElement('afterend',pulse);
   if(pulse&&intel&&pulse.nextElementSibling!==intel)pulse.insertAdjacentElement('afterend',intel);
