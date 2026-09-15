@@ -62,14 +62,14 @@ function render(){
   </div>`;
   const mvp=document.getElementById('uxHomeMvp');if(mvp)mvp.insertAdjacentElement('afterend',now);else poll.insertAdjacentElement('beforebegin',now);
   root.innerHTML=`
+  <section class="ux-lower-section"><div class="ux-lower-head"><div><span>DEBATE Y COMUNIDAD</span><h2>Dos cosas para mirar rápido.</h2></div><p>Sin repetir toda la sección Comunidad.</p></div><div class="ux-lower-community">
+    <button class="ux-lower-card button" type="button" data-lower-go="radar"><span class="k">DUELO ABIERTO</span><b>${esc(duel.title)}</b><span>${esc(duel.copy)}</span><i>${esc(duel.action)} →</i></button>
+    <button class="ux-lower-card button" type="button" data-lower-go="comunidad"><span class="k">PULSO DE LA COMUNIDAD</span><b>${esc(community.title)}</b><span>${esc(community.copy)}</span><i>Ver comunidad →</i></button>
+  </div></section>
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>TU RM</span><h2>Tu seguimiento, en pequeño.</h2></div><p>Solo lo que te afecta a ti.</p></div><div class="ux-lower-grid">
     <button class="ux-lower-card button" type="button" data-lower-go="mi-temporada"><span class="k">MI TEMPORADA</span><strong>${p.records.length}</strong><small>pronóstico${p.records.length===1?'':'s'}${p.best!==null?` · mejor ${p.best}/11`:''}</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="prediccion"><span class="k">ÚLTIMO XI</span><strong>${esc(latestScore)}</strong><small>${p.latest?'Consulta o revisa tu última predicción.':'Haz tu primera predicción.'}</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="plantilla"><span class="k">TUS JUGADORES</span><strong>${p.fav.length}</strong><small>${p.fav.length?'favoritos bajo seguimiento':'Marca favoritos desde la plantilla'}</small></button>
-  </div></section>
-  <section class="ux-lower-section"><div class="ux-lower-head"><div><span>DEBATE Y COMUNIDAD</span><h2>Dos cosas para mirar rápido.</h2></div><p>Sin repetir toda la sección Comunidad.</p></div><div class="ux-lower-community">
-    <button class="ux-lower-card button" type="button" data-lower-go="radar"><span class="k">DUELO ABIERTO</span><b>${esc(duel.title)}</b><span>${esc(duel.copy)}</span><i>${esc(duel.action)} →</i></button>
-    <button class="ux-lower-card button" type="button" data-lower-go="comunidad"><span class="k">PULSO DE LA COMUNIDAD</span><b>${esc(community.title)}</b><span>${esc(community.copy)}</span><i>Ver comunidad →</i></button>
   </div></section>
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>SEGUIR EXPLORANDO</span><h2>Atajos secundarios.</h2></div></div><div class="ux-lower-links">${navButton('power','Power RM','Ranking y forma')}${navButton('evolucion','Evolución','Cambios por jornada')}${navButton('comparador','Comparador','Jugador contra jugador')}${navButton('partidos','Partidos','Archivo y análisis')}</div><div class="ux-lower-note"><span>El resto de herramientas sigue disponible desde <b>•••</b>. Inicio se queda solo con lo útil para volver cada día.</span><button type="button" data-lower-more>Ver todo el panel →</button></div></section>`;
   home.querySelectorAll('#uxHomeNow [data-lower-go],#uxHomeBelow [data-lower-go]').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.lowerGo)));
