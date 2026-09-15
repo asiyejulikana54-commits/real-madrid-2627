@@ -12,11 +12,44 @@ const PURPOSES={
   mvp:{kicker:'MEJOR JUGADOR',text:'Votación del mejor jugador de cada partido. Se mantiene separada de las predicciones de alineación.',links:[['comunidad','Ver comunidad'],['partidos','Ver partidos']]}
 };
 let installed=false,timer=null;
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
 function addClass(el,name){if(el&&!el.classList.contains(name))el.classList.add(name)}
+function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
+function display(name){return safe(()=>typeof displayName==='function'?displayName(name):name,name)||name}
+function go(id){if(id==='mi-liga'&&typeof openMiLiga==='function')return openMiLiga();if(typeof showSection==='function')showSection(id)}
 function addPurpose(id){const section=document.getElementById(id),cfg=PURPOSES[id];if(!section||!cfg||section.querySelector(':scope > .ux-purpose'))return;const guide=document.createElement('div');guide.className='ux-purpose';guide.innerHTML=`<div><span>${esc(cfg.kicker)}</span><p>${esc(cfg.text)}</p></div><div>${cfg.links.map(([target,label])=>`<button onclick="showSection('${target}')">${esc(label)} <b>→</b></button>`).join('')}</div>`;const tabs=section.querySelector(':scope > .ux-data-tabs');if(tabs)tabs.insertAdjacentElement('afterend',guide);else section.prepend(guide)}
-function cleanHome(){const more=document.getElementById('uxHomeMore');if(!more)return;['powerHome','hierarchyHome','homeVsCommunity'].forEach(id=>addClass(document.getElementById(id),'ux-duplicate-home'));const rating=document.getElementById('ratingBars');if(rating)addClass(rating.closest('.card'),'ux-duplicate-home');const generic=[...document.querySelectorAll('#uxHomeMore .grid.cols-4')].find(g=>g.querySelector('.kpi'));if(generic)addClass(generic,'ux-duplicate-home');const summary=more.querySelector(':scope > summary');if(summary){setText(summary.querySelector('span'),'Notas del proyecto');setText(summary.querySelector('b'),'Bloc táctico y ajustes guardados en este dispositivo')}}
+function normalizeHomeLanguage(){
+  const home=document.getElementById('inicio');if(!home)return;
+  const replacements=[
+    [/Notas del proyecto/gi,'Notas tácticas'],
+    [/tu proyecto/gi,'nuestra previsión'],
+    [/Proyecto hizo/gi,'Nuestra previsión hizo'],
+    [/EN PROYECTO/gi,'EN PREVISIÓN'],
+    [/Entra en nuestra propuesta de XI/gi,'Entra en el XI previsto'],
+    [/Sale de nuestra propuesta principal/gi,'Sale del XI previsto'],
+    [/proyecto/gi,'previsión']
+  ];
+  const walker=document.createTreeWalker(home,NodeFilter.SHOW_TEXT);let node;
+  while(node=walker.nextNode()){
+    let value=node.nodeValue||'',next=value;for(const [pattern,to] of replacements)next=next.replace(pattern,to);if(next!==value)node.nodeValue=next;
+  }
+}
+function cleanHome(){
+  const home=document.getElementById('inicio');if(!home)return;
+  addClass(home.querySelector(':scope > .hero'),'ux-duplicate-home');
+  addClass(document.getElementById('publicIntro'),'ux-duplicate-home');
+  addClass(document.getElementById('homePro'),'ux-duplicate-home');
+  const more=document.getElementById('uxHomeMore');
+  if(more){
+    ['powerHome','hierarchyHome','homeVsCommunity'].forEach(id=>addClass(document.getElementById(id),'ux-duplicate-home'));
+    const rating=document.getElementById('ratingBars');if(rating)addClass(rating.closest('.card'),'ux-duplicate-home');
+    const generic=[...document.querySelectorAll('#uxHomeMore .grid.cols-4')].find(g=>g.querySelector('.kpi'));if(generic)addClass(generic,'ux-duplicate-home');
+    const summary=more.querySelector(':scope > summary');if(summary){setText(summary.querySelector('span'),'Notas y herramientas');setText(summary.querySelector('b'),'Bloc táctico, método y ajustes guardados en este dispositivo')}
+  }
+  const pulse=document.getElementById('publicPulse');if(pulse){addClass(pulse.querySelector('.pulse-stage'),'ux-duplicate-home');addClass(pulse.querySelector('.pulse-player'),'ux-duplicate-home');addClass(pulse.querySelector('.pulse-changes'),'ux-duplicate-home')}
+  normalizeHomeLanguage();
+}
 function cleanPower(){const s=document.getElementById('power');if(!s)return;addClass(s,'ux-power-deduped');const ranking=s.querySelector('.ux-power-ranking');if(ranking&&!ranking.dataset.dedupe){ranking.dataset.dedupe='1';ranking.open=false;setText(ranking.querySelector(':scope > summary b'),'Ranking Power completo');setText(ranking.querySelector(':scope > summary span'),'Puesto, jugador, Power y nivel')}}
 function cleanComparator(){const s=document.getElementById('comparador');if(!s)return;addClass(s,'ux-comparator-deduped');const firstHead=s.querySelector(':scope > .section-head');if(firstHead){setText(firstHead.querySelector('h2'),'Comparación rápida');setText(firstHead.querySelector('p'),'Dos jugadores, una lectura directa. Para decidir un puesto con más contexto, usa Radar.')}[...s.querySelectorAll(':scope > .section-head')].forEach(head=>{if(head.textContent.includes('Comparaciones que seguimos')){addClass(head,'ux-duplicate-block');const next=head.nextElementSibling;if(next?.classList.contains('grid'))addClass(next,'ux-duplicate-block')}})}
 function cleanRadar(){const s=document.getElementById('radar');if(!s)return;const profiles=s.querySelector('.radar-player-grid');if(profiles&&!profiles.closest('.ux-radar-profiles')){const d=document.createElement('details');d.className='ux-panel-details ux-radar-profiles';d.innerHTML='<summary><div><b>Fichas de los dos jugadores</b><span>Media, Power, minutos y forma</span></div><strong>+</strong></summary>';profiles.replaceWith(d);d.appendChild(profiles)}addClass(s.querySelector('.radar-summary-grid'),'ux-radar-secondary')}
@@ -24,16 +57,41 @@ function cleanEvolution(){const s=document.getElementById('evolucion');if(!s)ret
 function cleanHierarchy(){addClass(document.getElementById('jerarquias'),'ux-hierarchy-deduped')}
 function cleanCommunity(){const s=document.getElementById('comunidad');if(!s)return;addClass(s,'ux-community-deduped');setText(s.querySelector(':scope > .section-head p'),'Predicciones de alineación y ranking de aciertos. El mejor jugador de cada partido se vota en MVP.')}
 function cleanMvp(){addClass(document.getElementById('mvp'),'ux-mvp-deduped')}
-function addHomeMap(){const intel=document.getElementById('intelligenceHome'),home=document.getElementById('inicio');if(!home||!intel||document.getElementById('uxHomeRoutes'))return;const routes=document.createElement('div');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.innerHTML=`<span>IR DIRECTO</span><button onclick="showSection('power')"><b>↗</b> Ranking</button><button onclick="showSection('evolucion')"><b>⌁</b> Evolución</button><button onclick="showSection('radar')"><b>◇</b> Decidir</button><button onclick="showSection('laboratorio')"><b>△</b> XI por datos</button>`;intel.insertAdjacentElement('afterend',routes)}
-function apply(){if(!document.body.classList.contains('rm-visual-system'))return;Object.keys(PURPOSES).forEach(addPurpose);cleanHome();cleanPower();cleanComparator();cleanRadar();cleanEvolution();cleanHierarchy();cleanCommunity();cleanMvp();addHomeMap()}
+function routeButton(id,icon,label){return `<button type="button" data-home-route="${id}"><b>${icon}</b>${label}</button>`}
+function addHomeMap(){
+  const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
+  if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Accesos rápidos de Inicio');routes.innerHTML=`<span>IR DIRECTO</span>${routeButton('partido','⚽','Partido')}${routeButton('prediccion','★','Predicción')}${routeButton('mi-liga','🏆','Mi Liga')}${routeButton('power','↗','Power')}${routeButton('evolucion','⌁','Evolución')}`}
+  const next=document.querySelector('#personalizedHome .personal-next'),personal=document.getElementById('personalizedHome'),intel=document.getElementById('intelligenceHome');
+  if(next&&routes.previousElementSibling!==next)next.insertAdjacentElement('afterend',routes);else if(!routes.isConnected&&personal)personal.prepend(routes);else if(!routes.isConnected&&intel)intel.insertAdjacentElement('beforebegin',routes);else if(!routes.isConnected)home.prepend(routes);
+  routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
+}
+function latestRatedMatch(){
+  const season=window.RMSeasonData,matches=season?.matches||[],list=safe(()=>players,[])||[];
+  for(let i=matches.length-1;i>=0;i--){const match=matches[i],rated=list.some(p=>Number.isFinite(safe(()=>season.officialRatingEntry?.(match.id,p.name)?.value,null)));if(rated)return match}return matches.at(-1)||null;
+}
+function addMvpHome(){
+  const home=document.getElementById('inicio'),routes=addHomeMap();if(!home||!routes)return;
+  const hasMvp=safe(()=>sections.some(s=>s[0]==='mvp'),Boolean(document.getElementById('mvp')));if(!hasMvp)return;
+  let card=document.getElementById('uxHomeMvp');if(!card){card=document.createElement('button');card.id='uxHomeMvp';card.type='button';card.className='ux-home-mvp';routes.insertAdjacentElement('afterend',card)}
+  const match=latestRatedMatch(),picks=safe(()=>window.RMMvpPro?.picks?.(),{})||{},pick=match?picks[match.id]:null,label=match?.short||match?.label||'último partido';
+  card.innerHTML=`<div><span>${pick?'TU MVP':'VOTA EL MVP'}</span><b>${pick?`${esc(display(pick))} · ${esc(label)}`:`¿Quién fue el mejor de ${esc(label)}?`}</b><small>${pick?'Puedes cambiar tu voto o consultar el resultado de la comunidad.':'Elige tu MVP de cada partido y compáralo con la comunidad y las notas.'}</small></div><strong>${pick?'Ver / cambiar':'Votar ahora'} →</strong>`;
+  if(!card.dataset.homeBound){card.dataset.homeBound='1';card.addEventListener('click',()=>{const current=latestRatedMatch();go('mvp');setTimeout(()=>{if(current&&window.RMMvpPro?.openMatch)window.RMMvpPro.openMatch(current.id)},80)})}
+}
+function organizeHome(){
+  const home=document.getElementById('inicio'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
+  if(personal&&pulse&&personal.nextElementSibling!==pulse)personal.insertAdjacentElement('afterend',pulse);
+  if(pulse&&intel&&pulse.nextElementSibling!==intel)pulse.insertAdjacentElement('afterend',intel);
+  if(more&&more.parentElement===home&&home.lastElementChild!==more)home.appendChild(more);
+}
+function apply(){if(!document.body.classList.contains('rm-visual-system'))return;Object.keys(PURPOSES).forEach(addPurpose);cleanHome();cleanPower();cleanComparator();cleanRadar();cleanEvolution();cleanHierarchy();cleanCommunity();cleanMvp();addHomeMap();addMvpHome();organizeHome();normalizeHomeLanguage()}
 function schedule(delay=45){clearTimeout(timer);timer=setTimeout(apply,delay)}
 function loadMobileLayer(){if(!document.querySelector('link[data-mobile-ux]')){const link=document.createElement('link');link.rel='stylesheet';link.href='mobile-ux.css?v=2';link.dataset.mobileUx='1';document.head.appendChild(link)}if(!document.querySelector('script[data-mobile-ux]')){const script=document.createElement('script');script.src='mobile-ux.js?v=7';script.dataset.mobileUx='1';document.body.appendChild(script)}}
 function install(){
   if(installed)return;if(!document.body.classList.contains('rm-visual-system')||typeof showSection!=='function'){setTimeout(install,80);return}
   installed=true;addClass(document.body,'ux-deduped');apply();
   const previous=window.showSection;window.showSection=function(id){previous(id);schedule(25)};
-  ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-community-updated','rm-matchday-polls-updated'].forEach(name=>document.addEventListener(name,()=>schedule(15)));
-  [300,1200,2800].forEach(ms=>setTimeout(apply,ms));
+  ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-community-updated','rm-matchday-polls-updated','rm-mvp-personal-updated','rm-favorite-watch-rendered'].forEach(name=>document.addEventListener(name,()=>schedule(15)));
+  [300,1200,2800,5200].forEach(ms=>setTimeout(apply,ms));
   loadMobileLayer();
 }
 setTimeout(install,110);
