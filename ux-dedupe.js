@@ -82,7 +82,8 @@ function addMvpHome(){
   if(!card.dataset.homeBound){card.dataset.homeBound='1';card.addEventListener('click',()=>{const current=latestRatedMatch();go('mvp');setTimeout(()=>{if(current&&window.RMMvpPro?.openMatch)window.RMMvpPro.openMatch(current.id)},80)})}
 }
 function organizeHome(){
-  const home=document.getElementById('inicio'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
+  const home=document.getElementById('inicio'),routes=document.getElementById('uxHomeRoutes'),mvp=document.getElementById('uxHomeMvp'),poll=document.getElementById('homePollTeaser'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
+  if(routes&&mvp&&poll&&poll.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',poll);
   const next=home.querySelector('#personalizedHome .personal-next');if(next){const prediction=next.dataset.homeGo==='prediccion';next.classList.toggle('ux-duplicate-home',prediction);next.classList.remove('prediction-priority')}
   if(personal&&pulse&&personal.nextElementSibling!==pulse)personal.insertAdjacentElement('afterend',pulse);
   if(pulse&&intel&&pulse.nextElementSibling!==intel)pulse.insertAdjacentElement('afterend',intel);
