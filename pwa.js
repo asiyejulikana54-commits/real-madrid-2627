@@ -1,7 +1,7 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='60';
+const SW_VERSION='61';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -11,6 +11,10 @@ function toastSafe(msg){try{if(typeof toast==='function')toast(msg);else console
 function loadOfficialStateSync(){
   if(window.RMOfficialStateSync||document.querySelector('script[data-official-state-sync]'))return;
   const script=document.createElement('script');script.src='official-state-sync.js?v=1';script.dataset.officialStateSync='1';script.async=false;document.body.appendChild(script)
+}
+function loadLeagueScoring(){
+  if(window.RMLeagueScoring||document.querySelector('script[data-league-scoring]'))return;
+  const script=document.createElement('script');script.src='league-scoring-ui.js?v=1';script.dataset.leagueScoring='1';script.async=false;document.body.appendChild(script)
 }
 function loadBackupModule(){
   if(window.RMBackup||document.querySelector('script[data-backup-pro]'))return;
@@ -91,7 +95,7 @@ function openSectionFromUrl(attempt=0){
 }
 window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
 function install(){
-  if(installed)return;installed=true;loadOfficialStateSync();loadBackupModule();setMode();ensureInstallButton();openSectionFromUrl();
+  if(installed)return;installed=true;loadOfficialStateSync();loadLeagueScoring();loadBackupModule();setMode();ensureInstallButton();openSectionFromUrl();
   window.addEventListener('online',setMode);window.addEventListener('offline',setMode);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;ensureInstallButton()});
   window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;setMode();document.getElementById('pwaInstallBtn')?.remove();closeInstallGuide();toastSafe('RM 26/27 instalada')});
