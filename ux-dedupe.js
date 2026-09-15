@@ -63,9 +63,8 @@ function addHomeMap(){
   const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
   if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Apartados principales de la aplicación')}
   const markup=`${predictionButton()}<span class="ux-home-routes-label">APARTADOS PRINCIPALES</span>${routeButton('partido','⚽','Partido','Previa, XI y seguimiento')}${routeButton('plantilla','👥','Equipo','Plantilla, Power y jerarquías')}${routeButton('estadisticas','📊','Rendimiento','Datos, eficiencia y evolución')}${routeButton('radar','🎯','Decisiones','Radar, comparador y XI')}${routeButton('comunidad','🌐','Comunidad','Tendencias y predicciones')}${routeButton('mi-liga','🏆','Mi Liga','Clasificación y ligas privadas')}${routeButton('mi-temporada','👤','Mi temporada','Historial, aciertos y progreso')}`;
-  if(routes.dataset.homeVersion!=='6'){routes.innerHTML=markup;routes.dataset.homeVersion='6'}
-  const personal=document.getElementById('personalizedHome');
-  if(personal){if(routes.nextElementSibling!==personal)personal.insertAdjacentElement('beforebegin',routes)}else if(!routes.isConnected)home.prepend(routes);
+  if(routes.dataset.homeVersion!=='7'){routes.innerHTML=markup;routes.dataset.homeVersion='7'}
+  if(routes.parentElement!==home||home.firstElementChild!==routes)home.prepend(routes);
   routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
 }
 function latestRatedMatch(){
@@ -83,6 +82,7 @@ function addMvpHome(){
 }
 function organizeHome(){
   const home=document.getElementById('inicio'),routes=document.getElementById('uxHomeRoutes'),mvp=document.getElementById('uxHomeMvp'),now=document.getElementById('uxHomeNow'),poll=document.getElementById('homePollTeaser'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
+  if(routes&&home.firstElementChild!==routes)home.prepend(routes);
   if(routes&&mvp&&mvp.previousElementSibling!==routes)routes.insertAdjacentElement('afterend',mvp);
   if(mvp&&now&&now.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',now);
   const pollAnchor=now||mvp;if(pollAnchor&&poll&&poll.previousElementSibling!==pollAnchor)pollAnchor.insertAdjacentElement('afterend',poll);
@@ -93,14 +93,16 @@ function organizeHome(){
 }
 function apply(){if(!document.body.classList.contains('rm-visual-system'))return;Object.keys(PURPOSES).forEach(addPurpose);cleanHome();cleanPower();cleanComparator();cleanRadar();cleanEvolution();cleanHierarchy();cleanCommunity();cleanMvp();addHomeMap();addMvpHome();organizeHome();normalizeHomeLanguage()}
 function schedule(delay=45){clearTimeout(timer);timer=setTimeout(apply,delay)}
+function loadHomeLower(){if(document.querySelector('script[data-home-lower-redesign]'))return;const script=document.createElement('script');script.src='home-lower-redesign.js?v=4';script.dataset.homeLowerRedesign='1';document.body.appendChild(script)}
 function loadMobileLayer(){if(!document.querySelector('link[data-mobile-ux]')){const link=document.createElement('link');link.rel='stylesheet';link.href='mobile-ux.css?v=2';link.dataset.mobileUx='1';document.head.appendChild(link)}if(!document.querySelector('script[data-mobile-ux]')){const script=document.createElement('script');script.src='mobile-ux.js?v=8';script.dataset.mobileUx='1';document.body.appendChild(script)}}
 function install(){
   if(installed)return;if(!document.body.classList.contains('rm-visual-system')||typeof showSection!=='function'){setTimeout(install,80);return}
-  installed=true;addClass(document.body,'ux-deduped');apply();
+  installed=true;addClass(document.body,'ux-deduped');apply();loadHomeLower();
   const previous=window.showSection;window.showSection=function(id){previous(id);schedule(25)};
   ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-community-updated','rm-matchday-polls-updated','rm-mvp-personal-updated','rm-favorite-watch-rendered'].forEach(name=>document.addEventListener(name,()=>schedule(15)));
   [300,1200,2800,5200].forEach(ms=>setTimeout(apply,ms));
+  setTimeout(()=>document.body.classList.add('home-ready'),4000);
   loadMobileLayer();
 }
-setTimeout(install,110);
+setTimeout(install,40);
 })();
