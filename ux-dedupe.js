@@ -12,7 +12,7 @@ const PURPOSES={
   mvp:{kicker:'MEJOR JUGADOR',text:'Votación del mejor jugador de cada partido. Se mantiene separada de las predicciones de alineación.',links:[['comunidad','Ver comunidad'],['partidos','Ver partidos']]}
 };
 let installed=false,timer=null;
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
 function addClass(el,name){if(el&&!el.classList.contains(name))el.classList.add(name)}
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
@@ -60,7 +60,7 @@ function cleanMvp(){addClass(document.getElementById('mvp'),'ux-mvp-deduped')}
 function routeButton(id,icon,label){return `<button type="button" data-home-route="${id}"><b>${icon}</b>${label}</button>`}
 function addHomeMap(){
   const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
-  if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Accesos rápidos de Inicio');routes.innerHTML=`<span>IR DIRECTO</span>${routeButton('partido','⚽','Partido')}${routeButton('prediccion','★','Predicción')}${routeButton('mi-liga','🏆','Mi Liga')}${routeButton('power','↗','Power')}${routeButton('evolucion','⌁','Evolución')}`}
+  if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Accesos rápidos de Inicio');routes.innerHTML=`<span>IR DIRECTO</span>${routeButton('prediccion','★','Predecir XI')}${routeButton('partido','⚽','Partido')}${routeButton('mi-liga','🏆','Mi Liga')}${routeButton('power','↗','Power')}${routeButton('evolucion','⌁','Evolución')}`}
   const next=document.querySelector('#personalizedHome .personal-next'),personal=document.getElementById('personalizedHome'),intel=document.getElementById('intelligenceHome');
   if(next&&routes.previousElementSibling!==next)next.insertAdjacentElement('afterend',routes);else if(!routes.isConnected&&personal)personal.prepend(routes);else if(!routes.isConnected&&intel)intel.insertAdjacentElement('beforebegin',routes);else if(!routes.isConnected)home.prepend(routes);
   routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
@@ -79,6 +79,7 @@ function addMvpHome(){
 }
 function organizeHome(){
   const home=document.getElementById('inicio'),personal=document.getElementById('personalizedHome'),pulse=document.getElementById('publicPulse'),intel=document.getElementById('intelligenceHome'),more=document.getElementById('uxHomeMore');if(!home)return;
+  const next=home.querySelector('#personalizedHome .personal-next');if(next)next.classList.toggle('prediction-priority',next.dataset.homeGo==='prediccion');
   if(personal&&pulse&&personal.nextElementSibling!==pulse)personal.insertAdjacentElement('afterend',pulse);
   if(pulse&&intel&&pulse.nextElementSibling!==intel)pulse.insertAdjacentElement('afterend',intel);
   if(more&&more.parentElement===home&&home.lastElementChild!==more)home.appendChild(more);
