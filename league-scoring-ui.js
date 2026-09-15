@@ -2,6 +2,7 @@
 let scheduled=false;
 function data(){return window.RMCommunityData||null}
 function txt(el,value){if(el&&el.textContent!==value)el.textContent=value}
+function html(el,value){if(el&&el.innerHTML!==value)el.innerHTML=value}
 function patchHead(root){
   const p=root?.querySelector('.cgl-head p');
   if(p)txt(p,'1 punto por cada titular acertado. Si haces 11/11, sumas +1 extra: pleno = 12 puntos.');
@@ -29,7 +30,7 @@ function patchRound(root){
     const body=[...table.querySelectorAll('.cgl-tr:not(.head)')];
     body.forEach((row,i)=>{
       const r=rows[i];if(!r)return;const strong=row.querySelector('strong');if(!strong)return;
-      strong.innerHTML=`${Number.isFinite(r.points)?r.points:r.hits} pts<small>${r.hits}/11${r.perfect?' · PLENO +1':''}</small>`;
+      html(strong,`${Number.isFinite(r.points)?r.points:r.hits} pts<small>${r.hits}/11${r.perfect?' · PLENO +1':''}</small>`);
     });
   });
 }
@@ -37,17 +38,17 @@ function patchCommunityBoard(){
   const d=data(),board=document.getElementById('communityLeaderboard');if(!board||!d)return;
   const head=board.querySelector('.leaderboard-head');if(head&&head.children[2])txt(head.children[2],'Puntos');
   const rows=[...board.querySelectorAll('.leaderboard-row')],source=d.leaderboard||[];
-  rows.forEach((row,i)=>{const r=source[i],strong=row.querySelector('strong');if(!r||!strong)return;strong.innerHTML=`${Number.isFinite(r.points)?r.points:r.hits}<small> pts</small>`});
+  rows.forEach((row,i)=>{const r=source[i],strong=row.querySelector('strong');if(!r||!strong)return;html(strong,`${Number.isFinite(r.points)?r.points:r.hits}<small> pts</small>`)});
   const card=board.closest('.card'),desc=card?.querySelector('.section-head p');
   if(desc)txt(desc,'1 punto por cada titular acertado. Un 11/11 suma +1 extra y vale 12 puntos.');
 }
 function patchPulse(){
-  document.querySelectorAll('#communityLeaguePulse b').forEach(el=>{if(/de media$/.test(el.textContent)&&!(/\/12/.test(el.textContent)))el.textContent=el.textContent.replace(/([0-9]+(?:[.,][0-9]+)?) de media/,'$1 puntos de media')});
+  document.querySelectorAll('#communityLeaguePulse b').forEach(el=>{if(/de media$/.test(el.textContent)&&!(/puntos de media$/.test(el.textContent)))el.textContent=el.textContent.replace(/([0-9]+(?:[.,][0-9]+)?) de media/,'$1 puntos de media')});
 }
 function patch(){scheduled=false;const root=document.getElementById('communityLeague');patchHead(root);patchPersonal(root);patchGeneralPrivate(root);patchRound(root);patchCommunityBoard();patchPulse()}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(patch)}
 const observer=new MutationObserver(schedule);
-function install(){observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});document.addEventListener('rm-community-updated',()=>setTimeout(schedule,0));document.addEventListener('rm-local-prediction-updated',()=>setTimeout(schedule,0));schedule();setTimeout(schedule,350);setTimeout(schedule,1200)}
+function install(){observer.observe(document.documentElement,{subtree:true,childList:true});document.addEventListener('rm-community-updated',()=>setTimeout(schedule,0));document.addEventListener('rm-local-prediction-updated',()=>setTimeout(schedule,0));schedule();setTimeout(schedule,350);setTimeout(schedule,1200)}
 window.RMLeagueScoring=Object.freeze({patch,rules:Object.freeze({hit:1,perfectBonus:1,maxRound:12})});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
