@@ -60,16 +60,22 @@ function styles(){
 @media(max-width:430px){.ux-lower-grid{grid-template-columns:1fr 1fr}.ux-lower-grid>.ux-lower-card:last-child{grid-column:1/-1}.ux-lower-card strong,.ux-lower-now .ux-lower-card strong{font-size:16px}}
 `;document.head.appendChild(s)}
 function navButton(id,title,copy){return `<button type="button" data-lower-go="${id}"><b>${esc(title)}</b><small>${esc(copy)}</small></button>`}
+function bindRoutes(root){root.querySelectorAll('[data-lower-go]').forEach(btn=>{if(btn.dataset.lowerBound)return;btn.dataset.lowerBound='1';btn.addEventListener('click',()=>go(btn.dataset.lowerGo))})}
 function revealWhenReady(){
   if(readyQueued||document.body.classList.contains('home-ready'))return;readyQueued=true;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{document.body.classList.add('home-ready');document.dispatchEvent(new CustomEvent('rm-home-final-ready'))}));
 }
-function bindRoutes(root){root.querySelectorAll('[data-lower-go]').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.lowerGo)))}
+function enforceOrder(home,routes,mvp,now,poll,root){
+  if(home.firstElementChild!==routes)home.prepend(routes);
+  if(mvp.previousElementSibling!==routes)routes.insertAdjacentElement('afterend',mvp);
+  if(now.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',now);
+  if(poll.previousElementSibling!==now)now.insertAdjacentElement('afterend',poll);
+  if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
+}
 function render(){
-  const home=document.getElementById('inicio'),poll=document.getElementById('homePollTeaser');if(!home||!poll)return false;styles();home.classList.add('home-lower-redesigned');
+  const home=document.getElementById('inicio'),routes=document.getElementById('uxHomeRoutes'),mvp=document.getElementById('uxHomeMvp'),poll=document.getElementById('homePollTeaser');if(!home||!routes||!mvp||!poll)return false;styles();home.classList.add('home-lower-redesigned');
   HIDDEN_IDS.forEach(id=>{const el=document.getElementById(id);if(el)el.setAttribute('aria-hidden','true')});
   let root=document.getElementById('uxHomeBelow');if(!root){root=document.createElement('section');root.id='uxHomeBelow';root.className='ux-home-below'}
-  if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
   const p=personalSummary(),power=powerRows()[0],form=formLeader(),riser=topRiser(),duel=duelInfo(),community=communityInfo();
   const latestScore=p.latest?(Number.isFinite(p.latest.score)?`${p.latest.score}/11`:'Pendiente'):'Sin XI';
   let now=document.getElementById('uxHomeNow');if(!now){now=document.createElement('section');now.id='uxHomeNow';now.className='ux-lower-section ux-lower-now'}
@@ -78,9 +84,7 @@ function render(){
     <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MEJOR FORMA</span><strong>${esc(display(form?.name||'—'))}</strong><em>${Number.isFinite(form?.value)?Number(form.value).toFixed(2):'—'}</em><small>${form?`media en sus últimos ${form.n} partidos`:'Esperando más muestra'}</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MAYOR SUBIDA</span><strong>${esc(display(riser?.name||'—'))}</strong><em>${Number.isFinite(riser?.delta)?`+${riser.delta.toFixed(2)}`:'—'}</em><small>El cambio positivo más fuerte del último corte.</small></button>
   </div>`;
-  if(now.__rmMarkup!==nowMarkup){now.innerHTML=nowMarkup;now.__rmMarkup=nowMarkup;bindRoutes(now)}
-  const mvp=document.getElementById('uxHomeMvp');if(mvp&&now.previousElementSibling!==mvp)mvp.insertAdjacentElement('afterend',now);else if(!mvp&&now.previousElementSibling!==poll)poll.insertAdjacentElement('beforebegin',now);
-  if(now.nextElementSibling!==poll)now.insertAdjacentElement('afterend',poll);
+  if(now.dataset.markup!==nowMarkup){now.innerHTML=nowMarkup;now.dataset.markup=nowMarkup;bindRoutes(now)}
   const rootMarkup=`
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>DEBATE Y COMUNIDAD</span><h2>Dos cosas para mirar rápido.</h2></div><p>Sin repetir toda la sección Comunidad.</p></div><div class="ux-lower-community">
     <button class="ux-lower-card button" type="button" data-lower-go="radar"><span class="k">DUELO ABIERTO</span><b>${esc(duel.title)}</b><span>${esc(duel.copy)}</span><i>${esc(duel.action)} →</i></button>
@@ -92,18 +96,16 @@ function render(){
     <button class="ux-lower-card button" type="button" data-lower-go="plantilla"><span class="k">TUS JUGADORES</span><strong>${p.fav.length}</strong><small>${p.fav.length?'favoritos bajo seguimiento':'Marca favoritos desde la plantilla'}</small></button>
   </div></section>
   <section class="ux-lower-section"><div class="ux-lower-head"><div><span>SEGUIR EXPLORANDO</span><h2>Atajos secundarios.</h2></div></div><div class="ux-lower-links">${navButton('power','Power RM','Ranking y forma')}${navButton('evolucion','Evolución','Cambios por jornada')}${navButton('comparador','Comparador','Jugador contra jugador')}${navButton('partidos','Partidos','Archivo y análisis')}</div><div class="ux-lower-note"><span>El resto de herramientas sigue disponible desde <b>•••</b>. Inicio se queda solo con lo útil para volver cada día.</span><button type="button" data-lower-more>Ver todo el panel →</button></div></section>`;
-  if(root.__rmMarkup!==rootMarkup){root.innerHTML=rootMarkup;root.__rmMarkup=rootMarkup;bindRoutes(root);root.querySelector('[data-lower-more]')?.addEventListener('click',()=>{if(typeof window.openUxMore==='function')window.openUxMore();else if(typeof openUxMore==='function')openUxMore()})}
-  if(root.previousElementSibling!==poll)poll.insertAdjacentElement('afterend',root);
-  revealWhenReady();
-  return true;
+  if(root.dataset.markup!==rootMarkup){root.innerHTML=rootMarkup;root.dataset.markup=rootMarkup;bindRoutes(root);root.querySelector('[data-lower-more]')?.addEventListener('click',()=>{if(typeof window.openUxMore==='function')window.openUxMore();else if(typeof openUxMore==='function')openUxMore()})}
+  enforceOrder(home,routes,mvp,now,poll,root);revealWhenReady();return true;
 }
-function schedule(delay=60){clearTimeout(timer);timer=setTimeout(render,delay)}
+function schedule(delay=35){clearTimeout(timer);timer=setTimeout(render,delay)}
 function install(){
-  if(installed)return;if(!document.getElementById('inicio')||!document.getElementById('homePollTeaser')){setTimeout(install,120);return}
-  installed=true;render();
-  ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-season-data-ready','rm-community-updated','rm-matchday-polls-updated','rm-mvp-personal-updated','rm-player-favorites-updated'].forEach(name=>document.addEventListener(name,()=>schedule(40)));
-  [300,1000,2200,4500].forEach(ms=>setTimeout(render,ms));
+  if(installed)return;if(!render()){setTimeout(install,70);return}
+  installed=true;
+  ['rm-critical-modules-ready','rm-modules-ready','rm-ranking-official-ready','rm-season-data-ready','rm-community-updated','rm-matchday-polls-updated','rm-mvp-personal-updated','rm-player-favorites-updated'].forEach(name=>document.addEventListener(name,()=>schedule(20)));
+  [250,800,1800,3600].forEach(ms=>setTimeout(render,ms));
   window.RMHomeLower=Object.freeze({refresh:render});
 }
-setTimeout(install,160);
+setTimeout(install,40);
 })();
