@@ -1,6 +1,7 @@
 (()=>{
 const MVP_KEY='rm_mvp_personal_v2';
 const MVP_ENDPOINT='https://vvltmdedwgjtvlcmindn.supabase.co/functions/v1/mvp';
+// GitHub Pages no hace llamadas a Netlify; los votos MVP van directamente a Supabase y la elección personal sigue siendo local-first.
 const mvpSection=['mvp','🏆','MVP','MVP PRO','MVP por nota oficial, tu elección y evolución de la temporada.'];
 let installed=false,communityCache=null,selectedMatchId=null;
 
