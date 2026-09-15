@@ -39,13 +39,14 @@ function showInstallGuide(){
   guide.classList.add('open');guide.setAttribute('aria-hidden','false');document.body.classList.add('pwa-guide-open');
 }
 function ensureInstallButton(){
-  if(isStandalone()){document.getElementById('pwaInstallBtn')?.remove();return}
+  if(isStandalone()){document.getElementById('pwaInstallBtn')?.remove();document.documentElement.classList.remove('pwa-installable');return}
   const actions=document.querySelector('.topbar .actions');if(!actions)return;
   let btn=document.getElementById('pwaInstallBtn');
-  if(!btn){btn=document.createElement('button');btn.id='pwaInstallBtn';btn.type='button';btn.className='btn pwa-install-btn';btn.textContent='Instalar app';btn.addEventListener('click',installApp);actions.appendChild(btn)}
-  const available=Boolean(deferredInstallPrompt)||isIOS();
-  btn.hidden=!available;
-  document.documentElement.classList.toggle('pwa-installable',available);
+  if(!btn){btn=document.createElement('button');btn.id='pwaInstallBtn';btn.type='button';btn.className='btn pwa-install-btn';btn.textContent='Instalar app';btn.setAttribute('aria-label','Instalar RM 26/27 como aplicación');btn.addEventListener('click',installApp);actions.appendChild(btn)}
+  const more=actions.querySelector('.ux-top-more');
+  if(more&&btn.nextElementSibling!==more)actions.insertBefore(btn,more);
+  btn.hidden=false;
+  document.documentElement.classList.add('pwa-installable');
 }
 async function installApp(){
   if(isStandalone()){toastSafe('RM 26/27 ya está instalada en este dispositivo');return}
@@ -93,7 +94,8 @@ function install(){
   document.addEventListener('rm-critical-modules-ready',ensureInstallButton);
   document.addEventListener('rm-modules-ready',ensureInstallButton);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeInstallGuide()});
-  setTimeout(ensureInstallButton,700);
+  setTimeout(ensureInstallButton,250);
+  setTimeout(ensureInstallButton,900);
   window.addEventListener('load',registerServiceWorker,{once:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
