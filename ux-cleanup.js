@@ -1,10 +1,11 @@
 (()=>{
 const UX_GROUPS=[
-  {label:'Resumen',ids:['inicio','partido']},
+  {label:'Principal',ids:['inicio','partido']},
   {label:'Equipo',ids:['plantilla','power','jerarquias']},
-  {label:'Rendimiento',ids:['estadisticas','evolucion','partidos','mvp']},
-  {label:'Decisiones',ids:['radar','comparador']},
-  {label:'Comunidad',ids:['mi-liga','comunidad','prediccion']}
+  {label:'Rendimiento',ids:['estadisticas','eficiencia','evolucion','partidos','mvp']},
+  {label:'Decisiones',ids:['radar','comparador','laboratorio','once']},
+  {label:'Comunidad',ids:['mi-liga','comunidad','prediccion']},
+  {label:'Personal',ids:['mi-temporada']}
 ];
 const UX_PRIMARY=[
   {id:'inicio',icon:'⌂',label:'Inicio'},
