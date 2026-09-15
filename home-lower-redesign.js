@@ -31,9 +31,21 @@ function personalSummary(){
   const records=predictionRecords(),scored=records.filter(r=>Number.isFinite(r.score)),best=scored.length?Math.max(...scored.map(r=>r.score)):null,latest=records[0],fav=favorites();
   return {records,scored,best,latest,fav};
 }
+function norm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+function featuredPollPlayers(){
+  return [...document.querySelectorAll('#homePollTeaser .home-poll-option span')].map(span=>{const text=[...span.childNodes].find(n=>n.nodeType===Node.TEXT_NODE);return text?.nodeValue?.trim()||''}).filter(Boolean);
+}
 function duelInfo(){
-  const source=document.querySelector('#publicPulse .pulse-duel');
-  return {title:source?.querySelector('b')?.textContent?.trim()||'Abre un duelo entre dos jugadores',copy:source?.querySelector('small')?.textContent?.trim()||'Compara rendimiento, forma y contexto antes de decidir.',action:'Abrir Radar'};
+  const source=document.querySelector('#publicPulse .pulse-duel'),title=source?.querySelector('b')?.textContent?.trim()||'Abre un duelo entre dos jugadores',copy=source?.querySelector('small')?.textContent?.trim()||'Compara rendimiento, forma y contexto antes de decidir.',featured=featuredPollPlayers(),normalizedTitle=norm(title),repeated=featured.length>1&&featured.every(name=>normalizedTitle.includes(norm(name)));
+  if(!repeated)return {title,copy,action:'Abrir Radar'};
+  const candidates=[
+    {players:['Rüdiger','Huijsen','Konaté'],title:'¿Rüdiger, Huijsen o Konaté?',copy:'Tres perfiles para decidir la pareja de centrales del próximo XI.'},
+    {players:['Cucurella','Carreras'],title:'¿Cucurella o Carreras?',copy:'El lateral izquierdo sigue siendo uno de los puestos con más competencia.'},
+    {players:['Camavinga','Valverde'],title:'¿Camavinga o Valverde?',copy:'Dos opciones para equilibrar el centro del campo según el partido.'},
+    {players:['Diomandé','Brahim'],title:'¿Diomandé o Brahim?',copy:'Profundidad y desborde frente a asociación y juego interior.'}
+  ];
+  const alt=candidates.find(c=>c.players.every(p=>!featured.some(f=>norm(f)===norm(p))));
+  return alt?{title:alt.title,copy:alt.copy,action:'Abrir Radar'}:{title:'Otro duelo abierto',copy:'Entra en Radar para comparar un debate distinto al de la encuesta destacada.',action:'Abrir Radar'};
 }
 function communityInfo(){
   const source=document.querySelector('#publicPulse .pulse-community');
