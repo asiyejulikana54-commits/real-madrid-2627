@@ -12,7 +12,7 @@ const PURPOSES={
   mvp:{kicker:'MEJOR JUGADOR',text:'Votación del mejor jugador de cada partido. Se mantiene separada de las predicciones de alineación.',links:[['comunidad','Ver comunidad'],['partidos','Ver partidos']]}
 };
 let installed=false,timer=null;
-function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
+function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
 function addClass(el,name){if(el&&!el.classList.contains(name))el.classList.add(name)}
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
