@@ -1,7 +1,7 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='61';
+const SW_VERSION='62';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
