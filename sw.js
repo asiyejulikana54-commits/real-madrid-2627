@@ -1,5 +1,5 @@
-const CACHE_VERSION='rm2627-static-v61';
-const CORE_PATHS=['','index.html','style.css','community.css','formation.css','mi-liga.css','community-pro.css','community-league.css','ux-cleanup.css','personal-hub.css','personal-season-pro.css','playerhub.css','player-experience.css','squad-pro.css,'site-guide.css','personal-home.css','match-story.css','home-pro.css','matchday.css','mvp.css','efficiency-pro.css','compare-pro.css','compare-lifecycle.css','stats-pro.css','momentum-pro.css','match-history-pro.css','evolution-pro.css','accessibility.css','command-palette.css','decisionradar.css','hierarchy.css','power-pro.css','mobile-ux.css','simple-mode.css','app.js','season-data.js','season-input.js','season-extension.js','minute-sync.js','community.js','community-supabase.js','formation.js','mi-liga.js','community-pro.js','community-league.js','personal-hub.js','personal-nav.js','personal-season-pro.js','playerhub.js','player-experience.js','squad-pro.js','site-guide.js','personal-home.js','deep-links.js','navigation-history.js','match-story.js','home-pro.js','analysis-context.js','lineup-semantics.js','matchday.js','mvp.js','efficiency-pro.js','compare-pro.js','compare-lifecycle.js','stats-pro.js','momentum-pro.js','match-history-pro.js','evolution-pro.js','accessibility.js','command-palette.js','decisionradar.js','hierarchy.js','power-pro.js','visual-system.js','ux-dedupe.js','mobile-ux.js','simple-mode.js','official-state-sync.js','pwa.css','pwa.js','backup-pro.js','manifest.webmanifest','app-icon.svg'];
+const CACHE_VERSION='rm2627-static-v60';
+const CORE_PATHS=['','index.html','style.css','community.css','formation.css','mi-liga.css','community-pro.css','community-league.css','ux-cleanup.css','personal-hub.css','personal-season-pro.css','playerhub.css','player-experience.css','squad-pro.css','site-guide.css','personal-home.css','match-story.css','home-pro.css','matchday.css','mvp.css','efficiency-pro.css','compare-pro.css','compare-lifecycle.css','stats-pro.css','momentum-pro.css','match-history-pro.css','evolution-pro.css','accessibility.css','command-palette.css','decisionradar.css','hierarchy.css','power-pro.css','mobile-ux.css','simple-mode.css','app.js','season-data.js','season-input.js','season-extension.js','minute-sync.js','community.js','community-supabase.js','formation.js','mi-liga.js','community-pro.js','community-league.js','personal-hub.js','personal-nav.js','personal-season-pro.js','playerhub.js','player-experience.js','squad-pro.js','site-guide.js','personal-home.js','deep-links.js','navigation-history.js','match-story.js','home-pro.js','analysis-context.js','lineup-semantics.js','matchday.js','mvp.js','efficiency-pro.js','compare-pro.js','compare-lifecycle.js','stats-pro.js','momentum-pro.js','match-history-pro.js','evolution-pro.js','accessibility.js','command-palette.js','decisionradar.js','hierarchy.js','power-pro.js','visual-system.js','ux-dedupe.js','mobile-ux.js','simple-mode.js','pwa.css','pwa.js','backup-pro.js','manifest.webmanifest','app-icon.svg'];
 const scopeUrl=new URL(self.registration.scope);
 const coreUrls=[...new Set(CORE_PATHS)].map(path=>new URL(path,scopeUrl).href);
 
@@ -14,13 +14,13 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil((async()=>{
     const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k.startsWith('rm2627-')&&k!==CACHE_VERSION).map(k=>caches.delete(k));
+    await Promise.all(keys.filter(k=>k.startsWith('rm2627-')&&k!==CACHE_VERSION).map(k=>caches.delete(k)));
     await self.clients.claim();
   })());
 });
 
-function isBackend(url){return url.pathname.includes('/.netlify/functions/')||url.hostname.endsWith('.supabase.co')}
-function isSameOrigin(url){return url.origin===self.location.origin}
+function isBackend(url){return url.pathname.includes('/.netlify/functions/')||url.hostname.endsWith('.supabase.co');}
+function isSameOrigin(url){return url.origin===self.location.origin;}
 
 async function cachedFallback(cache,request){
   return (await cache.match(request))||(await cache.match(request,{ignoreSearch:true}))||null;
@@ -32,7 +32,7 @@ async function networkFirst(request){
     if(response&&response.ok&&request.method==='GET')cache.put(request,response.clone());
     return response;
   }catch{
-    return (await cachedFallback(cache,request))||(request.mode==='navigate'?(await cache.match(new URL ('index.html',scopeUrl).href)):null)||Response.error();
+    return (await cachedFallback(cache,request))||(request.mode==='navigate'?(await cache.match(new URL('index.html',scopeUrl).href)):null)||Response.error();
   }
 }
 async function staleWhileRevalidate(request){

@@ -97,13 +97,13 @@ function apply(){
   if(sig!==lastSignature){lastSignature=sig;document.dispatchEvent(new CustomEvent('rm-official-state-synced',{detail:{matchId:m?.id||null,score:record?.score??null}}));document.dispatchEvent(new CustomEvent('rm-local-prediction-updated'));}
   return true;
 }
-function schedule(){if(scheduled)return;scheduled=true;setTimeout(()=>{apply();refreshModules();setTimeout(()=>{apply();replaceText()},80)},0)}
+function schedule(refresh=false){if(scheduled)return;scheduled=true;setTimeout(()=>{apply();if(refresh)refreshModules();setTimeout(()=>{apply();replaceText()},80)},0)}
 function install(){
-  if(installed)return;installed=true;schedule();
-  ['rm-modules-ready','rm-critical-modules-ready','rm-season-data-ready','rm-community-updated','rm-ranking-official-ready','rm-post-xi-center-rendered','rm-official-xi-review-rendered'].forEach(ev=>document.addEventListener(ev,schedule));
-  window.addEventListener('storage',e=>{if(!e.key||e.key.startsWith('rm_prediction_'))schedule()});
-  observer=new MutationObserver(()=>schedule());observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});
-  [250,700,1500,3000].forEach(ms=>setTimeout(schedule,ms));
+  if(installed)return;installed=true;schedule(true);
+  ['rm-modules-ready','rm-critical-modules-ready','rm-season-data-ready','rm-community-updated','rm-ranking-official-ready','rm-post-xi-center-rendered','rm-official-xi-review-rendered'].forEach(ev=>document.addEventListener(ev,()=>schedule(true)));
+  window.addEventListener('storage',e=>{if(!e.key||e.key.startsWith('rm_prediction_'))schedule(true)});
+  observer=new MutationObserver(()=>schedule(false));observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});
+  [250,700,1500,3000].forEach(ms=>setTimeout(()=>schedule(true),ms));
   window.RMOfficialStateSync=Object.freeze({apply,syncPredictionResult,stage:officialStage});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
