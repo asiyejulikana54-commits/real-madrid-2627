@@ -41,6 +41,34 @@ window.RMSeasonMatchEntries=Object.freeze([
       'Cucurella':Object.freeze({minutes:1,sofascore:'SC',fotmob:'SC',statmuse:6.7}),
       'Mbappé':Object.freeze({minutes:90,sofascore:9.4,fotmob:9.5,statmuse:9.5})
     })
+  }),
+  Object.freeze({
+    id:'elche',
+    label:'Elche',
+    short:'ELC',
+    comp:'LaLiga',
+    date:'2026-09-15',
+    duration:90,
+    final:true,
+    sourceNote:'Capturas directas de SofaScore, FotMob y StatMuse · 16-09-2026.',
+    players:Object.freeze({
+      'Courtois':Object.freeze({minutes:90,sofascore:6.3,fotmob:6.1,statmuse:5.6}),
+      'Trent Alexander-Arnold':Object.freeze({minutes:87,sofascore:7.1,fotmob:7.5,statmuse:7.5}),
+      'Konaté':Object.freeze({minutes:90,sofascore:6.8,fotmob:6.5,statmuse:6.9}),
+      'Huijsen':Object.freeze({minutes:90,sofascore:6.5,fotmob:6.9,statmuse:7.3}),
+      'Cucurella':Object.freeze({minutes:90,sofascore:5.8,fotmob:5.9,statmuse:6.3}),
+      'Tchouaméni':Object.freeze({minutes:86,sofascore:6.9,fotmob:7.6,statmuse:7.7}),
+      'Valverde':Object.freeze({minutes:90,sofascore:7.0,fotmob:7.4,statmuse:7.7}),
+      'Diomande':Object.freeze({minutes:90,sofascore:7.3,fotmob:8.5,statmuse:7.9}),
+      'Arda Güler':Object.freeze({minutes:68,sofascore:7.2,fotmob:7.6,statmuse:8.3}),
+      'Vini Jr.':Object.freeze({minutes:68,sofascore:5.8,fotmob:6.9,statmuse:5.3}),
+      'Mbappé':Object.freeze({minutes:90,sofascore:8.6,fotmob:8.7,statmuse:8.9}),
+      'Bellingham':Object.freeze({minutes:22,sofascore:6.7,fotmob:6.6,statmuse:7.5}),
+      'Brahim Díaz':Object.freeze({minutes:22,sofascore:6.4,fotmob:6.5,statmuse:7.1}),
+      'Endrick':Object.freeze({minutes:4,sofascore:6.4,fotmob:'SC',statmuse:6.8}),
+      'Carlos Espí':Object.freeze({minutes:3,sofascore:7.8,fotmob:'SC',statmuse:8.2}),
+      'Dumfries':Object.freeze({minutes:0})
+    })
   })
 ]);
 
