@@ -1,7 +1,7 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='62';
+const SW_VERSION='63';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -14,7 +14,7 @@ function loadOfficialStateSync(){
 }
 function loadLeagueScoring(){
   if(window.RMLeagueScoring||document.querySelector('script[data-league-scoring]'))return;
-  const script=document.createElement('script');script.src='league-scoring-ui.js?v=1';script.dataset.leagueScoring='1';script.async=false;document.body.appendChild(script)
+  const script=document.createElement('script');script.src='league-scoring-ui.js?v=2';script.dataset.leagueScoring='1';script.async=false;document.body.appendChild(script)
 }
 function loadBackupModule(){
   if(window.RMBackup||document.querySelector('script[data-backup-pro]'))return;
