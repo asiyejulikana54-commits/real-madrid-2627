@@ -70,6 +70,10 @@ function syncLegacyMatchCopy(){
     const rules=pred.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong)strong.textContent=`REAL MADRID vs ${rival.toUpperCase()}`;const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente';}
     const status=pred.querySelector('#predictionStatus');if(status&&analyzed)status.textContent='Cerrada · XI oficial';
   }
+  const route=analyzed?'partido':'prediccion',cta=analyzed?'Ver análisis':'Predecir XI';
+  const topCta=[...document.querySelectorAll('.topbar .actions button')].find(b=>/predic|partido/i.test((b.getAttribute('onclick')||'')+' '+b.textContent));if(topCta){topCta.textContent=cta;topCta.setAttribute('onclick',`showSection('${route}')`)}
+  const publicCta=document.getElementById('publicPredict');if(publicCta){publicCta.textContent=analyzed?'Ver análisis del partido':'Predecir el XI';publicCta.onclick=()=>safe(()=>showSection(route))}
+  const heroCta=home?.querySelector('.next-match .actions .btn.primary');if(heroCta){heroCta.textContent=analyzed?'Ver análisis':'Haz tu predicción';heroCta.setAttribute('onclick',`showSection('${route}')`)}
 }
 function matchState(){
   const match=currentMatch();if(!match)return {eyebrow:'PRÓXIMO PARTIDO',title:'Calendario pendiente',copy:'El siguiente partido aparecerá aquí cuando esté registrado.',action:'Ver partidos',section:'partidos',count:''};
