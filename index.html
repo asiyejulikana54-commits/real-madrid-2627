@@ -42,16 +42,13 @@
     <section class="section active" id="inicio">
       <div class="card hero">
         <div class="next-match">
-          <div><div class="eyebrow">Próximo partido</div><div class="match-title">REAL MADRID <span>vs</span> RAYO</div><div class="match-meta"><span class="pill">12 SEP 2026 · 21:00</span><span class="pill">LALIGA</span><span class="pill">SANTIAGO BERNABÉU</span></div></div>
-          <div class="actions" style="justify-content:flex-start"><button class="btn primary" onclick="showSection('prediccion')">Haz tu predicción</button><button class="btn" onclick="showSection('comunidad')">Ver comunidad</button></div>
+          <div><div class="eyebrow">Jornada actual</div><div class="match-title">REAL MADRID <span>·</span> ACTUALIZANDO</div><div class="match-meta"><span class="pill">CARGANDO PARTIDO</span></div></div>
+          <div class="actions" style="justify-content:flex-start"><button class="btn primary" onclick="showSection('prediccion')">Ver jornada</button><button class="btn" onclick="showSection('comunidad')">Ver comunidad</button></div>
         </div>
         <div class="focus-box">
-          <h3>Debates abiertos para el Rayo</h3>
+          <h3>Claves de la jornada</h3>
           <div class="focus-list">
-            <div class="focus-item"><span>Lateral derecho</span><b>Dumfries / Trent</b></div>
-            <div class="focus-item"><span>Central</span><b>Rüdiger / Huijsen / Konaté</b></div>
-            <div class="focus-item"><span>Medio con posible descanso</span><b>Valverde / Bellingham</b></div>
-            <div class="focus-item"><span>Banda / ataque</span><b>Diomandé / Brahim</b></div>
+            <div class="focus-item"><span>Estado</span><b>Cargando datos del partido…</b></div>
           </div>
         </div>
       </div>
@@ -70,7 +67,7 @@
         </div>
         <div class="card quick-notes">
           <div class="section-head" style="margin-top:0"><div><h2>Mis notas</h2><p>Apunta ideas sobre onces, descansos, cambios o dudas tácticas. Se guarda solo en este dispositivo.</p></div><span class="pill" id="saveState">Guardado</span></div>
-          <textarea id="notes" placeholder="Ej.: contra el Rayo quiero comprobar si Trent puede jugar por dentro con Diomandé abierto..."></textarea>
+          <textarea id="notes" placeholder="Ej.: anota aquí cambios, descansos, dudas tácticas o conclusiones del partido..."></textarea>
         </div>
       </div>
     </section>
@@ -111,10 +108,10 @@
     </section>
 
     <section class="section" id="prediccion">
-      <div class="section-head"><div><h2>Predice el XI contra el Rayo</h2><p>Elige quién crees que será titular y publica tu pronóstico en la comunidad.</p></div><span class="pill" id="predictionStatus">Predicción abierta</span></div>
+      <div class="section-head"><div><h2>Predicción del XI</h2><p>Elige quién crees que será titular y publica tu pronóstico en la comunidad.</p></div><span class="pill" id="predictionStatus">Actualizando estado</span></div>
       <div class="card prediction-hero">
-        <div><div class="eyebrow">JUEGO DEL PRÓXIMO PARTIDO</div><h2>¿Cuántos titulares de Mourinho vas a acertar?</h2><p class="muted">1 punto por cada jugador que aparezca en el once oficial, independientemente de la posición. Máximo: 11 puntos.</p></div>
-        <div class="prediction-rules"><b>REAL MADRID vs RAYO</b><span>12 SEP · 21:00</span><span>Se cierra: 19:55</span></div>
+        <div><div class="eyebrow">JUEGO DE LA JORNADA</div><h2>¿Cuántos titulares vas a acertar?</h2><p class="muted">1 punto por cada jugador que aparezca en el once oficial, independientemente de la posición. Máximo: 11 puntos.</p></div>
+        <div class="prediction-rules"><b>REAL MADRID · JORNADA ACTUAL</b><span>Horario actualizado al cargar</span><span>Cierre según partido</span></div>
       </div>
       <div class="pitch-wrap" style="margin-top:16px">
         <div class="pitch" id="predictionPitch"></div>
