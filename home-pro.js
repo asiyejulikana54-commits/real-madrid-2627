@@ -76,11 +76,10 @@ function syncLegacyMatchCopy(){
 function matchState(){
   const match=currentMatch();if(!match)return {eyebrow:'PRÓXIMO PARTIDO',title:'Calendario pendiente',copy:'El siguiente partido aparecerá aquí cuando esté registrado.',action:'Ver partidos',section:'partidos',count:''};
   const deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now(),rival=match.rival||'próximo rival',analyzed=isAnalyzed(match);
-  if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICCIÓN ABIERTA',title:`Real Madrid–${rival}`,copy:'Tu XI todavía puede guardarse o modificarse antes del cierre.',action:'Hacer mi XI',section:'prediccion',count:remaining(deadline)};
+  if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICIÓN ABIERTA',title:`Real Madrid–${rival}`,copy:'Tu XI todavía puede guardarse o modificarse antes del cierre.',action:'Hacer mi XI',section:'prediccion',count:remaining(deadline)};
   if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:`Real Madrid–${rival}`,copy:'La predicción ya está cerrada. Consulta la previa del partido.',action:'Ver previa',section:'partido',count:remaining(kickoff)};
   if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000&&!analyzed)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Centro del partido activo. No se inventan marcador ni eventos.',action:'Centro del partido',section:'partido',count:'En juego'};
   if(analyzed)return {eyebrow:'PARTIDO ANALIZADO',title:`Real Madrid–${rival}`,copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',count:'Cerrado'};
-  const stage=safe(()=>window.RMPublicEngagement?.stage?.(),null);if(stage)return stage;
   return {eyebrow:'DATOS PENDIENTES',title:`Real Madrid–${rival}`,copy:'Esperando minutos y notas oficiales para incorporar el partido al análisis.',action:'Ver evolución',section:'evolucion',count:''};
 }
 function remaining(target){const ms=target-Date.now();if(ms<=0)return '';const min=Math.max(1,Math.floor(ms/60000)),days=Math.floor(min/1440),hours=Math.floor((min%1440)/60),mins=min%60;if(days)return `${days}d ${hours}h`;if(hours)return `${hours}h ${mins}m`;return `${mins} min`}
@@ -134,17 +133,16 @@ function bind(root){
   root.querySelectorAll('[data-hpro-duel]').forEach(btn=>btn.addEventListener('click',()=>{const [a,b]=btn.dataset.hproDuel.split('|');openDuel(a,b)}));
 }
 function render(){
-  syncLegacyMatchCopy();const root=ensureRoot();if(!root||!data())return false;const s=signals();document.body.classList.add('home-pro-ready');
+  syncLegacyMatchCopy();const root=ensureRoot();if(!root||!data())return false;const s=signals(),state=matchState();document.body.classList.add('home-pro-ready');
   root.innerHTML=`<div class="hpro-head"><div><span>JORNADA EN UN VISTAZO</span><h2>Lo importante, nada más entrar.</h2><p>Partido, participación y rendimiento sin bloques duplicados.</p></div><small>${esc(coverageText())}</small></div>${dashboardHtml(s)}`;
-  bind(root);parkSecondaryHome(s);setTimeout(()=>parkSecondaryHome(s),120);return true;
+  bind(root);parkSecondaryHome(s);setTimeout(()=>parkSecondaryHome(s),120);document.dispatchEvent(new CustomEvent('rm-home-state-ready',{detail:state}));return true;
 }
 function schedule(){clearInterval(timer);timer=setInterval(()=>{syncLegacyMatchCopy();if(document.getElementById('inicio')?.classList.contains('active'))render()},60000)}
 function install(){
   syncLegacyMatchCopy();if(installed)return;if(!document.getElementById('publicIntro')||!data()||typeof showSection!=='function'){setTimeout(install,100);return}
-  installed=true;render();schedule();
+  installed=true;window.RMHomePro=Object.freeze({render,signals,duel:closestDuel,match:matchState,sync:syncLegacyMatchCopy});render();schedule();
   ['rm-ranking-official-ready','rm-season-data-ready','rm-season-order-corrected','rm-community-updated','rm-season-extension-ready','rm-modules-ready','rm-mvp-personal-updated'].forEach(name=>document.addEventListener(name,render));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
-  window.RMHomePro=Object.freeze({render,signals,duel:closestDuel,match:matchState,sync:syncLegacyMatchCopy});
 }
 setTimeout(install,180);
 })();
