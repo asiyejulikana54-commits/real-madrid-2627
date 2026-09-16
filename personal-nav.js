@@ -1,5 +1,9 @@
 (()=>{
 let installed=false,attempts=0,menuRefreshTimer=null;
+function loadLatestUiFixes(){
+  if(window.RMUiFixes20260916||document.querySelector('script[data-rm-ui-fixes-20260916]'))return;
+  const script=document.createElement('script');script.src='ui-fixes-20260916.js?v=1';script.dataset.rmUiFixes20260916='1';script.async=false;document.body.appendChild(script);
+}
 function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, favoritos, actividad y progreso personal.</small></button>'}
 function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
@@ -70,5 +74,6 @@ function install(){
   const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}
   document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
+loadLatestUiFixes();
 setTimeout(install,90);
 })();
