@@ -43,7 +43,8 @@ const STORIES=Object.freeze({
   })
 });
 function story(id){return STORIES[id]||null}
-function current(){const m=currentMatch();return story(m?.id)||story('rayo-2026-09-12')}
+function current(){const m=currentMatch();return m?.id?story(m.id):null}
+function latestStory(){const rows=Object.values(STORIES);return rows.length?rows.at(-1):null}
 function labelBlock(kind,title,copy){return `<article class="ms-evidence ${esc(kind)}"><span>${esc(kind)}</span><b>${esc(title)}</b><p>${esc(copy)}</p></article>`}
 function playersHtml(s){return `<details class="ms-players"><summary><span>JUGADORES CLAVE</span><b>Ver lectura jugador a jugador</b><strong>+</strong></summary><div class="ms-player-grid">${s.players.map(([name,copy])=>`<article><b>${esc(display(name))}</b><p>${esc(copy)}</p></article>`).join('')}</div></details>`}
 function storyHtml(s,compact=false){
@@ -58,12 +59,12 @@ function ensureHistoryRoot(){
   const section=document.getElementById('partidos');if(!section)return null;let root=document.getElementById('matchStoryHistory');if(root)return root;
   root=document.createElement('section');root.id='matchStoryHistory';root.className='card match-story match-story-history';const shell=document.getElementById('mhpShell'),head=section.querySelector(':scope>.section-head');if(shell)shell.insertAdjacentElement('beforebegin',root);else head?.insertAdjacentElement('afterend',root);return root
 }
-function renderCurrent(){const s=current(),root=ensureCurrentRoot();if(!root||!s)return false;root.innerHTML=storyHtml(s,false);document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partido'}}));return true}
-function renderHistory(){const s=current(),root=ensureHistoryRoot();if(!root||!s)return false;root.innerHTML=`<div class="ms-history-kicker"><span>ÚLTIMO PARTIDO · RELATO GUARDADO</span><b>Rayo ya tiene memoria de partido</b><small>El archivo estadístico se completará cuando entren minutos y notas verificadas.</small></div>${storyHtml(s,true)}`;document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partidos'}}));return true}
+function renderCurrent(){const root=ensureCurrentRoot(),s=current();if(!root)return false;if(!s){root.hidden=true;root.innerHTML='';return false}root.hidden=false;root.innerHTML=storyHtml(s,false);document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partido'}}));return true}
+function renderHistory(){const root=ensureHistoryRoot(),s=latestStory();if(!root)return false;if(!s){root.hidden=true;root.innerHTML='';return false}root.hidden=false;root.innerHTML=`<div class="ms-history-kicker"><span>ÚLTIMO PARTIDO · RELATO GUARDADO</span><b>${esc(s.rival)} ya tiene memoria de partido</b><small>El archivo estadístico se completa de forma independiente con minutos y notas verificadas.</small></div>${storyHtml(s,true)}`;document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partidos'}}));return true}
 function render(){const id=document.querySelector('.section.active')?.id;if(id==='partido')return renderCurrent();if(id==='partidos')return renderHistory();return false}
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('partido')||!document.getElementById('partidos')){if(++attempts<120)setTimeout(install,100);return}
-  installed=true;render();['rm-season-data-ready','rm-match-history-rendered','rm-modules-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(render,80)));window.RMMatchStory=Object.freeze({render,renderCurrent,renderHistory,story,current,all:()=>Object.values(STORIES)});document.dispatchEvent(new CustomEvent('rm-match-story-ready',{detail:{count:Object.keys(STORIES).length}}));
+  installed=true;render();['rm-season-data-ready','rm-season-extension-ready','rm-match-history-rendered','rm-modules-ready'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(render,80)));window.RMMatchStory=Object.freeze({render,renderCurrent,renderHistory,story,current,latest:latestStory,all:()=>Object.values(STORIES)});document.dispatchEvent(new CustomEvent('rm-match-story-ready',{detail:{count:Object.keys(STORIES).length}}));
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
 setTimeout(install,140);
