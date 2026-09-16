@@ -24,9 +24,7 @@ function row(name){
 function rows(){return list().map(p=>row(p.name)).filter(Boolean)}
 function fmt(v,d=2){return Number.isFinite(v)?Number(v).toFixed(d):'—'}
 function powerLeader(){return rows().filter(r=>Number.isFinite(r.power)).sort((a,b)=>b.power-a.power||b.minutes-a.minutes)[0]||null}
-function formLeader(){
-  return rows().map(r=>{const form=safe(()=>data()?.recentRating?.(r.p.name,3),null);return Number.isFinite(form?.value)&&r.minutes>=90?{...r,form}:null}).filter(Boolean).sort((a,b)=>b.form.value-a.form.value||b.form.n-a.form.n||b.minutes-a.minutes)[0]||null;
-}
+function formLeader(){return rows().map(r=>{const form=safe(()=>data()?.recentRating?.(r.p.name,3),null);return Number.isFinite(form?.value)&&r.minutes>=90?{...r,form}:null}).filter(Boolean).sort((a,b)=>b.form.value-a.form.value||b.form.n-a.form.n||b.minutes-a.minutes)[0]||null}
 function strictLastPair(){const matches=data()?.matches||[];return matches.length>=2?[matches.at(-2),matches.at(-1)]:[]}
 function strictRiser(){
   const [previous,current]=strictLastPair();if(!previous||!current)return {previous,current,row:null,delta:null};
@@ -88,45 +86,53 @@ function matchState(){
 function remaining(target){const ms=target-Date.now();if(ms<=0)return '';const min=Math.max(1,Math.floor(ms/60000)),days=Math.floor(min/1440),hours=Math.floor((min%1440)/60),mins=min%60;if(days)return `${days}d ${hours}h`;if(hours)return `${hours}h ${mins}m`;return `${mins} min`}
 function go(id){safe(()=>showSection(id))}
 function openPlayer(name){go('plantilla');setTimeout(()=>{if(window.RMPlayerExperience?.open)window.RMPlayerExperience.open(name);else safe(()=>openPlayerHub(name))},60)}
-function openDuel(a,b){
-  go('comparador');let tries=0;const apply=()=>{if(window.RMComparePro?.setDuel){window.RMComparePro.setDuel(a,b);return}if(++tries<20)setTimeout(apply,80)};setTimeout(apply,0);
-}
-function signalCard(kind,label,title,value,copy,action){return `<button type="button" class="hpro-signal ${kind}" ${action?`data-hpro-${action.type}="${esc(action.value)}"`:''}><span>${esc(label)}</span><h3>${esc(title)}</h3><b>${esc(value)}</b><small>${esc(copy)}</small></button>`}
-function signals(){
-  const leader=powerLeader(),form=formLeader(),rise=strictRiser(),watch=sampleWatch();
-  return {leader,form,rise,watch};
-}
+function openDuel(a,b){go('comparador');let tries=0;const apply=()=>{if(window.RMComparePro?.setDuel){window.RMComparePro.setDuel(a,b);return}if(++tries<20)setTimeout(apply,80)};setTimeout(apply,0)}
+function signals(){const leader=powerLeader(),form=formLeader(),rise=strictRiser(),watch=sampleWatch();return {leader,form,rise,watch}}
 function coverageText(){const a=audit(),matches=data()?.matches?.length||0;if(!a)return `${matches} jornadas en la fuente canónica`;const pending=Number(a.pendingAppearances)||0;return pending===0?`${matches} jornadas · fuentes cerradas`:`${matches} jornadas · ${pending} apariciones pendientes`}
-function signalsHtml(s){
-  const leader=s.leader?signalCard('gold','LÍDER POWER',display(s.leader.p.name),fmt(s.leader.power),`${s.leader.minutes} min · media ${fmt(s.leader.r)}`,{type:'player',value:s.leader.p.name}):signalCard('neutral','LÍDER POWER','Sin datos','—','Esperando una muestra oficial.');
-  const form=s.form?signalCard('blue','MEJOR FORMA · 90+ MIN',display(s.form.p.name),fmt(s.form.form.value),`${s.form.form.n} últimas notas · ${s.form.minutes} min`,{type:'player',value:s.form.p.name}):signalCard('neutral','MEJOR FORMA','Sin muestra suficiente','—','Se exige al menos 90 minutos acumulados.');
-  let rise;if(s.rise.row){const r=s.rise.row;rise=signalCard('green','MAYOR SUBIDA · ESTRICTA',display(r.p.name),`+${r.delta.toFixed(2)}`,`${s.rise.previous.short||s.rise.previous.label} ${fmt(r.from)} → ${s.rise.current.short||s.rise.current.label} ${fmt(r.to)}`,{type:'evolution',value:r.p.name})}else{const pair=s.rise.previous&&s.rise.current?`${s.rise.previous.short||s.rise.previous.label} → ${s.rise.current.short||s.rise.current.label}`:'Sin par comparable';rise=signalCard('neutral','MAYOR SUBIDA · ESTRICTA','Sin subidas positivas','—',pair)}
-  const watch=s.watch?signalCard('warn','MUESTRA A VIGILAR',display(s.watch.p.name),fmt(s.watch.r),`${s.watch.minutes} min · dato alto con muestra corta`,{type:'player',value:s.watch.p.name}):signalCard('neutral','MUESTRA A VIGILAR','Sin alerta','—','No hay un jugador con nota y menos de 90 minutos.');
-  return leader+form+rise+watch;
+function sectionAvailable(id){return Boolean(document.getElementById(id)||safe(()=>typeof sections!=='undefined'&&sections.some(s=>s[0]===id),false))}
+function communityTotal(){
+  const direct=Number(window.RMCommunityData?.totalPredictions);if(Number.isFinite(direct))return direct;
+  const text=document.getElementById('communityTotal')?.textContent||'',n=Number.parseInt(text,10);return Number.isFinite(n)?n:null;
 }
-function decisionHtml(){
-  const match=matchState(),duel=closestDuel();
-  return `<div class="hpro-decisions"><button type="button" class="hpro-next" data-hpro-go="${esc(match.section||'partido')}"><div><span>${esc(match.eyebrow||'PRÓXIMO PARTIDO')}</span><h3>${esc(match.title||'Próximo partido')}</h3><p>${esc(match.copy||'Consulta el estado del próximo encuentro.')}</p></div><div>${match.count?`<b>${esc(match.count)}</b>`:''}<strong>${esc(match.action||'Abrir')} →</strong></div></button>${duel?`<button type="button" class="hpro-duel" data-hpro-duel="${esc(duel.a.p.name)}|${esc(duel.b.p.name)}"><div><span>DUELO MÁS CERRADO · POWER</span><h3>${esc(display(duel.a.p.name))} <i>vs</i> ${esc(display(duel.b.p.name))}</h3><p>${esc(duel.pos)} · diferencia Power ${duel.gap.toFixed(2)}. Solo mide cercanía en Power, no decide titularidad.</p></div><strong>Comparar →</strong></button>`:`<div class="hpro-duel empty"><div><span>DUELO MÁS CERRADO</span><h3>Sin comparación disponible</h3><p>Se mostrará cuando haya Power comparable en alguno de los debates registrados.</p></div></div>`}</div>`;
+function participationState(){
+  const match=currentMatch(),state=matchState(),analyzed=isAnalyzed(match);
+  if(analyzed&&sectionAvailable('mvp'))return {eyebrow:'PARTICIPA AHORA',title:'Vota al MVP',copy:'Elige a los mejores del partido y consulta cómo va la votación.',action:'Votar MVP',section:'mvp',meta:'★',tone:'warn'};
+  if(state.section==='prediccion')return {eyebrow:'TU XI',title:'Haz tu predicción',copy:'Elige tus 11 titulares antes del cierre y compárate con la comunidad.',action:'Construir XI',section:'prediccion',meta:'11',tone:'green'};
+  return {eyebrow:'PARTICIPACIÓN',title:'Tu jornada',copy:'Entra en la comunidad para votar, comparar y seguir tus resultados.',action:'Abrir comunidad',section:'comunidad',meta:'+',tone:'green'};
+}
+function quickCard({tone='',eyebrow,title,copy,meta,action,section,playerName}){
+  const attr=playerName?`data-hpro-player="${esc(playerName)}"`:`data-hpro-go="${esc(section||'inicio')}"`;
+  return `<button type="button" class="hpro-quick ${tone}" ${attr}><span>${esc(eyebrow)}</span><h3>${esc(title)}</h3><p>${esc(copy)}</p><b>${esc(meta)}</b><strong>${esc(action)} →</strong></button>`;
+}
+function dashboardHtml(s){
+  const match=matchState(),participation=participationState(),leader=s.leader,total=communityTotal();
+  const performance=leader?{tone:'blue',eyebrow:'RENDIMIENTO',title:display(leader.p.name),copy:`Líder Power · ${leader.minutes} min · media ${fmt(leader.r)}`,meta:fmt(leader.power),action:'Ver jugador',playerName:leader.p.name}:{tone:'blue',eyebrow:'RENDIMIENTO',title:'Power pendiente',copy:'Se mostrará el líder cuando haya muestra oficial suficiente.',meta:'—',action:'Ver datos',section:'estadisticas'};
+  const community={eyebrow:'COMUNIDAD',title:total===null?'XI de la comunidad':`${total} pronóstico${total===1?'':'s'}`,copy:'Porcentajes por posición, debates y ranking de aciertos.',meta:total===null?'XI':String(total),action:'Ver comunidad',section:'comunidad'};
+  return `<div class="hpro-dashboard"><button type="button" class="hpro-main" data-hpro-go="${esc(match.section||'partido')}"><div class="hpro-main-copy"><span>${esc(match.eyebrow||'JORNADA')}</span><h3>${esc(match.title||'Real Madrid')}</h3><p>${esc(match.copy||'Consulta el estado del partido y la jornada.')}</p></div><div class="hpro-main-cta">${match.count?`<b>${esc(match.count)}</b>`:''}<strong>${esc(match.action||'Abrir')} →</strong></div></button><div class="hpro-side">${quickCard(participation)}${quickCard(performance)}${quickCard(community)}</div></div>`;
 }
 function ensureRoot(){
   const home=document.getElementById('inicio'),intro=document.getElementById('publicIntro');if(!home||!intro)return null;let root=document.getElementById('homePro');if(!root){root=document.createElement('section');root.id='homePro';root.className='home-pro';intro.insertAdjacentElement('afterend',root)}return root;
 }
+function parkSecondaryHome(){
+  const body=document.querySelector('#uxHomeMore .ux-home-more-body');if(!body)return false;
+  const home=document.getElementById('inicio'),hero=home?.querySelector(':scope > .card.hero'),pulse=document.getElementById('publicPulse');
+  [hero,pulse].filter(Boolean).forEach(el=>{if(el.parentElement!==body)body.appendChild(el)});return true;
+}
 function bind(root){
   root.querySelectorAll('[data-hpro-player]').forEach(btn=>btn.addEventListener('click',()=>openPlayer(btn.dataset.hproPlayer)));
-  root.querySelectorAll('[data-hpro-evolution]').forEach(btn=>btn.addEventListener('click',()=>go('evolucion')));
   root.querySelectorAll('[data-hpro-go]').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.hproGo)));
   root.querySelectorAll('[data-hpro-duel]').forEach(btn=>btn.addEventListener('click',()=>{const [a,b]=btn.dataset.hproDuel.split('|');openDuel(a,b)}));
 }
 function render(){
   syncLegacyMatchCopy();const root=ensureRoot();if(!root||!data())return false;const s=signals();document.body.classList.add('home-pro-ready');
-  root.innerHTML=`<div class="hpro-head"><div><span>INICIO PRO · DATOS CANÓNICOS</span><h2>Qué importa ahora.</h2><p>Rendimiento, cambio de jornada, muestra y estado del partido desde una única referencia.</p></div><small>${esc(coverageText())}</small></div><div class="hpro-signals">${signalsHtml(s)}</div>${decisionHtml()}<p class="hpro-method">Power, forma y eficiencia conservan sus fórmulas originales. “Mayor subida” compara exclusivamente las dos últimas jornadas del calendario con nota en ambas; SC y ausencia nunca son 0.</p>`;
-  bind(root);return true;
+  root.innerHTML=`<div class="hpro-head"><div><span>JORNADA EN UN VISTAZO</span><h2>Lo importante, nada más entrar.</h2><p>Partido, participación y rendimiento sin bloques duplicados.</p></div><small>${esc(coverageText())}</small></div>${dashboardHtml(s)}`;
+  bind(root);parkSecondaryHome();setTimeout(parkSecondaryHome,120);return true;
 }
 function schedule(){clearInterval(timer);timer=setInterval(()=>{syncLegacyMatchCopy();if(document.getElementById('inicio')?.classList.contains('active'))render()},60000)}
 function install(){
   syncLegacyMatchCopy();if(installed)return;if(!document.getElementById('publicIntro')||!data()||typeof showSection!=='function'){setTimeout(install,100);return}
   installed=true;render();schedule();
-  ['rm-ranking-official-ready','rm-season-data-ready','rm-season-order-corrected','rm-community-updated','rm-season-extension-ready'].forEach(name=>document.addEventListener(name,render));
+  ['rm-ranking-official-ready','rm-season-data-ready','rm-season-order-corrected','rm-community-updated','rm-season-extension-ready','rm-modules-ready','rm-mvp-personal-updated'].forEach(name=>document.addEventListener(name,render));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
   window.RMHomePro=Object.freeze({render,signals,duel:closestDuel,match:matchState,sync:syncLegacyMatchCopy});
 }
