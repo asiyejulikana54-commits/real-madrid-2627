@@ -13,7 +13,7 @@ function playerList(){try{return typeof players!=='undefined'?players:[]}catch{r
 function ranking(){try{return typeof efficiencyRanking!=='undefined'?efficiencyRanking:[]}catch{return []}}
 function currentMatch(){
   try{if(typeof predictionMatch!=='undefined')return predictionMatch}catch{}
-  return {id:'rayo-2026-09-12',rival:'Rayo',kickoff:'2026-09-12T21:00:00+02:00',deadline:'2026-09-12T19:55:00+02:00'};
+  return null;
 }
 function canUseFunctions(){return typeof location!=='undefined'&&!location.hostname.endsWith('github.io')&&/^https?:$/.test(location.protocol)}
 function powerRows(){
@@ -33,7 +33,7 @@ function playerMoment(){
   }).filter(Boolean).sort((a,b)=>b.recent.value-a.recent.value||b.minutes-a.minutes)[0]||null;
 }
 function currentAnalyzed(){
-  const data=season(),match=currentMatch(),latest=data?.matches?.at?.(-1);if(!latest)return false;
+  const data=season(),match=currentMatch(),latest=data?.matches?.at?.(-1);if(!match||!latest)return false;
   const a=String(latest.label||latest.id||'').toLowerCase(),b=String(match.rival||'').toLowerCase();return Boolean(b&&a.includes(b));
 }
 function countdown(target){
@@ -41,13 +41,23 @@ function countdown(target){
   const total=Math.floor(ms/60000),days=Math.floor(total/1440),hours=Math.floor((total%1440)/60),mins=total%60;
   if(days>0)return `${days}d ${hours}h`;if(hours>0)return `${hours}h ${mins}m`;return `${Math.max(1,mins)} min`;
 }
+function toneForState(state){
+  if(state?.eyebrow==='PREDICCIÓN ABIERTA')return 'pre';
+  if(state?.eyebrow==='EN BREVE')return 'locked';
+  if(state?.eyebrow==='PARTIDO')return 'live';
+  return 'post';
+}
 function stageInfo(){
-  const match=currentMatch(),rival=match.rival||'próximo rival',deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now();
-  if(currentAnalyzed())return {eyebrow:'ÚLTIMA JORNADA',title:`${rival} ya está dentro del análisis`,copy:'Mira quién subió, quién bajó y cómo cambió la jerarquía.',action:'Ver evolución',section:'evolucion',tone:'post',count:''};
+  const unified=(()=>{try{return window.RMHomePro?.match?.()||null}catch{return null}})();
+  if(unified)return {...unified,tone:toneForState(unified),count:unified.count?String(unified.count):''};
+  const match=currentMatch();
+  if(!match)return {eyebrow:'TEMPORADA',title:'Jornada por actualizar',copy:'El siguiente partido aparecerá cuando esté registrado en la fuente principal.',action:'Ver partidos',section:'partidos',tone:'post',count:''};
+  const rival=match.rival||'próximo rival',deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now();
+  if(currentAnalyzed())return {eyebrow:'PARTIDO ANALIZADO',title:`Real Madrid–${rival}`,copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',tone:'post',count:'Cerrado'};
   if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICCIÓN ABIERTA',title:`¿Qué XI sacarías contra el ${rival}?`,copy:'Elige tus 11 titulares y compárate con la comunidad.',action:'Hacer mi XI',section:'prediccion',tone:'pre',count:`Cierra en ${countdown(deadline)}`};
   if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:'Predicciones cerradas',copy:'Consulta el pulso de la comunidad antes del inicio.',action:'Ver previa',section:'partido',tone:'locked',count:`Empieza en ${countdown(kickoff)}`};
   if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Vuelve después para ver cómo cambia todo el análisis.',action:'Centro del partido',section:'partido',tone:'live',count:'En juego'};
-  return {eyebrow:'PRÓXIMA ACTUALIZACIÓN',title:`Esperando los datos del ${rival}`,copy:'En cuanto entren minutos y notas, toda la web se recalculará automáticamente.',action:'Ver temporada',section:'evolucion',tone:'post',count:'Datos pendientes'};
+  return {eyebrow:'DATOS PENDIENTES',title:`Real Madrid–${rival}`,copy:'En cuanto entren minutos y notas, toda la web se recalculará automáticamente.',action:'Ver evolución',section:'evolucion',tone:'post',count:''};
 }
 function stageHtml(){const s=stageInfo();return `<button class="pulse-card pulse-stage ${s.tone}" data-go="${s.section}"><span class="pulse-eyebrow">${s.eyebrow}</span>${s.count?`<span class="pulse-countdown">${esc(s.count)}</span>`:''}<b>${esc(s.title)}</b><small>${esc(s.copy)}</small><strong>${esc(s.action)} →</strong></button>`}
 function momentHtml(){
@@ -55,7 +65,7 @@ function momentHtml(){
   const delta=m.delta?.delta,deltaText=Number.isFinite(delta)?`${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)} en su última nota`:`${m.recent.n} partidos con nota`;
   return `<button class="pulse-card pulse-player" data-player="${esc(m.player.name)}"><span class="pulse-eyebrow">JUGADOR DEL MOMENTO</span><div class="pulse-player-score"><b>${esc(display(m.player.name))}</b><em>${m.recent.value.toFixed(2)}</em></div><small>Forma media en sus últimos ${m.recent.n} partidos · mínimo 90 minutos de muestra.</small><strong>${esc(deltaText)} →</strong></button>`;
 }
-function fallbackDuel(){return `<div class="pulse-card pulse-duel"><span class="pulse-eyebrow">DUELO RÁPIDO</span><b>¿Dumfries o Trent?</b><small>Uno de los debates abiertos para el próximo XI.</small><button class="pulse-mini-action" data-go="partido">Ver debates →</button></div>`}
+function fallbackDuel(){return `<div class="pulse-card pulse-duel"><span class="pulse-eyebrow">DUELO RÁPIDO</span><b>¿Dumfries o Trent?</b><small>Uno de los debates de plantilla que seguimos durante la temporada.</small><button class="pulse-mini-action" data-go="comparador">Compararlos →</button></div>`}
 function duelHtml(){
   const polls=pollData?.polls||[],available=polls.filter(p=>Array.isArray(p.options)&&p.options.length===2);if(!available.length)return fallbackDuel();
   const poll=[...available].sort((a,b)=>Math.abs((a.options[0]?.percentage||0)-(a.options[1]?.percentage||0))-Math.abs((b.options[0]?.percentage||0)-(b.options[1]?.percentage||0)))[0],closed=Boolean(pollData?.closed);
@@ -105,7 +115,7 @@ async function refresh(force=false){render();await Promise.all([fetchPolls(force
 function install(){
   if(installed)return;if(!document.getElementById('publicIntro')||!season()||typeof showSection!=='function'){setTimeout(install,120);return}
   installed=true;document.body.classList.add('public-engagement-ready');if(previousSnapshot)document.body.classList.add('public-returning');render();refresh(false);
-  document.addEventListener('rm-ranking-official-ready',render);document.addEventListener('rm-season-data-ready',render);
+  document.addEventListener('rm-ranking-official-ready',render);document.addEventListener('rm-season-data-ready',render);document.addEventListener('rm-home-state-ready',render);
   document.addEventListener('rm-community-updated',e=>{communityData=e.detail||communityData;render()});document.addEventListener('rm-matchday-polls-updated',e=>{pollData=e.detail||pollData;render()});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveSnapshot()});window.addEventListener('pagehide',saveSnapshot);
   setInterval(()=>{if(document.getElementById('inicio')?.classList.contains('active'))render()},60000);
