@@ -23,6 +23,10 @@ function loadCommunityLeague(){
   if(!document.querySelector('script[data-community-league]')){const script=document.createElement('script');script.src='community-league.js?v=1';script.dataset.communityLeague='1';document.body.appendChild(script)}
   return true;
 }
+function loadDecisionCenter(){
+  if(!document.querySelector('link[data-decision-center]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-center.css?v=1';link.dataset.decisionCenter='1';document.head.appendChild(link)}
+  if(!document.querySelector('script[data-decision-center]')){const script=document.createElement('script');script.src='decision-center.js?v=1';script.dataset.decisionCenter='1';script.addEventListener('load',()=>setTimeout(()=>window.RMDecisionCenter?.render?.(),0),{once:true});document.body.appendChild(script)}else setTimeout(()=>window.RMDecisionCenter?.render?.(),0)
+}
 function openHowItWorks(){
   window.closeUxMore?.();let tries=0;
   const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(window.RMSiteGuide?.open){window.RMSiteGuide.open();return}if(++tries<25)setTimeout(open,80)};
@@ -62,17 +66,19 @@ function refresh(){injectMore();injectDesktop()}
 function scheduleMenuRefresh(){clearTimeout(menuRefreshTimer);menuRefreshTimer=setTimeout(refresh,0)}
 function install(){
   if(installed)return;if(!window.RMPersonal||!document.getElementById('uxMoreSheet')||typeof showSection!=='function'){if(++attempts<80)setTimeout(install,100);return}
-  installed=true;refresh();loadSimpleExperience();loadCommunityLeague();
+  installed=true;refresh();loadSimpleExperience();loadCommunityLeague();loadDecisionCenter();
   new MutationObserver(scheduleMenuRefresh).observe(document.body,{childList:true});
   const base=showSection;showSection=function(id){
     if(id==='mi-temporada')loadPersonalSeasonPro();
     if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}
+    if(id==='prediccion')loadDecisionCenter();
     base(id);setTimeout(refresh,0);
     if(id==='mi-temporada')setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);
     if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}
+    if(id==='prediccion')setTimeout(()=>window.RMDecisionCenter?.render?.(),120)
   };
-  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}
-  document.addEventListener('rm-modules-ready',()=>setTimeout(refresh,0));[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
+  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada')loadPersonalSeasonPro();if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}if(active==='prediccion')loadDecisionCenter();
+  document.addEventListener('rm-modules-ready',()=>{loadDecisionCenter();setTimeout(refresh,0)});[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 loadLatestUiFixes();
 setTimeout(install,90);
