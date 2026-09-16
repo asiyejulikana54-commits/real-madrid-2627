@@ -3,6 +3,7 @@ const FAVORITES_KEY='rm_player_favorites_v1';
 const RECENTS_KEY='rm_player_recents_v1';
 const HISTORY_KEY='rm_prediction_history_v1';
 const SNAPSHOT_KEY='rm_public_visit_snapshot_v2';
+const OPEN_KEY='rm_personal_home_open_v1';
 let installed=false,predictionHooked=false;
 
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
@@ -15,6 +16,7 @@ function match(){return safe(()=>typeof predictionMatch!=='undefined'?prediction
 function go(id){if(typeof showSection==='function')showSection(id)}
 function currentStage(){return safe(()=>window.RMPublicEngagement?.stage?.(),null)}
 function currentSnapshot(){return safe(()=>window.RMPublicEngagement?.snapshot?.(),null)}
+function homeState(){return safe(()=>window.RMHomePro?.match?.(),null)}
 function readArray(key){const value=parse(key,[]);return Array.isArray(value)?value:[]}
 function favorites(){return readArray(FAVORITES_KEY).filter(Boolean)}
 function recents(){return readArray(RECENTS_KEY).filter(Boolean).slice(0,5)}
@@ -48,7 +50,17 @@ function trend(name){return safe(()=>window.RMSeasonData?.ratingDelta?.(name),nu
 function fmt(v){return Number.isFinite(v)?Number(v).toFixed(2):'—'}
 
 function actionState(){
-  const stage=currentStage(),m=match(),records=predictionRecords(),current=m?records.find(r=>r.matchId===m.id):null;
+  const unified=homeState(),stage=currentStage(),m=match(),records=predictionRecords(),current=m?records.find(r=>r.matchId===m.id):null;
+  if(unified){
+    if(unified.section==='prediccion'){
+      if(current)return {eyebrow:'TU SIGUIENTE PASO',title:'Tu XI ya está guardado',copy:`Puedes revisarlo o cambiarlo antes del cierre${m?.rival?` contra el ${m.rival}`:''}.`,label:'Revisar mi XI',section:'prediccion',tone:'gold'};
+      return {eyebrow:'TU SIGUIENTE PASO',title:`Elige tu XI${m?.rival?` contra el ${m.rival}`:''}`,copy:'Guárdalo para compararlo después con el once oficial y medir tus aciertos.',label:'Hacer mi predicción',section:'prediccion',tone:'gold'};
+    }
+    if(unified.eyebrow==='PARTIDO ANALIZADO')return {eyebrow:'TU SIGUIENTE PASO',title:'Compara tu pronóstico con el partido real',copy:'Abre el análisis para ver XI oficial, notas medias y cómo quedó tu elección frente al once definitivo.',label:'Ver análisis',section:'partido',tone:'blue'};
+    if(unified.eyebrow==='PARTIDO')return {eyebrow:'AHORA',title:'El partido está en juego',copy:'Entra al centro del partido. El análisis se actualizará cuando tengamos los datos finales.',label:'Centro del partido',section:'partido',tone:'live'};
+    if(unified.section==='partido')return {eyebrow:'AHORA',title:unified.title||'Partido actual',copy:unified.copy||'Consulta el centro del partido.',label:unified.action||'Ver partido',section:'partido',tone:'blue'};
+    if(unified.section==='evolucion')return {eyebrow:'ACTUALIZACIÓN',title:'Los datos de la jornada están pendientes',copy:'Cuando entren minutos y notas podrás revisar los cambios de forma y jerarquía.',label:'Ver evolución',section:'evolucion',tone:'blue'};
+  }
   if(!stage)return {eyebrow:'AHORA',title:'Explora la temporada a tu manera',copy:'Consulta rendimiento, compara jugadores o construye tu propio XI.',label:'Ver Power RM',section:'power',tone:'neutral'};
   if(stage.eyebrow==='PREDICCIÓN ABIERTA'){
     if(current)return {eyebrow:'TU SIGUIENTE PASO',title:'Tu XI ya está guardado',copy:`Puedes revisarlo o cambiarlo antes del cierre${m?.rival?` contra el ${m.rival}`:''}.`,label:'Revisar mi XI',section:'prediccion',tone:'gold'};
@@ -56,7 +68,7 @@ function actionState(){
   }
   if(stage.eyebrow==='EN BREVE')return {eyebrow:'AHORA',title:'La predicción ya está cerrada',copy:current?'Tu XI queda guardado. Consulta la previa antes de que empiece el partido.':'Consulta la previa y los debates antes del inicio.',label:'Ver previa',section:'partido',tone:'blue'};
   if(stage.eyebrow==='PARTIDO')return {eyebrow:'AHORA',title:'El partido está en juego',copy:'Entra al centro del partido. El análisis se actualizará cuando tengamos los datos finales.',label:'Centro del partido',section:'partido',tone:'live'};
-  if(stage.eyebrow==='ÚLTIMA JORNADA')return {eyebrow:'NUEVO ANÁLISIS',title:'Ya puedes ver qué cambió tras el partido',copy:'Revisa la evolución, la forma reciente y los movimientos en los rankings.',label:'Ver evolución',section:'evolucion',tone:'blue'};
+  if(stage.eyebrow==='PARTIDO ANALIZADO')return {eyebrow:'TU SIGUIENTE PASO',title:'Compara tu pronóstico con el partido real',copy:'Abre el análisis para revisar XI oficial, notas y resultado de tu elección.',label:'Ver análisis',section:'partido',tone:'blue'};
   return {eyebrow:'AHORA',title:stage.title||'Temporada actualizada',copy:stage.copy||'Consulta el último estado del seguimiento.',label:stage.action||'Ver temporada',section:stage.section||'inicio',tone:'neutral'};
 }
 
@@ -103,13 +115,19 @@ function bind(root){
   }));
 }
 function ensureRoot(){
-  const home=document.getElementById('inicio'),pulse=document.getElementById('publicPulse'),intro=document.getElementById('publicIntro');if(!home||!intro||!pulse)return null;
-  let root=document.getElementById('personalizedHome');if(!root){root=document.createElement('section');root.id='personalizedHome';root.className='personalized-home';pulse.insertAdjacentElement('beforebegin',root)}return root;
+  const home=document.getElementById('inicio'),intro=document.getElementById('publicIntro');if(!home||!intro)return null;
+  const anchor=document.getElementById('homePro')||intro;let root=document.getElementById('personalizedHome');
+  if(root&&root.tagName!=='DETAILS'){const replacement=document.createElement('details');replacement.id='personalizedHome';replacement.className='personalized-home';root.replaceWith(replacement);root=replacement}
+  if(!root){root=document.createElement('details');root.id='personalizedHome';root.className='personalized-home'}
+  if(root.previousElementSibling!==anchor)anchor.insertAdjacentElement('afterend',root);
+  if(!root.dataset.openBound){root.dataset.openBound='1';root.open=localStorage.getItem(OPEN_KEY)==='1';root.addEventListener('toggle',()=>{try{localStorage.setItem(OPEN_KEY,root.open?'1':'0')}catch{}})}
+  return root;
 }
 function render(){
   const root=ensureRoot();if(!root)return false;document.body.classList.add('personal-home-ready');
-  const hasPersonal=favorites().length||recents().length||predictionRecords().length;
-  root.innerHTML=`<div class="personal-home-head"><div><span>${hasPersonal?'TU RM 26/27':'HAZLO TUYO'}</span><h2>${hasPersonal?'Tu temporada, nada más entrar.':'Empieza tu seguimiento personal.'}</h2></div><small>Privado · guardado en este dispositivo</small></div>${nextCard()}<div class="personal-home-grid">${favoritesCard()}${predictionCard()}${changesCard()}</div>`;
+  const favCount=favorites().length,predCount=predictionRecords().length,hasPersonal=favCount||recents().length||predCount;
+  const summaryMeta=hasPersonal?[favCount?`${favCount} favorito${favCount===1?'':'s'}`:'',predCount?`${predCount} XI`:''].filter(Boolean).join(' · '):'Sin configurar';
+  root.innerHTML=`<summary class="personal-home-summary"><div><span>${hasPersonal?'TU SEGUIMIENTO':'PERSONALIZA LA APP'}</span><b>${hasPersonal?'Favoritos, predicciones y cambios':'Guarda tus jugadores y tus XI en este dispositivo'}</b><small>${esc(summaryMeta)}</small></div><strong>Ver <i>+</i></strong></summary><div class="personal-home-body">${nextCard()}<div class="personal-home-grid">${favoritesCard()}${predictionCard()}${changesCard()}</div></div>`;
   bind(root);return true;
 }
 function hookPrediction(){
@@ -119,7 +137,7 @@ function hookPrediction(){
 function install(){
   if(installed)return;if(!document.getElementById('inicio')||!window.RMPublicEngagement){setTimeout(install,100);return}
   installed=true;hookPrediction();render();
-  document.addEventListener('rm-player-favorites-updated',render);document.addEventListener('rm-ranking-official-ready',render);document.addEventListener('rm-season-data-ready',render);document.addEventListener('rm-community-updated',render);document.addEventListener('rm-matchday-polls-updated',render);
+  document.addEventListener('rm-player-favorites-updated',render);document.addEventListener('rm-ranking-official-ready',render);document.addEventListener('rm-season-data-ready',render);document.addEventListener('rm-community-updated',render);document.addEventListener('rm-matchday-polls-updated',render);document.addEventListener('rm-home-state-ready',render);
   [350,1100,2400].forEach(ms=>setTimeout(()=>{hookPrediction();render()},ms));
   window.RMPersonalHome=Object.freeze({refresh:render,action:actionState,changes:visitChanges});
 }
