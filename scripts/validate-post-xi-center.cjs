@@ -12,8 +12,8 @@ if(/MutationObserver\s*\(/.test(js))failures.push('post-xi-center.js no debe usa
 if(!js.includes('const projectXi=rec?.projectXI||null'))failures.push('el centro post-XI no debe reconstruir el Proyecto desde el estado actual');
 if(!js.includes('rec.snapshotLate'))failures.push('el centro post-XI debe distinguir snapshots tardíos');
 for(const marker of ['.post-xi-center','.pxc-official-mode #decisionCenter','.pxc-score-grid','.pxc-change-list','.pxc-verdict-grid'])if(!css.includes(marker))failures.push(`post-xi-center.css: falta ${marker}`);
-if(!ctx.includes('loadPostXiCenter')||!ctx.includes('post-xi-center.js?v=1')||!ctx.includes('post-xi-center.css?v=1'))failures.push('analysis-context.js no carga el centro post-XI');
-if(!sw.includes("'post-xi-center.js'")||!sw.includes("'post-xi-center.css'"))failures.push('PWA no incluye el centro post-XI');
+if(!ctx.includes('loadPostXiCenter')||!ctx.includes('post-xi-center.js?v=1')||!ctx.includes('post-xi-center.css?v=1'))failures.push('analysis-context.js no conserva el cargador bajo demanda del centro post-XI');
+if(sw.includes("'post-xi-center.js'")||sw.includes("'post-xi-center.css'"))failures.push('el centro post-XI es un módulo retirado del precache y debe permanecer solo bajo demanda');
 const cache=sw.match(/rm2627-static-v(\d+)/);if(!cache||Number(cache[1])<41)failures.push('el centro post-XI requiere caché PWA v41 o superior');
 if(failures.length){console.error('Post-XI center audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
-console.log('Post-XI center audit: OK · transición post-cierre + cambios por rol + auditoría estricta + Quick Picks + offline');
+console.log('Post-XI center audit: OK · cargador legado bajo demanda, sin contaminar el precache actual');
