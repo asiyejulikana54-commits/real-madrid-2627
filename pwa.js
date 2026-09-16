@@ -1,7 +1,7 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='64';
+const SW_VERSION='65';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -19,6 +19,14 @@ function loadLeagueScoring(){
 function loadBackupModule(){
   if(window.RMBackup||document.querySelector('script[data-backup-pro]'))return;
   const script=document.createElement('script');script.src='backup-pro.js?v=1';script.dataset.backupPro='1';script.async=false;document.body.appendChild(script)
+}
+function loadDataSections(){
+  const ensureStyle=(href,key)=>{if(document.querySelector(`link[href^="${href.split('?')[0]}"]`))return;const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.dataset[key]='1';document.head.appendChild(link)};
+  const ensureScript=(src,key)=>{if(document.querySelector(`script[src^="${src.split('?')[0]}"]`))return;const script=document.createElement('script');script.src=src;script.dataset[key]='1';script.async=false;document.body.appendChild(script)};
+  ensureStyle('analytics.css?v=3','dataEvolutionStyle');
+  ensureStyle('hierarchy.css?v=3','dataHierarchyStyle');
+  ensureScript('analytics.js?v=3','dataEvolutionScript');
+  ensureScript('hierarchy.js?v=3','dataHierarchyScript');
 }
 function setMode(){
   document.documentElement.classList.toggle('pwa-standalone',isStandalone());
@@ -95,7 +103,7 @@ function openSectionFromUrl(attempt=0){
 }
 window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
 function install(){
-  if(installed)return;installed=true;loadOfficialStateSync();loadLeagueScoring();loadBackupModule();setMode();ensureInstallButton();openSectionFromUrl();
+  if(installed)return;installed=true;loadOfficialStateSync();loadLeagueScoring();loadBackupModule();loadDataSections();setMode();ensureInstallButton();openSectionFromUrl();
   window.addEventListener('online',setMode);window.addEventListener('offline',setMode);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;ensureInstallButton()});
   window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;setMode();document.getElementById('pwaInstallBtn')?.remove();closeInstallGuide();toastSafe('RM 26/27 instalada')});
