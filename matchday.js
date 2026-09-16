@@ -1,5 +1,6 @@
 (()=>{
 const css=document.createElement('link');css.rel='stylesheet';css.href='matchday.css?v=5';css.dataset.matchdayCss='5';document.head.appendChild(css);
+const performanceCss=document.createElement('link');performanceCss.rel='stylesheet';performanceCss.href='matchday-performance.css?v=1';performanceCss.dataset.matchdayPerformanceCss='1';document.head.appendChild(performanceCss);
 const entry=['partido','⚽','Partido','Centro del partido','Tu XI, la comunidad, la alineación oficial y el análisis del partido en una sola pantalla.'];
 if(!sections.some(s=>s[0]==='partido'))sections.splice(1,0,entry);
 document.getElementById('navDesktop').innerHTML=navHtml(false);document.getElementById('navMobile').innerHTML=navHtml(true);
