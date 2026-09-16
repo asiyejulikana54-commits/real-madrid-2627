@@ -110,13 +110,23 @@ function dashboardHtml(s){
   const community={eyebrow:'COMUNIDAD',title:total===null?'XI de la comunidad':`${total} pronóstico${total===1?'':'s'}`,copy:'Porcentajes por posición, debates y ranking de aciertos.',meta:total===null?'XI':String(total),action:'Ver comunidad',section:'comunidad'};
   return `<div class="hpro-dashboard"><button type="button" class="hpro-main" data-hpro-go="${esc(match.section||'partido')}"><div class="hpro-main-copy"><span>${esc(match.eyebrow||'JORNADA')}</span><h3>${esc(match.title||'Real Madrid')}</h3><p>${esc(match.copy||'Consulta el estado del partido y la jornada.')}</p></div><div class="hpro-main-cta">${match.count?`<b>${esc(match.count)}</b>`:''}<strong>${esc(match.action||'Abrir')} →</strong></div></button><div class="hpro-side">${quickCard(participation)}${quickCard(performance)}${quickCard(community)}</div></div>`;
 }
+function advancedSignalsHtml(s){
+  const rise=s.rise?.row,watch=s.watch,duel=closestDuel();
+  const riseName=rise?display(rise.p.name):'Sin subida comparable',riseValue=rise?`+${fmt(rise.delta)}`:'—';
+  const riseCopy=rise&&s.rise.previous&&s.rise.current?`${s.rise.previous.label} ${fmt(rise.from,1)} → ${s.rise.current.label} ${fmt(rise.to,1)}`:'Solo se comparan las dos últimas jornadas con nota oficial en ambas.';
+  const watchName=watch?display(watch.p.name):'Sin muestra corta',watchValue=watch?fmt(watch.r):'—',watchCopy=watch?`${watch.minutes} min · lectura provisional por muestra corta`:'No hay jugador con menos de 90 minutos y nota disponible.';
+  const duelName=duel?`${display(duel.a.p.name)} ↔ ${display(duel.b.p.name)}`:'Sin duelo comparable',duelValue=duel?fmt(duel.gap):'—',duelAttr=duel?`data-hpro-duel="${esc(duel.a.p.name)}|${esc(duel.b.p.name)}"`:'';
+  return `<div class="hpro-signals"><button type="button" ${rise?`data-hpro-player="${esc(rise.p.name)}"`:''}><span>MAYOR SUBIDA · ESTRICTA</span><b>${esc(riseName)}</b><strong>${esc(riseValue)}</strong><small>${esc(riseCopy)}</small></button><button type="button" ${watch?`data-hpro-player="${esc(watch.p.name)}"`:''}><span>MUESTRA A VIGILAR</span><b>${esc(watchName)}</b><strong>${esc(watchValue)}</strong><small>${esc(watchCopy)}</small></button></div><div class="hpro-decisions"><button type="button" ${duelAttr}><span>DUELO MÁS CERRADO · POWER</span><b>${esc(duelName)}</b><strong>${esc(duelValue)}</strong><small>Solo mide cercanía en Power, no decide titularidad.</small></button></div>`;
+}
 function ensureRoot(){
   const home=document.getElementById('inicio'),intro=document.getElementById('publicIntro');if(!home||!intro)return null;let root=document.getElementById('homePro');if(!root){root=document.createElement('section');root.id='homePro';root.className='home-pro';intro.insertAdjacentElement('afterend',root)}return root;
 }
-function parkSecondaryHome(){
+function parkSecondaryHome(s){
   const body=document.querySelector('#uxHomeMore .ux-home-more-body');if(!body)return false;
   const home=document.getElementById('inicio'),hero=home?.querySelector(':scope > .card.hero'),pulse=document.getElementById('publicPulse');
-  [hero,pulse].filter(Boolean).forEach(el=>{if(el.parentElement!==body)body.appendChild(el)});return true;
+  [hero,pulse].filter(Boolean).forEach(el=>{if(el.parentElement!==body)body.appendChild(el)});
+  let advanced=document.getElementById('homeProAdvanced');if(!advanced){advanced=document.createElement('section');advanced.id='homeProAdvanced';advanced.className='hpro-advanced';body.prepend(advanced)}
+  advanced.innerHTML=advancedSignalsHtml(s);bind(advanced);return true;
 }
 function bind(root){
   root.querySelectorAll('[data-hpro-player]').forEach(btn=>btn.addEventListener('click',()=>openPlayer(btn.dataset.hproPlayer)));
@@ -126,7 +136,7 @@ function bind(root){
 function render(){
   syncLegacyMatchCopy();const root=ensureRoot();if(!root||!data())return false;const s=signals();document.body.classList.add('home-pro-ready');
   root.innerHTML=`<div class="hpro-head"><div><span>JORNADA EN UN VISTAZO</span><h2>Lo importante, nada más entrar.</h2><p>Partido, participación y rendimiento sin bloques duplicados.</p></div><small>${esc(coverageText())}</small></div>${dashboardHtml(s)}`;
-  bind(root);parkSecondaryHome();setTimeout(parkSecondaryHome,120);return true;
+  bind(root);parkSecondaryHome(s);setTimeout(()=>parkSecondaryHome(s),120);return true;
 }
 function schedule(){clearInterval(timer);timer=setInterval(()=>{syncLegacyMatchCopy();if(document.getElementById('inicio')?.classList.contains('active'))render()},60000)}
 function install(){
