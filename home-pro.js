@@ -39,13 +39,46 @@ function closestDuel(){
   const candidates=DUELS.map(([a,b,pos])=>{const ar=row(a),br=row(b);if(!ar||!br||!Number.isFinite(ar.power)||!Number.isFinite(br.power))return null;return {a:ar,b:br,pos,gap:Math.abs(ar.power-br.power)}}).filter(Boolean).sort((a,b)=>a.gap-b.gap);
   return candidates[0]||null;
 }
+function currentMatch(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
+function seasonMatchFor(match){
+  if(!match)return null;const rival=String(match.rival||'').trim().toLocaleLowerCase('es-ES');
+  return (data()?.matches||[]).find(m=>String(m.label||'').trim().toLocaleLowerCase('es-ES')===rival)||null;
+}
+function isAnalyzed(match){
+  const seasonMatch=seasonMatchFor(match),xi=safe(()=>typeof officialXI!=='undefined'&&Array.isArray(officialXI)?officialXI:[],[]);
+  if(!seasonMatch||xi.length!==11)return false;
+  return xi.some(name=>Number.isFinite(safe(()=>data()?.officialRatingEntry?.(seasonMatch.id,name)?.value,null))||Number.isFinite(safe(()=>data()?.minutes?.(seasonMatch.id,name),null)));
+}
+function formatKickoff(value){
+  const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
+  return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}).format(date).replace(',',' ·').toUpperCase();
+}
+function formatClock(value){
+  const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
+  return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}).format(date);
+}
+function syncLegacyMatchCopy(){
+  const match=currentMatch();if(!match)return;const rival=String(match.rival||'Rival'),seasonMatch=seasonMatchFor(match),kickoff=formatKickoff(match.kickoff),deadline=formatClock(match.deadline),analyzed=isAnalyzed(match);
+  const home=document.getElementById('inicio');if(home){
+    const title=home.querySelector('.card.hero .match-title');if(title)title.innerHTML=`REAL MADRID <span>vs</span> ${esc(rival.toUpperCase())}`;
+    const meta=home.querySelector('.card.hero .match-meta');if(meta)meta.innerHTML=[kickoff,seasonMatch?.comp].filter(Boolean).map(v=>`<span class="pill">${esc(v)}</span>`).join('');
+    const focus=home.querySelector('.card.hero .focus-box h3');if(focus)focus.textContent=analyzed?`Claves del ${rival}`:`Debates abiertos para el ${rival}`;
+    const note=home.querySelector('.quick-notes textarea');if(note&&/contra el Rayo/i.test(note.placeholder))note.placeholder=`Ej.: contra el ${rival} quiero anotar cambios, dudas tácticas o conclusiones del partido...`;
+  }
+  const pred=document.getElementById('prediccion');if(pred){
+    const head=pred.querySelector('.section-head h2');if(head)head.textContent=analyzed?`XI oficial contra el ${rival}`:`Predice el XI contra el ${rival}`;
+    const rules=pred.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong)strong.textContent=`REAL MADRID vs ${rival.toUpperCase()}`;const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente';}
+    const status=pred.querySelector('#predictionStatus');if(status&&analyzed)status.textContent='Cerrada · XI oficial';
+  }
+}
 function matchState(){
-  const stage=safe(()=>window.RMPublicEngagement?.stage?.(),null);if(stage)return stage;
-  const match=safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null);if(!match)return {eyebrow:'PRÓXIMO PARTIDO',title:'Calendario pendiente',copy:'El siguiente partido aparecerá aquí cuando esté registrado.',action:'Ver partidos',section:'partidos',count:''};
-  const deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now(),rival=match.rival||'próximo rival';
+  const match=currentMatch();if(!match)return {eyebrow:'PRÓXIMO PARTIDO',title:'Calendario pendiente',copy:'El siguiente partido aparecerá aquí cuando esté registrado.',action:'Ver partidos',section:'partidos',count:''};
+  const deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now(),rival=match.rival||'próximo rival',analyzed=isAnalyzed(match);
   if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICCIÓN ABIERTA',title:`Real Madrid–${rival}`,copy:'Tu XI todavía puede guardarse o modificarse antes del cierre.',action:'Hacer mi XI',section:'prediccion',count:remaining(deadline)};
   if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:`Real Madrid–${rival}`,copy:'La predicción ya está cerrada. Consulta la previa del partido.',action:'Ver previa',section:'partido',count:remaining(kickoff)};
-  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Centro del partido activo. No se inventan marcador ni eventos.',action:'Centro del partido',section:'partido',count:'En juego'};
+  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000&&!analyzed)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Centro del partido activo. No se inventan marcador ni eventos.',action:'Centro del partido',section:'partido',count:'En juego'};
+  if(analyzed)return {eyebrow:'PARTIDO ANALIZADO',title:`Real Madrid–${rival}`,copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',count:'Cerrado'};
+  const stage=safe(()=>window.RMPublicEngagement?.stage?.(),null);if(stage)return stage;
   return {eyebrow:'DATOS PENDIENTES',title:`Real Madrid–${rival}`,copy:'Esperando minutos y notas oficiales para incorporar el partido al análisis.',action:'Ver evolución',section:'evolucion',count:''};
 }
 function remaining(target){const ms=target-Date.now();if(ms<=0)return '';const min=Math.max(1,Math.floor(ms/60000)),days=Math.floor(min/1440),hours=Math.floor((min%1440)/60),mins=min%60;if(days)return `${days}d ${hours}h`;if(hours)return `${hours}h ${mins}m`;return `${mins} min`}
@@ -81,17 +114,17 @@ function bind(root){
   root.querySelectorAll('[data-hpro-duel]').forEach(btn=>btn.addEventListener('click',()=>{const [a,b]=btn.dataset.hproDuel.split('|');openDuel(a,b)}));
 }
 function render(){
-  const root=ensureRoot();if(!root||!data())return false;const s=signals();document.body.classList.add('home-pro-ready');
-  root.innerHTML=`<div class="hpro-head"><div><span>INICIO PRO · DATOS CANÓNICOS</span><h2>Qué importa ahora.</h2><p>Rendimiento, cambio de jornada, muestra y próximo partido sin crear una puntuación nueva.</p></div><small>${esc(coverageText())}</small></div><div class="hpro-signals">${signalsHtml(s)}</div>${decisionHtml()}<p class="hpro-method">Power, forma y eficiencia conservan sus fórmulas originales. “Mayor subida” compara exclusivamente las dos últimas jornadas del calendario con nota en ambas; SC y ausencia nunca son 0.</p>`;
+  syncLegacyMatchCopy();const root=ensureRoot();if(!root||!data())return false;const s=signals();document.body.classList.add('home-pro-ready');
+  root.innerHTML=`<div class="hpro-head"><div><span>INICIO PRO · DATOS CANÓNICOS</span><h2>Qué importa ahora.</h2><p>Rendimiento, cambio de jornada, muestra y estado del partido desde una única referencia.</p></div><small>${esc(coverageText())}</small></div><div class="hpro-signals">${signalsHtml(s)}</div>${decisionHtml()}<p class="hpro-method">Power, forma y eficiencia conservan sus fórmulas originales. “Mayor subida” compara exclusivamente las dos últimas jornadas del calendario con nota en ambas; SC y ausencia nunca son 0.</p>`;
   bind(root);return true;
 }
-function schedule(){clearInterval(timer);timer=setInterval(()=>{if(document.getElementById('inicio')?.classList.contains('active'))render()},60000)}
+function schedule(){clearInterval(timer);timer=setInterval(()=>{syncLegacyMatchCopy();if(document.getElementById('inicio')?.classList.contains('active'))render()},60000)}
 function install(){
-  if(installed)return;if(!document.getElementById('publicIntro')||!data()||typeof showSection!=='function'){setTimeout(install,100);return}
+  syncLegacyMatchCopy();if(installed)return;if(!document.getElementById('publicIntro')||!data()||typeof showSection!=='function'){setTimeout(install,100);return}
   installed=true;render();schedule();
-  ['rm-ranking-official-ready','rm-season-data-ready','rm-season-order-corrected','rm-community-updated'].forEach(name=>document.addEventListener(name,render));
+  ['rm-ranking-official-ready','rm-season-data-ready','rm-season-order-corrected','rm-community-updated','rm-season-extension-ready'].forEach(name=>document.addEventListener(name,render));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
-  window.RMHomePro=Object.freeze({render,signals,duel:closestDuel,match:matchState});
+  window.RMHomePro=Object.freeze({render,signals,duel:closestDuel,match:matchState,sync:syncLegacyMatchCopy});
 }
 setTimeout(install,180);
 })();
