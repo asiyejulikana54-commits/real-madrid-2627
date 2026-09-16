@@ -3,6 +3,10 @@
 .cpl-guide span{font-size:.7rem;font-weight:800;letter-spacing:.11em;opacity:.72}
 .cpl-guide b{font-size:.98rem;line-height:1.25}
 .cpl-guide small{font-size:.82rem;line-height:1.35;opacity:.72}
+.cpl-guide-status{display:block;min-height:0;font-size:.76rem;line-height:1.3;font-style:normal;color:var(--gold,#d8b44a);opacity:0;transform:translateY(-2px);transition:opacity .16s ease,transform .16s ease}
+.cpl-loading .cpl-guide-status:not(:empty){opacity:1;transform:none}
+.cpl-loading .cpl-guide{border-color:rgba(216,180,74,.34);box-shadow:0 0 0 1px rgba(216,180,74,.06) inset}
+.cpl-loading #compareView{opacity:.72;transition:opacity .16s ease}
 .cpl-guide button{flex:0 0 auto;border:1px solid var(--border,#33485d);border-radius:999px;background:transparent;color:inherit;padding:9px 13px;font:inherit;font-weight:750;cursor:pointer}
 .cpl-guide button:hover,.cpl-guide button:focus-visible{background:rgba(255,255,255,.06)}
 body.rm-simple-mode #comparador:not(.cpl-expanded) .cp-common,
