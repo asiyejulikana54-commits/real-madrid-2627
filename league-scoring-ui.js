@@ -15,7 +15,7 @@ function patchPersonal(root){
     if(t==='racha 8+')txt(el,'plenos');
   });
   const b=card.querySelector(':scope > b');
-  if(b&&/\/ 11 de media/.test(b.textContent))b.textContent=b.textContent.replace('/ 11 de media','/ 12 de media');
+  if(b&&/\/ 12 de media/.test(b.textContent))b.textContent=b.textContent.replace('/ 12 de media','/ 11 de media');
 }
 function patchGeneralPrivate(root){
   root?.querySelectorAll('.cgl-table:not(.round)').forEach(table=>{
