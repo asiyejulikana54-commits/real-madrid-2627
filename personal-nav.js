@@ -1,5 +1,5 @@
 (()=>{
-let installed=false,attempts=0,menuRefreshTimer=null,decisionCenterLoader=null;
+let installed=false,attempts=0,menuRefreshTimer=null,decisionCenterLoader=null,decisionCoachLoader=null;
 function loadLatestUiFixes(){
   if(window.RMUiFixes20260916||document.querySelector('script[data-rm-ui-fixes-20260916]'))return;
   const script=document.createElement('script');script.src='ui-fixes-20260916.js?v=1';script.dataset.rmUiFixes20260916='1';script.async=false;document.body.appendChild(script);
@@ -63,6 +63,20 @@ function loadDecisionCenter(){
   }).catch(()=>false).finally(()=>{if(!window.RMDecisionCenter)decisionCenterLoader=null});
   return decisionCenterLoader
 }
+function loadDecisionCoach(){
+  if(window.RMDecisionCoach){setTimeout(()=>window.RMDecisionCoach?.render?.(),0);return Promise.resolve(true)}
+  if(decisionCoachLoader)return decisionCoachLoader;
+  ensureDecisionStyle('decision-audit.css?v=1','decisionAudit');
+  ensureDecisionStyle('decision-profile.css?v=1','decisionProfile');
+  ensureDecisionStyle('decision-coach.css?v=1','decisionCoach');
+  decisionCoachLoader=loadDecisionCenter()
+    .then(()=>ensureDecisionScript('decision-audit.js?v=1','decisionAudit','RMDecisionAudit'))
+    .then(()=>ensureDecisionScript('decision-profile.js?v=1','decisionProfile','RMDecisionProfile'))
+    .then(()=>ensureDecisionScript('decision-coach.js?v=1','decisionCoach','RMDecisionCoach'))
+    .then(()=>{setTimeout(()=>window.RMDecisionCoach?.render?.(),120);return true})
+    .catch(()=>false).finally(()=>{if(!window.RMDecisionCoach)decisionCoachLoader=null});
+  return decisionCoachLoader
+}
 function openHowItWorks(){
   window.closeUxMore?.();let tries=0;
   const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(window.RMSiteGuide?.open){window.RMSiteGuide.open();return}if(++tries<25)setTimeout(open,80)};
@@ -107,14 +121,14 @@ function install(){
   const base=showSection;showSection=function(id){
     if(id==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile()}
     if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}
-    if(id==='prediccion')loadDecisionCenter();
+    if(id==='prediccion'){loadDecisionCenter();loadDecisionCoach()}
     base(id);setTimeout(refresh,0);
     if(id==='mi-temporada'){setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);setTimeout(()=>window.RMDecisionProfile?.render?.(),180)}
     if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}
-    if(id==='prediccion')setTimeout(()=>window.RMDecisionCenter?.render?.(),180)
+    if(id==='prediccion'){setTimeout(()=>window.RMDecisionCenter?.render?.(),180);setTimeout(()=>window.RMDecisionCoach?.render?.(),280)}
   };
-  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile()}if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}if(active==='prediccion')loadDecisionCenter();
-  document.addEventListener('rm-modules-ready',()=>{if(document.getElementById('prediccion')?.classList.contains('active'))loadDecisionCenter();if(document.getElementById('mi-temporada')?.classList.contains('active'))loadDecisionProfile();setTimeout(refresh,0)});[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
+  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile()}if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}if(active==='prediccion'){loadDecisionCenter();loadDecisionCoach()}
+  document.addEventListener('rm-modules-ready',()=>{if(document.getElementById('prediccion')?.classList.contains('active')){loadDecisionCenter();loadDecisionCoach()}if(document.getElementById('mi-temporada')?.classList.contains('active'))loadDecisionProfile();setTimeout(refresh,0)});[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 loadLatestUiFixes();
 setTimeout(install,90);
