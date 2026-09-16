@@ -10,8 +10,8 @@ function establishedUser(){
     return keys.some(k=>/^rm_prediction_/i.test(k)||/^rm_league_alias/i.test(k)||/favorite|favourite|personal_history|prediction_history|notes/i.test(k));
   }catch{return false}
 }
-function mode(){const stored=storedMode();return stored||(establishedUser()?'pro':'simple')}
-function persistInitialMode(){if(storedMode())return;try{localStorage.setItem(KEY,establishedUser()?'pro':'simple')}catch{}}
+function mode(){try{return localStorage.getItem(KEY)==='pro'?'pro':'simple'}catch{return 'simple'}}
+function persistInitialMode(){if(storedMode())return;try{localStorage.setItem(KEY,'simple')}catch{}}
 function official(){
   const currentId=safe(()=>window.RMCommunityApi?.match?.id,'')||'';
   const baseId=safe(()=>typeof predictionMatch!=='undefined'?predictionMatch.id:'','')||'';
@@ -30,6 +30,7 @@ function navItems(){
     {id:'partido',icon:'⚽',label:'Partido'},
     {id:'prediccion',icon:'★',label:done?'Revisar':'Predecir'},
     {id:'plantilla',icon:'◉',label:'Equipo'},
+    {id:'mi-temporada',icon:'◎',label:'Mi temporada'},
     {id:'mi-liga',icon:'🏆',label:'Mi Liga'}
   ].filter(x=>sectionExists(x.id));
 }
@@ -62,7 +63,7 @@ function ensureModeToggle(){
   quick.textContent='▶ Inicio rápido';quick.onclick=()=>welcome(true);
   let btn=document.getElementById('sxModeToggle');
   if(!btn){btn=document.createElement('button');btn.id='sxModeToggle';tools.insertBefore(btn,quick.nextSibling)}
-  btn.textContent=mode()==='simple'?'⚙ Abrir análisis avanzado':'✓ Volver a modo sencillo';
+  btn.textContent=mode()==='simple'?'⚙ Ver modo PRO':'✓ Volver a modo sencillo';
   btn.onclick=()=>setMode(mode()==='simple'?'pro':'simple');return true;
 }
 function setMode(next){
