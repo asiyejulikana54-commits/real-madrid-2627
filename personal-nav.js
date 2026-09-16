@@ -1,5 +1,5 @@
 (()=>{
-let installed=false,attempts=0,menuRefreshTimer=null,decisionCenterLoader=null,decisionCoachLoader=null;
+let installed=false,attempts=0,menuRefreshTimer=null,decisionCenterLoader=null,decisionCoachLoader=null,reviewArchiveLoader=null;
 function loadLatestUiFixes(){
   if(window.RMUiFixes20260916||document.querySelector('script[data-rm-ui-fixes-20260916]'))return;
   const script=document.createElement('script');script.src='ui-fixes-20260916.js?v=1';script.dataset.rmUiFixes20260916='1';script.async=false;document.body.appendChild(script);
@@ -77,6 +77,22 @@ function loadDecisionCoach(){
     .catch(()=>false).finally(()=>{if(!window.RMDecisionCoach)decisionCoachLoader=null});
   return decisionCoachLoader
 }
+function loadReviewArchive(){
+  if(window.RMReviewArchive){setTimeout(()=>window.RMReviewArchive?.render?.(),0);return Promise.resolve(true)}
+  if(reviewArchiveLoader)return reviewArchiveLoader;
+  ensureDecisionStyle('prediction-analytics.css?v=1','predictionAnalytics');
+  ensureDecisionStyle('decision-audit.css?v=1','decisionAudit');
+  ensureDecisionStyle('scenario-audit.css?v=1','scenarioAudit');
+  ensureDecisionStyle('review-archive.css?v=1','reviewArchive');
+  reviewArchiveLoader=loadDecisionCenter()
+    .then(()=>ensureDecisionScript('prediction-analytics.js?v=1','predictionAnalytics','RMPredictionAnalytics'))
+    .then(()=>ensureDecisionScript('decision-audit.js?v=1','decisionAudit','RMDecisionAudit'))
+    .then(()=>ensureDecisionScript('scenario-audit.js?v=1','scenarioAudit','RMScenarioAudit'))
+    .then(()=>ensureDecisionScript('review-archive.js?v=1','reviewArchive','RMReviewArchive'))
+    .then(()=>{setTimeout(()=>window.RMReviewArchive?.render?.(),140);return true})
+    .catch(()=>false).finally(()=>{if(!window.RMReviewArchive)reviewArchiveLoader=null});
+  return reviewArchiveLoader
+}
 function openHowItWorks(){
   window.closeUxMore?.();let tries=0;
   const open=()=>{if(window.RMSiteGuide?.openOverview){window.RMSiteGuide.openOverview();return}if(window.RMSiteGuide?.open){window.RMSiteGuide.open();return}if(++tries<25)setTimeout(open,80)};
@@ -119,16 +135,16 @@ function install(){
   installed=true;refresh();loadSimpleExperience();loadCommunityLeague();
   new MutationObserver(scheduleMenuRefresh).observe(document.body,{childList:true});
   const base=showSection;showSection=function(id){
-    if(id==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile()}
+    if(id==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile();loadReviewArchive()}
     if(id==='comunidad'){loadCommunityPro();loadCommunityLeague()}
     if(id==='prediccion'){loadDecisionCenter();loadDecisionCoach()}
     base(id);setTimeout(refresh,0);
-    if(id==='mi-temporada'){setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);setTimeout(()=>window.RMDecisionProfile?.render?.(),180)}
+    if(id==='mi-temporada'){setTimeout(()=>window.RMPersonalSeasonPro?.render?.(),0);setTimeout(()=>window.RMDecisionProfile?.render?.(),180);setTimeout(()=>window.RMReviewArchive?.render?.(),300)}
     if(id==='comunidad'){setTimeout(()=>window.RMCommunityPro?.render?.(),120);setTimeout(()=>window.RMCommunityLeague?.render?.(),160)}
     if(id==='prediccion'){setTimeout(()=>window.RMDecisionCenter?.render?.(),180);setTimeout(()=>window.RMDecisionCoach?.render?.(),280)}
   };
-  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile()}if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}if(active==='prediccion'){loadDecisionCenter();loadDecisionCoach()}
-  document.addEventListener('rm-modules-ready',()=>{if(document.getElementById('prediccion')?.classList.contains('active')){loadDecisionCenter();loadDecisionCoach()}if(document.getElementById('mi-temporada')?.classList.contains('active'))loadDecisionProfile();setTimeout(refresh,0)});[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
+  const active=document.querySelector('.section.active')?.id;if(active==='mi-temporada'){loadPersonalSeasonPro();loadDecisionProfile();loadReviewArchive()}if(active==='comunidad'){loadCommunityPro();loadCommunityLeague()}if(active==='prediccion'){loadDecisionCenter();loadDecisionCoach()}
+  document.addEventListener('rm-modules-ready',()=>{if(document.getElementById('prediccion')?.classList.contains('active')){loadDecisionCenter();loadDecisionCoach()}if(document.getElementById('mi-temporada')?.classList.contains('active')){loadDecisionProfile();loadReviewArchive()}setTimeout(refresh,0)});[200,400,800,1200,2600].forEach(ms=>setTimeout(refresh,ms));
 }
 loadLatestUiFixes();
 setTimeout(install,90);
