@@ -107,6 +107,23 @@
       </div>
     </section>
 
+    <section class="section" id="once">
+      <div class="section-head"><div><h2>Constructor de XI</h2><p>Crea una variante válida, guárdala y úsala como punto de partida para tus decisiones.</p></div><div class="actions"><button class="btn" onclick="loadPreset('base')">Once base</button><button class="btn" onclick="loadPreset('prediction')">Cargar mi predicción</button></div></div>
+      <div class="pitch-wrap">
+        <div class="pitch" id="pitch"></div>
+        <div class="card lineup-side">
+          <div class="eyebrow">GUARDAR VARIANTE</div>
+          <h3 style="margin-top:6px">Nombre del once</h3>
+          <input class="input" id="lineupName" style="width:100%;min-width:0" placeholder="Ej.: Atlético · opción con más control">
+          <h3>Comentario táctico</h3>
+          <textarea id="lineupComment" placeholder="Por qué jugaría este once, quién descansaría, cambios previstos…"></textarea>
+          <div class="actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" onclick="saveLineup()">Guardar variante</button><button class="btn" onclick="clearLineup()">Vaciar</button></div>
+          <div class="section-head"><div><h2 style="font-size:16px">Onces guardados</h2></div></div>
+          <div id="savedLineups"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="prediccion">
       <div class="section-head"><div><h2>Predicción del XI</h2><p>Elige quién crees que será titular y publica tu pronóstico en la comunidad.</p></div><span class="pill" id="predictionStatus">Actualizando estado</span></div>
       <div class="card prediction-hero">
@@ -158,7 +175,7 @@
 </div>
 <nav class="mobile-nav" id="navMobile"></nav>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 <script src="season-data.js?v=7" data-season-data="1"></script>
 <script src="minute-sync.js?v=5"></script>
 <script src="community.js?v=13"></script>
