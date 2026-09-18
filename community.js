@@ -138,7 +138,8 @@ async function loadDeferredModules(){
 }
 async function loadCriticalModules(){
   await afterFirstPaint();
-  await loadModule({script:'matchday.js?v=4',scriptKey:'matchday'});
+  await loadModule({script:'matchday.js?v=6',scriptKey:'matchday'});
+  await loadModule({css:'matchday-pro.css?v=1',cssKey:'matchday-pro',script:'matchday-pro.js?v=2',scriptKey:'matchday-pro'});
   await loadModule({css:'playerhub.css?v=2',cssKey:'playerhub',script:'playerhub.js?v=2',scriptKey:'playerhub'});
   await loadModule({css:'player-experience.css?v=1',cssKey:'player-experience',script:'player-experience.js?v=1',scriptKey:'player-experience'});
   document.dispatchEvent(new CustomEvent('rm-critical-modules-ready'));
