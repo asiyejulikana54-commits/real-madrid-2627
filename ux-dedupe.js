@@ -58,12 +58,20 @@ function cleanHierarchy(){addClass(document.getElementById('jerarquias'),'ux-hie
 function cleanCommunity(){const s=document.getElementById('comunidad');if(!s)return;addClass(s,'ux-community-deduped');setText(s.querySelector(':scope > .section-head p'),'Predicciones de alineación y ranking de aciertos. El mejor jugador de cada partido se vota en MVP.')}
 function cleanMvp(){addClass(document.getElementById('mvp'),'ux-mvp-deduped')}
 function routeButton(id,icon,label,description){return `<button type="button" data-home-route="${id}"><b>${icon}</b><span><strong>${label}</strong><small>${description}</small></span></button>`}
-function predictionButton(){return `<button type="button" class="ux-home-predict" data-home-route="prediccion"><b>★</b><span><em>PRÓXIMO PARTIDO</em><strong>Predice el XI del Real Madrid</strong><small>Elige tus 11, compáralos con la comunidad y suma aciertos cuando salga el once oficial.</small></span><i>Hacer mi XI →</i></button>`}
+function predictionButton(){
+  const match=safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null),rival=match?.rival||'el próximo rival';
+  const saved=safe(()=>typeof getSavedPrediction==='function'?getSavedPrediction():null,null),isSaved=Boolean(saved?.xi&&(!match||saved.matchId===match.id));
+  const closed=safe(()=>typeof predictionIsClosed==='function'?predictionIsClosed():false,false),official=safe(()=>typeof officialXI!=='undefined'&&Array.isArray(officialXI),false);
+  let route='prediccion',eyebrow=`PRÓXIMO PARTIDO · ${rival}`,title=isSaved?`Tu XI contra ${rival} ya está guardado`:`Predice el XI contra ${rival}`,copy=isSaved?'Revísalo o cámbialo antes del cierre y compáralo con la comunidad.':'Elige tus 11, publícalos y compáralos con la comunidad.',action=isSaved?'Revisar mi XI →':'Hacer mi XI →';
+  if(official){title='Revisa tu predicción frente al XI oficial';copy='Comprueba tus aciertos y abre el análisis del partido.';action='Ver resultado →'}
+  else if(closed){route='partido';title=`Predicción cerrada · ${rival}`;copy='Tu XI ya no puede modificarse. Consulta la previa o el centro del partido.';action='Ver partido →'}
+  return `<button type="button" class="ux-home-predict" data-home-route="${route}"><b>★</b><span><em>${esc(eyebrow)}</em><strong>${esc(title)}</strong><small>${esc(copy)}</small></span><i>${esc(action)}</i></button>`
+}
 function addHomeMap(){
   const home=document.getElementById('inicio');if(!home)return null;let routes=document.getElementById('uxHomeRoutes');
   if(!routes){routes=document.createElement('nav');routes.id='uxHomeRoutes';routes.className='ux-home-routes';routes.setAttribute('aria-label','Apartados principales de la aplicación')}
   const markup=`${predictionButton()}<span class="ux-home-routes-label">APARTADOS PRINCIPALES</span>${routeButton('partido','⚽','Partido','Previa, XI y seguimiento')}${routeButton('plantilla','👥','Equipo','Plantilla, Power y jerarquías')}${routeButton('estadisticas','📊','Rendimiento','Datos, eficiencia y evolución')}${routeButton('radar','🎯','Decisiones','Radar, comparador y XI')}${routeButton('comunidad','🌐','Comunidad','Tendencias y predicciones')}${routeButton('mi-liga','🏆','Mi Liga','Clasificación y ligas privadas')}${routeButton('mi-temporada','👤','Mi temporada','Historial, aciertos y progreso')}`;
-  if(routes.dataset.homeVersion!=='7'){routes.innerHTML=markup;routes.dataset.homeVersion='7'}
+  if(routes.dataset.homeMarkup!==markup){routes.innerHTML=markup;routes.dataset.homeMarkup=markup}
   if(routes.parentElement!==home||home.firstElementChild!==routes)home.prepend(routes);
   routes.querySelectorAll('[data-home-route]').forEach(btn=>{if(btn.dataset.homeBound)return;btn.dataset.homeBound='1';btn.addEventListener('click',()=>go(btn.dataset.homeRoute))});return routes;
 }
