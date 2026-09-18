@@ -3,6 +3,7 @@ const HISTORY_KEY='rm_prediction_history_v1';
 let installed=false,observer=null,scheduled=false,lastSignature='';
 function safe(fn,fallback=null){try{return fn()}catch{return fallback}}
 function match(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
+function matchTeams(m){const rival=String(m?.rival||'Rival');return m?.home===false?{home:rival,away:'Real Madrid'}:{home:'Real Madrid',away:rival}}
 function official(){return safe(()=>typeof officialXI!=='undefined'&&Array.isArray(officialXI)&&officialXI.length===11?officialXI:null,null)}
 function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),name)||name}
 function currentPrediction(){
@@ -78,7 +79,7 @@ function patchPredictionHeader(){
     if(eyebrow)eyebrow.textContent='XI OFICIAL PUBLICADO';
     if(title)title.textContent='La alineación de Mourinho ya está confirmada';
     if(copy)copy.textContent='Revisa cuántos titulares acertaste y qué cambió respecto a las predicciones previas.';
-    if(rules){const spans=rules.querySelectorAll('span');const d=new Date(m.kickoff||'');const date=Number.isNaN(d.getTime())?'':`${String(d.getDate()).padStart(2,'0')} ${d.toLocaleString('es-ES',{month:'short'}).toUpperCase()} · ${d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;const b=rules.querySelector('b');if(b)b.textContent=`REAL MADRID vs ${String(m.rival||'RIVAL').toUpperCase()}`;if(spans[0])spans[0].textContent=date;if(spans[1])spans[1].textContent='XI publicado'}
+    if(rules){const spans=rules.querySelectorAll('span');const d=new Date(m.kickoff||'');const date=Number.isNaN(d.getTime())?'':`${String(d.getDate()).padStart(2,'0')} ${d.toLocaleString('es-ES',{month:'short'}).toUpperCase()} · ${d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;const b=rules.querySelector('b');if(b){const t=matchTeams(m);b.textContent=`${t.home.toUpperCase()} vs ${t.away.toUpperCase()}`;}if(spans[0])spans[0].textContent=date;if(spans[1])spans[1].textContent='XI publicado'}
   }
 }
 function patchCommunityPending(){
