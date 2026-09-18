@@ -1,4 +1,4 @@
-const communitySection=['comunidad','♟','Comunidad','La comunidad','XI más votado, porcentajes y ranking de aciertos.'];
+const communitySection=['comunidad','♟','Comunidad','La comunidad','XI más votado, porcentajes y ranking de puntos.'];
 const predictionIndex=sections.findIndex(s=>s[0]==='prediccion');
 if(!sections.some(s=>s[0]==='comunidad'))sections.splice(predictionIndex,0,communitySection);
 document.getElementById('navDesktop').innerHTML=navHtml(false);
@@ -44,11 +44,16 @@ document.getElementById('savePredictionBtn').textContent='Publicar predicción';
 const resultBox=document.getElementById('predictionResult');if(resultBox)resultBox.innerHTML=resultBox.innerHTML.replace('Guardar predicción','Publicar predicción');
 
 let communityCache=window.RMCommunityData||null;
+function communityMatchesCurrent(data){
+  const current=typeof predictionMatch!=='undefined'?predictionMatch:null;
+  return !data?.match?.id||!current?.id||data.match.id===current.id;
+}
+
 function renderCommunityUnavailable(){
   renderSimpleXiComparison(null);
   const total=document.getElementById('communityTotal');if(total)total.textContent='—';
-  const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">La comunidad en vivo se activa en la versión conectada a Netlify. Tu predicción local sigue funcionando.</div>';
-  const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo en espera</b><span>GitHub Pages sigue siendo la versión pública de verificación y no llama a funciones externas.</span></div>';
+  const pitch=document.getElementById('communityPitch');if(pitch)pitch.innerHTML='<div class="community-loading">No se pudo conectar con la comunidad en vivo. Tu predicción local sigue funcionando.</div>';
+  const polls=document.getElementById('communityPolls');if(polls)polls.innerHTML='<div class="result-pending"><b>Comunidad en vivo no disponible</b><span>Vuelve a pulsar “Actualizar” para reintentar la conexión.</span></div>';
   const board=document.getElementById('communityLeaderboard');if(board)board.innerHTML='<div class="result-pending"><b>Ranking comunitario no cargado</b><span>Se mostrará en la versión conectada.</span></div>';
 }
 function renderCommunityPitch(popularXI,total){
@@ -63,6 +68,7 @@ function pollBlock(title,slotData){
 function simpleXiValues(xi){return Object.values(xi||{}).filter(Boolean)}
 function simpleValidXi(xi){const v=simpleXiValues(xi);return v.length===11&&new Set(v).size===11}
 function simpleCommunityXi(data){
+  if(!communityMatchesCurrent(data))return null;
   const xi={};for(const s of slots){const row=data?.popularXI?.[s[0]];xi[s[0]]=typeof row==='string'?row:row?.name||''}return simpleValidXi(xi)?xi:null;
 }
 function simpleXiDiff(a,b){
@@ -84,7 +90,9 @@ function renderSimpleXiComparison(data=communityCache){
 }
 
 function renderCommunity(data){
-  if(!data)return;communityCache=data;renderSimpleXiComparison(data);window.RMCommunityData=data;const total=data.totalPredictions||0;
+  if(!data)return;
+  if(!communityMatchesCurrent(data)){communityCache=null;renderCommunityUnavailable();return}
+  communityCache=data;renderSimpleXiComparison(data);window.RMCommunityData=data;const total=data.totalPredictions||0;
   document.getElementById('communityTotal').textContent=total;document.getElementById('communityScoredMatches').textContent=data.scoredMatches||0;
   const rb=data.slotShares?.rb?.[0],rw=data.slotShares?.rw?.[0];
   document.getElementById('communityRB').textContent=rb?displayName(rb.name):'—';document.getElementById('communityRBShare').textContent=rb?`${rb.percentage}% de los pronósticos`:'Esperando votos';
@@ -93,9 +101,10 @@ function renderCommunity(data){
   document.getElementById('communityPolls').innerHTML=[['Portero','gk'],['Lateral izquierdo','lb'],['Central izquierdo','lcb'],['Central derecho','rcb'],['Lateral derecho','rb'],['Mediocentro izquierdo','dm1'],['Mediocentro derecho','dm2'],['Mediapunta','am'],['Banda izquierda','lw'],['Banda derecha','rw'],['Delantero centro','st']].map(([label,key])=>pollBlock(label,data.slotShares?.[key])).join('');
   const board=document.getElementById('communityLeaderboard');
   if(!(data.scoredMatches>0)||!data.leaderboard?.length){board.innerHTML='<div class="result-pending"><b>Ranking pendiente</b><span>Empezará a contar cuando publiquemos el primer once oficial.</span></div>';return}
-  board.innerHTML=`<div class="leaderboard-head"><span>#</span><span>Usuario</span><span>Aciertos</span><span>Partidos</span><span>Plenos</span></div>${data.leaderboard.map((u,i)=>`<div class="leaderboard-row ${u.participantId===getParticipantId()?'me':''}"><b>${i+1}</b><span>${escapeHtml(u.alias)}${u.participantId===getParticipantId()?' <small>(tú)</small>':''}</span><strong>${u.hits}<small>/${u.possible}</small></strong><span>${u.scoredMatches}</span><span>${u.perfect}</span></div>`).join('')}`
+  board.innerHTML=`<div class="leaderboard-head"><span>#</span><span>Usuario</span><span>Puntos</span><span>Partidos</span><span>Plenos</span></div>${data.leaderboard.map((u,i)=>`<div class="leaderboard-row ${u.participantId===getParticipantId()?'me':''}"><b>${i+1}</b><span>${escapeHtml(u.alias)}${u.participantId===getParticipantId()?' <small>(tú)</small>':''}</span><strong>${Number.isFinite(u.points)?u.points:u.hits}<small>/${u.possible}</small></strong><span>${u.scoredMatches}</span><span>${u.perfect}</span></div>`).join('')}`
 }
 async function loadCommunity(force=false){
+  if(communityCache&&!communityMatchesCurrent(communityCache))communityCache=null;
   if(communityCache&&!force){renderCommunity(communityCache);return communityCache}
   if(!communityBackendAvailable()){renderCommunityUnavailable();return null}
   try{const response=await fetch(communityApiUrl({participantId:getParticipantId()}),{headers:{accept:'application/json'}});const data=await response.json();if(!response.ok)throw new Error(data.error||'Error');renderCommunity(data);document.dispatchEvent(new CustomEvent('rm-community-updated',{detail:data}));return data}
