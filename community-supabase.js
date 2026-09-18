@@ -1,6 +1,6 @@
 (()=>{
   const endpoint='https://vvltmdedwgjtvlcmindn.supabase.co/functions/v1/community';
-  const match={id:'elche-2026-09-15',rival:'Elche',kickoff:'2026-09-15T21:30:00+02:00',deadline:'2026-09-15T19:45:00+02:00'};
+  const match=predictionMatch;
   const storageKey=`rm_prediction_${match.id}`;
   const apiUrl=params=>{const url=new URL(endpoint);for(const [key,value] of Object.entries(params||{}))if(value!==undefined&&value!==null&&value!=='')url.searchParams.set(key,String(value));return url.href};
 
@@ -9,19 +9,19 @@
 
   function saved(){try{return JSON.parse(localStorage.getItem(storageKey)||'null')}catch{return null}}
   function closed(){return Date.now()>=new Date(match.deadline).getTime()}
+  function teams(){return match.home===false?{home:match.rival,away:'Real Madrid'}:{home:'Real Madrid',away:match.rival}}
+  function formatKickoff(value){const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}).format(d).replace(',',' ·').toUpperCase():''}
+  function formatClock(value){const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}).format(d):''}
   function syncCopy(){
-    const hero=document.querySelector('#inicio .next-match');
+    const t=teams(),hero=document.querySelector('#inicio .next-match');
     if(hero){
-      const title=hero.querySelector('.match-title');if(title)title.innerHTML='ELCHE <span>vs</span> REAL MADRID';
-      const pills=hero.querySelectorAll('.match-meta .pill');
-      if(pills[0])pills[0].textContent='15 SEP 2026 · 21:30';
-      if(pills[1])pills[1].textContent='LALIGA';
-      if(pills[2])pills[2].textContent='MARTÍNEZ VALERO';
+      const title=hero.querySelector('.match-title');if(title)title.innerHTML=`${escapeHtml(t.home.toUpperCase())} <span>vs</span> ${escapeHtml(t.away.toUpperCase())}`;
+      const meta=hero.querySelector('.match-meta');if(meta)meta.innerHTML=[formatKickoff(match.kickoff),match.comp,match.venue].filter(Boolean).map(v=>`<span class="pill">${escapeHtml(v)}</span>`).join('');
     }
-    const focus=document.querySelector('#inicio .focus-box h3');if(focus)focus.textContent='Debates abiertos para el Elche';
-    const notes=document.getElementById('notes');if(notes)notes.placeholder='Ej.: contra el Elche quiero comprobar rotaciones, descansos y cambios respecto al Rayo...';
-    const predHead=document.querySelector('#prediccion .section-head h2');if(predHead)predHead.textContent='Predice el XI contra el Elche';
-    const rules=document.querySelector('#prediccion .prediction-rules');if(rules)rules.innerHTML='<b>ELCHE vs REAL MADRID</b><span>15 SEP · 21:30</span><span>Se cierra: 19:45</span>';
+    const focus=document.querySelector('#inicio .focus-box h3');if(focus)focus.textContent=`Debates abiertos para el ${match.rival}`;
+    const notes=document.getElementById('notes');if(notes)notes.placeholder=`Ej.: contra el ${match.rival} quiero anotar rotaciones, descansos y dudas tácticas...`;
+    const predHead=document.querySelector('#prediccion .section-head h2');if(predHead)predHead.textContent=`Predice el XI contra el ${match.rival}`;
+    const rules=document.querySelector('#prediccion .prediction-rules');if(rules)rules.innerHTML=`<b>${escapeHtml(t.home.toUpperCase())} vs ${escapeHtml(t.away.toUpperCase())}</b><span>${escapeHtml(formatKickoff(match.kickoff))}</span><span>Se cierra: ${escapeHtml(formatClock(match.deadline))}</span>`;
   }
 
   predictionIsClosed=closed;
@@ -46,7 +46,7 @@
     const data=saved();
     if(!data){box.innerHTML='<div class="result-pending"><b>Aún no has guardado una predicción.</b><span>Completa el once y pulsa “Publicar predicción”.</span></div>';return}
     const when=new Date(data.savedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
-    box.innerHTML=`<div class="result-pending"><b>Predicción guardada ✓</b><span>${data.name?`${data.name} · `:''}${when}</span><span>El resultado aparecerá aquí cuando publiquemos el once oficial del Elche.</span></div>`;
+    box.innerHTML=`<div class="result-pending"><b>Predicción guardada ✓</b><span>${data.name?`${data.name} · `:''}${when}</span><span>El resultado aparecerá aquí cuando publiquemos el once oficial del Real Madrid.</span></div>`;
   };
   savePrediction=async function(){
     if(closed()){toast('La predicción ya está cerrada');return}
@@ -67,7 +67,7 @@
   sharePrediction=async function(){
     const data=saved()||{xi:currentPredictionXI(),name:document.getElementById('predictionName')?.value.trim()||''},names=predictionValues(data.xi||{});
     if(names.length!==11){toast('Completa primero tus 11 jugadores');return}
-    const text=`Mi predicción del XI del Real Madrid vs Elche (${names.map(displayName).join(', ')}). ¿Cuántos acertaré?`;
+    const t=teams(),text=`Mi predicción del XI para ${t.home} vs ${t.away} (${names.map(displayName).join(', ')}). ¿Cuántos acertaré?`;
     try{if(navigator.share)await navigator.share({title:'RM 26/27 · Mi predicción',text});else if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Predicción copiada')}}catch(e){if(e?.name!=='AbortError')toast('No se pudo compartir')}
   };
 
