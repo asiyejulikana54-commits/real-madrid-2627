@@ -120,7 +120,7 @@ function aggregatePlayer(player){
     player:name,matches:Object.freeze(rows),ratedMatches:complete3+twoPlusSC,completeMatches:complete3,partialMatches:twoPlusSC,allSC,
     totalMinutes,ratedMinutes,unratedMinutes,totalPoints,
     rating:ratedMinutes?totalPoints*90/ratedMinutes:null,
-    minPerPoint:totalPoints?totalMinutes/totalPoints:null
+    minPerPoint:totalPoints?ratedMinutes/totalPoints:null
   });
 }
 function aggregateRanking(playerNames){
