@@ -5,7 +5,7 @@ const POLICY=Object.freeze({
   full:'3 notas publicadas → media aritmética de SofaScore + FotMob + StatMuse.',
   partial:'2 notas + 1 SC → media aritmética de las 2 notas publicadas.',
   unrated:'3 SC → conserva minutos, sin nota ni aporte.',
-  efficiency:'Min/punto usa todos los minutos jugados; la media usa solo minutos valorados.',
+  efficiency:'Min/punto usa solo minutos con nota oficial; los minutos 3×SC se conservan como muestra, pero no penalizan la eficiencia.',
   cutoff:'Sin corte mínimo de minutos.'
 });
 function syncLegacyChronology(){
@@ -22,7 +22,7 @@ function syncLegacyChronology(){
       const espanyol=legacyByName.get('espanyol');if(espanyol&&/Cuarto partido/i.test(espanyol.note||''))espanyol.note='Primera jornada del seguimiento histórico. Valoraciones y minutos incorporados al análisis multifuente.';
     }
   }catch{}
-  const chronology=Object.freeze({version:3,source:'canonical',order:Object.freeze([...CHRONOLOGY_IDS]),labels:Object.freeze(data.matches.slice(0,CHRONOLOGY_IDS.length).map(m=>m.label)),legacySynced,note:'RMSeasonData ya nace en orden real; este puente solo sincroniza estructuras antiguas.'});
+  const chronology=Object.freeze({version:4,source:'canonical',order:Object.freeze(data.matches.map(m=>m.id)),labels:Object.freeze(data.matches.map(m=>m.label)),legacySynced,note:'RMSeasonData ya nace en orden real; el puente valida las cinco jornadas base y conserva también las jornadas añadidas.'});
   window.RMChronologyCorrection=chronology;
   document.dispatchEvent(new CustomEvent('rm-season-order-corrected',{detail:chronology}));
   return true;
