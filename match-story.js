@@ -8,12 +8,12 @@ const STORIES=Object.freeze({
   'rayo-2026-09-12':Object.freeze({
     id:'rayo-2026-09-12',rival:'Rayo',date:'12 SEP 2026',competition:'LaLiga',status:'lectura-cerrada',
     data:Object.freeze({
-      headline:'XI oficial registrado · ficha de rendimiento pendiente',
-      copy:'La alineación oficial ya está consolidada. Los minutos finales y las notas multifuente se incorporarán cuando queden verificados en la base canónica.'
+      headline:'XI, minutos y rendimiento cerrados',
+      copy:'La alineación, los minutos y las valoraciones multifuente del partido ya están consolidados en la base canónica.'
     }),
     sources:Object.freeze({
-      headline:'Notas externas pendientes de cierre',
-      copy:'Sofascore, FotMob y StatMuse se mantienen separados de nuestra lectura. Si una fuente no publica nota, se marcará SC; nunca se rellenará con una estimación.'
+      headline:'Fuentes externas cerradas',
+      copy:'Sofascore, FotMob y StatMuse están incorporados como fuentes separadas de nuestra lectura. Si una fuente no publica nota, se marca SC; nunca se rellena con una estimación.'
     }),
     firstHalf:Object.freeze({
       title:'Primera parte · presión y superioridad individual',
@@ -60,7 +60,7 @@ function ensureHistoryRoot(){
   root=document.createElement('section');root.id='matchStoryHistory';root.className='card match-story match-story-history';const shell=document.getElementById('mhpShell'),head=section.querySelector(':scope>.section-head');if(shell)shell.insertAdjacentElement('beforebegin',root);else head?.insertAdjacentElement('afterend',root);return root
 }
 function renderCurrent(){const root=ensureCurrentRoot(),s=current();if(!root)return false;if(!s){root.hidden=true;root.innerHTML='';return false}root.hidden=false;root.innerHTML=storyHtml(s,false);document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partido'}}));return true}
-function renderHistory(){const root=ensureHistoryRoot(),s=latestStory();if(!root)return false;if(!s){root.hidden=true;root.innerHTML='';return false}root.hidden=false;root.innerHTML=`<div class="ms-history-kicker"><span>ÚLTIMO PARTIDO · RELATO GUARDADO</span><b>${esc(s.rival)} ya tiene memoria de partido</b><small>El archivo estadístico se completa de forma independiente con minutos y notas verificadas.</small></div>${storyHtml(s,true)}`;document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partidos'}}));return true}
+function renderHistory(){const root=ensureHistoryRoot();if(!root)return false;const selected=safe(()=>window.RMMatchHistoryPro?.selected,null),s=selected?story(selected):null;if(!s){root.hidden=true;root.innerHTML='';return false}root.hidden=false;root.innerHTML=`<div class="ms-history-kicker"><span>RELATO GUARDADO</span><b>${esc(s.rival)} tiene memoria de partido</b><small>Lectura cualitativa separada de los minutos y notas oficiales del archivo.</small></div>${storyHtml(s,false)}`;document.dispatchEvent(new CustomEvent('rm-match-story-rendered',{detail:{matchId:s.id,surface:'partidos'}}));return true}
 function render(){const id=document.querySelector('.section.active')?.id;if(id==='partido')return renderCurrent();if(id==='partidos')return renderHistory();return false}
 function install(){
   if(installed)return;if(typeof showSection!=='function'||!document.getElementById('partido')||!document.getElementById('partidos')){if(++attempts<120)setTimeout(install,100);return}
