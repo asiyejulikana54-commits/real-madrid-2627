@@ -11,7 +11,8 @@ function currentXi(){return safe(()=>typeof currentPredictionXI==='function'?cur
 function projectXi(){return safe(()=>window.RMCurrentMatchIdea,null)||safe(()=>typeof rayoXI!=='undefined'?rayoXI:null,null)||safe(()=>typeof baseXI!=='undefined'?baseXI:null,null)||null}
 function validXi(xi){const d=defs(),vals=d.map(s=>xi?.[s.key]||'');return d.length===11&&!vals.some(v=>!v)&&new Set(vals.map(canonical)).size===11}
 function communityGuide(){
-  const data=safe(()=>window.RMCommunityData,null);if(!data?.popularXI)return null;
+  const data=safe(()=>window.RMCommunityData,null),m=safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null);if(!data?.popularXI)return null;
+  if(data?.match?.id&&m?.id&&data.match.id!==m.id)return null;
   const xi={};for(const s of defs()){const row=data.popularXI?.[s.key];xi[s.key]=typeof row==='string'?row:row?.name||''}
   if(!validXi(xi))return null;
   const total=Number(data.totalPredictions)||0;
