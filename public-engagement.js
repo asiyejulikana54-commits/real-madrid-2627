@@ -16,7 +16,7 @@ function currentMatch(){
   return null;
 }
 function matchText(match){const rival=String(match?.rival||'próximo rival');return match?.home===false?`${rival}–Real Madrid`:`Real Madrid–${rival}`}
-function canUseFunctions(){return typeof location!=='undefined'&&!location.hostname.endsWith('github.io')&&/^https?:$/.test(location.protocol)}
+function canUseFunctions(){return typeof location!=='undefined'&&/^https?:$/.test(location.protocol)}
 function powerRows(){
   if(Array.isArray(window.RMPowerMigration?.official)&&window.RMPowerMigration.official.length)return window.RMPowerMigration.official;
   return ranking().map(row=>{
@@ -110,8 +110,19 @@ function render(){
   pulse.innerHTML=`<div class="pulse-head"><div><span>EL PULSO DE LA TEMPORADA</span><h2>Lo importante, nada más entrar.</h2></div><button class="pulse-refresh" type="button">Actualizar</button></div><div class="pulse-grid">${stageHtml()}${momentHtml()}${duelHtml()}${communityHtml()}</div>${changesHtml()}`;
   pulse.querySelector('.pulse-refresh')?.addEventListener('click',()=>refresh(true));bind(pulse);
 }
-async function fetchPolls(force=false){if(!canUseFunctions())return null;if(pollData&&!force)return pollData;try{const r=await fetch(`/.netlify/functions/matchday?participantId=${encodeURIComponent(participant())}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error();pollData=await r.json();window.RMMatchdayPollData=pollData}catch{pollData=null}return pollData}
-async function fetchCommunity(force=false){if(!canUseFunctions())return null;if(communityData&&!force)return communityData;try{const r=await fetch('/.netlify/functions/community-v2',{headers:{accept:'application/json'}});if(!r.ok)throw new Error();communityData=await r.json();window.RMCommunityData=communityData}catch{communityData=null}return communityData}
+async function fetchPolls(force=false){
+  if(!canUseFunctions())return pollData;
+  const api=window.RMPolls,cached=api?.data?.()||window.RMMatchdayPollData||pollData;
+  if(cached&&!force){pollData=cached;return pollData}
+  try{pollData=(force&&api?.refresh?await api.refresh():api?.data?.())||cached||pollData;if(pollData)window.RMMatchdayPollData=pollData}catch{}
+  return pollData;
+}
+async function fetchCommunity(force=false){
+  if(!canUseFunctions())return communityData;
+  const cached=window.RMCommunityData||communityData;if(cached&&!force){communityData=cached;return communityData}
+  try{communityData=(force?await window.RMCommunityApi?.refresh?.():null)||window.RMCommunityData||cached||communityData}catch{}
+  return communityData;
+}
 async function refresh(force=false){render();await Promise.all([fetchPolls(force),fetchCommunity(force)]);render()}
 function install(){
   if(installed)return;if(!document.getElementById('publicIntro')||!season()||typeof showSection!=='function'){setTimeout(install,120);return}
