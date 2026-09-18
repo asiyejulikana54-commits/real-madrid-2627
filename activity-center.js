@@ -22,7 +22,7 @@ function event(id,type,title,copy,action,priority=1,meta=''){return {id,type,tit
 function predictionEvents(){
   const m=match();if(!m)return [];const data=savedPrediction(),result=predictionResult(),out=[];
   if(!closed()&&!data)out.push(event(`prediction:missing:${m.id}`,'prediction','Tu XI sigue pendiente',`Todavía puedes guardar tu predicción contra ${m.rival||'el próximo rival'}.`,{type:'section',section:'prediccion',anchor:'predictionPitch'},5,'PRÓXIMO PARTIDO'));
-  if(official()&&data&&result&&Number.isFinite(result.score))out.push(event(`prediction:result:${m.id}:${result.score}`,'result',`${result.score}/11 en tu predicción`,`El XI oficial ya permite revisar qué acertaste y dónde te separaste del Proyecto.`,{type:'section',section:'prediccion',anchor:'officialXiReview'},6,'RESULTADO'));
+  if(official()&&data&&result&&Number.isFinite(result.score))out.push(event(`prediction:result:${m.id}:${result.score}`,'result',`${result.score}/11 en tu predicción`,`El XI oficial ya permite revisar qué acertaste y dónde te separaste de la referencia.`,{type:'section',section:'prediccion',anchor:'officialXiReview'},6,'RESULTADO'));
   return out;
 }
 function quickPickEvents(){
