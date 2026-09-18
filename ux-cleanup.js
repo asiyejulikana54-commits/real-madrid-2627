@@ -111,7 +111,7 @@ function loadRefineLayer(){
 function loadVisualLayer(){if(document.querySelector('script[data-visual-system]'))return;const script=document.createElement('script');script.src='visual-system.js?v=4';script.dataset.visualSystem='1';document.body.appendChild(script)}
 function loadPublicLayer(){
   if(!document.querySelector('link[data-public-polish]')){const link=document.createElement('link');link.rel='stylesheet';link.href='public-polish.css?v=6';link.dataset.publicPolish='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=11';script.dataset.publicPolish='1';document.body.appendChild(script)}
+  if(!document.querySelector('script[data-public-polish]')){const script=document.createElement('script');script.src='public-polish.js?v=12';script.dataset.publicPolish='1';document.body.appendChild(script)}
 }
 function loadCompareLifecycle(){
   if(!document.querySelector('link[data-compare-lifecycle]')){const link=document.createElement('link');link.rel='stylesheet';link.href='compare-lifecycle.css?v=1';link.dataset.compareLifecycle='1';document.head.appendChild(link)}
