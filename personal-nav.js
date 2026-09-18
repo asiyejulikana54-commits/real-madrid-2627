@@ -15,7 +15,7 @@ function loadDecisionProfile(){
 }
 function loadSimpleExperience(){
   if(!document.querySelector('link[data-simple-experience]')){const link=document.createElement('link');link.rel='stylesheet';link.href='simple-mode.css?v=2';link.dataset.simpleExperience='1';document.head.appendChild(link)}
-  if(!window.RMSimpleExperience&&!document.querySelector('script[data-simple-experience]')){const script=document.createElement('script');script.src='simple-mode.js?v=2';script.dataset.simpleExperience='1';script.async=false;document.body.appendChild(script)}
+  if(!window.RMSimpleExperience&&!document.querySelector('script[data-simple-experience]')){const script=document.createElement('script');script.src='simple-mode.js?v=3';script.dataset.simpleExperience='1';script.async=false;document.body.appendChild(script)}
 }
 function loadCommunityPro(){
   if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=3';link.dataset.communityPro='1';document.head.appendChild(link)}
