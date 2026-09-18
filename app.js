@@ -69,9 +69,9 @@ const matches=[
 
 const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'LI'],['lcb','DFC',38,75,'DFC'],['rcb','DFC',62,75,'DFC'],['rb','LD',86,73,'LD'],['dm1','MC',36,55,'MC'],['dm2','MC',64,55,'MC'],['am','MP',50,37,'MP'],['lw','EI',20,25,'EI'],['rw','ED',80,25,'ED'],['st','DC',50,12,'DC']];
 
-const predictionMatch={id:'elche-2026-09-15',rival:'Elche',kickoff:'2026-09-15T21:30:00+02:00',deadline:'2026-09-15T20:25:00+02:00'};
-const officialXI=['Courtois','Trent Alexander-Arnold','Konaté','Huijsen','Cucurella','Tchouaméni','Valverde','Diomande','Arda Güler','Vini Jr.','Mbappé'];
-const officialXIBySlot={gk:'Courtois',lb:'Cucurella',lcb:'Huijsen',rcb:'Konaté',rb:'Trent Alexander-Arnold',dm1:'Tchouaméni',dm2:'Valverde',am:'Arda Güler',lw:'Vini Jr.',rw:'Diomande',st:'Mbappé'};
+const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:30:00+02:00'});
+const officialXI=null;
+const officialXIBySlot={};
 window.RMOfficialXIBySlot=Object.freeze({...officialXIBySlot});
 const predictionStorageKey=`rm_prediction_${predictionMatch.id}`;
 
