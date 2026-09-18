@@ -84,8 +84,15 @@ function openPlayerHub(name){
 function compareFromPlayer(name){
   closePlayerHub();showSection('comparador');
   const player=players.find(p=>p.name===name);if(!player)return;
-  const alternative=players.find(p=>p.name!==name&&p.pos===player.pos)||players.find(p=>p.name!==name);
-  document.getElementById('compareA').value=name;if(alternative)document.getElementById('compareB').value=alternative.name;renderCompare();
+  const roles=Array.isArray(player.eligible)?player.eligible:[];
+  const sharesRole=p=>Array.isArray(p.eligible)&&roles.some(pos=>p.eligible.includes(pos));
+  const alternative=players.find(p=>p.name!==name&&p.pos===player.pos&&sharesRole(p))||players.find(p=>p.name!==name&&sharesRole(p))||players.find(p=>p.name!==name&&p.pos===player.pos)||players.find(p=>p.name!==name);
+  if(!alternative)return;
+  let tries=0;const open=()=>{
+    if(window.RMComparePro?.setDuel){window.RMComparePro.setDuel(name,alternative.name);return}
+    const A=document.getElementById('compareA'),B=document.getElementById('compareB');if(A&&B){A.value=name;B.value=alternative.name;if(typeof renderCompare==='function')renderCompare()}
+    if(tries++<25)setTimeout(open,80);
+  };open();
 }
 
 function decoratePlayerCards(){
