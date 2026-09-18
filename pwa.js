@@ -1,13 +1,47 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='72';
+const SW_VERSION='73';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
+const MATCH_ANNOUNCEMENT=Object.freeze({
+  id:'atletico-xi-open-2026-09-18',
+  title:'Ya puedes hacer tu once',
+  body:'La predicción contra el Atlético de Madrid ya está abierta.',
+  action:'Hacer mi XI',
+  section:'prediccion'
+});
+const ANNOUNCEMENT_DISMISSED_KEY=`rm_announcement_dismissed_${MATCH_ANNOUNCEMENT.id}`;
+const ANNOUNCEMENT_NATIVE_KEY=`rm_announcement_native_${MATCH_ANNOUNCEMENT.id}`;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 const isAndroid=()=>/android/i.test(navigator.userAgent);
 const isInApp=()=>/wv|instagram|fban|fbav|line\//i.test(navigator.userAgent)||(!/chrome|crios|safari|firefox|edg/i.test(navigator.userAgent)&&isAndroid());
 function toastSafe(msg){try{if(typeof toast==='function')toast(msg);else console.info(msg)}catch{}}
+function announcementDismissed(){try{return localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY)==='1'}catch{return false}}
+function dismissAnnouncement(){
+  try{localStorage.setItem(ANNOUNCEMENT_DISMISSED_KEY,'1')}catch{}
+  document.getElementById('rmMatchAnnouncement')?.remove();
+}
+function showMatchAnnouncement(){
+  if(announcementDismissed()||document.getElementById('rmMatchAnnouncement'))return;
+  const home=document.getElementById('inicio');if(!home)return;
+  const card=document.createElement('section');card.id='rmMatchAnnouncement';card.className='card';
+  card.style.cssText='margin-bottom:16px;border-color:rgba(216,180,74,.42);background:linear-gradient(135deg,rgba(216,180,74,.12),rgba(7,20,33,.96));';
+  card.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px"><div><div class="eyebrow">NUEVA JORNADA · PREDICCIÓN ABIERTA</div><h2 style="margin:5px 0 6px">${MATCH_ANNOUNCEMENT.title}</h2><p class="muted" style="margin:0">${MATCH_ANNOUNCEMENT.body}</p><div class="actions" style="justify-content:flex-start;margin-top:12px"><button type="button" class="btn primary" data-rm-announcement-open>${MATCH_ANNOUNCEMENT.action}</button></div></div><button type="button" class="btn" data-rm-announcement-close aria-label="Cerrar aviso" style="min-width:auto;padding:7px 10px">×</button></div>`;
+  const anchor=document.getElementById('publicIntro');if(anchor)anchor.insertAdjacentElement('afterend',card);else home.prepend(card);
+  card.querySelector('[data-rm-announcement-open]')?.addEventListener('click',()=>{dismissAnnouncement();try{showSection(MATCH_ANNOUNCEMENT.section)}catch{}});
+  card.querySelector('[data-rm-announcement-close]')?.addEventListener('click',dismissAnnouncement);
+}
+async function showNativeAnnouncement(){
+  if(typeof Notification==='undefined'||Notification.permission!=='granted'||!('serviceWorker' in navigator))return false;
+  try{if(localStorage.getItem(ANNOUNCEMENT_NATIVE_KEY)==='1')return false}catch{}
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification(MATCH_ANNOUNCEMENT.title,{body:MATCH_ANNOUNCEMENT.body,icon:'app-icon.svg',badge:'app-icon.svg',tag:MATCH_ANNOUNCEMENT.id,renotify:false,data:{section:MATCH_ANNOUNCEMENT.section}});
+    try{localStorage.setItem(ANNOUNCEMENT_NATIVE_KEY,'1')}catch{}
+    return true;
+  }catch{return false}
+}
 function loadOfficialStateSync(){
   if(window.RMOfficialStateSync||document.querySelector('script[data-official-state-sync]'))return;
   const script=document.createElement('script');script.src='official-state-sync.js?v=2';script.dataset.officialStateSync='1';script.async=false;document.body.appendChild(script)
@@ -101,18 +135,19 @@ function openSectionFromUrl(attempt=0){
   if(typeof showSection==='function'&&document.getElementById(id)){showSection(id);return}
   if(attempt<40)setTimeout(()=>openSectionFromUrl(attempt+1),150);
 }
-window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
+window.RMPWA=Object.freeze({install:installApp,guide:showInstallGuide,closeGuide:closeInstallGuide,announcement:showMatchAnnouncement,isInstalled:isStandalone,status:()=>({installed:isStandalone(),nativePrompt:Boolean(deferredInstallPrompt),ios:isIOS(),android:isAndroid(),swVersion:SW_VERSION})});
 function install(){
   if(installed)return;installed=true;loadOfficialStateSync();loadLeagueScoring();loadBackupModule();loadDataSections();setMode();ensureInstallButton();openSectionFromUrl();
   window.addEventListener('online',setMode);window.addEventListener('offline',setMode);
   window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;ensureInstallButton()});
   window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;setMode();document.getElementById('pwaInstallBtn')?.remove();closeInstallGuide();toastSafe('RM 26/27 instalada')});
-  document.addEventListener('rm-critical-modules-ready',ensureInstallButton);
-  document.addEventListener('rm-modules-ready',ensureInstallButton);
+  document.addEventListener('rm-critical-modules-ready',()=>{ensureInstallButton();showMatchAnnouncement()});
+  document.addEventListener('rm-modules-ready',()=>{ensureInstallButton();showMatchAnnouncement()});
+  document.addEventListener('rm-home-state-ready',showMatchAnnouncement);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeInstallGuide()});
-  setTimeout(ensureInstallButton,250);
+  setTimeout(()=>{ensureInstallButton();showMatchAnnouncement()},250);
   setTimeout(ensureInstallButton,900);
-  window.addEventListener('load',registerServiceWorker,{once:true});
+  window.addEventListener('load',()=>{registerServiceWorker().then(()=>showNativeAnnouncement());showMatchAnnouncement()},{once:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
