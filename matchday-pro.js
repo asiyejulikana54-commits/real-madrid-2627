@@ -7,7 +7,7 @@ function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&l
 function match(){return safe(()=>predictionMatch,null)||{id:'proximo-partido',rival:'Próximo rival',kickoff:null,deadline:null}}
 function phase(){return safe(()=>window.RMMatchdayCenter?.phase?.(),null)||{id:'pre',label:'Previa',clock:'Predicción abierta'} }
 function official(){return safe(()=>Array.isArray(officialXI)?officialXI:null,null)}
-function ours(){return safe(()=>window.RMCurrentMatchIdea,null)||safe(()=>rayoXI,{})||{}}
+function ours(){return safe(()=>window.RMCurrentMatchIdea,null)||safe(()=>typeof baseXI!=='undefined'?baseXI:null,null)||{}}
 function saved(){return safe(()=>getSavedPrediction(),null)}
 function canonical(name){return safe(()=>window.RMSeasonData?.canonical?.(name),name)||name}
 function display(name){return safe(()=>displayName(name),name)||name}
