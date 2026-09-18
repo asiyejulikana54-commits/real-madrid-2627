@@ -53,8 +53,8 @@ function loadDecisionCenter(){
     ['lineup-semantics.js?v=1','lineupSemantics','RMLineupSemantics'],
     ['xi-stability.js?v=1','xiStability','RMXIStability'],
     ['decision-board.js?v=1','decisionBoard','RMDecisionBoard'],
-    ['prediction-readiness.js?v=1','predictionReadiness','RMPredictionReadiness'],
-    ['scenario-lab.js?v=1','scenarioLab','RMScenarioLab'],
+    ['prediction-readiness.js?v=2','predictionReadiness','RMPredictionReadiness'],
+    ['scenario-lab.js?v=2','scenarioLab','RMScenarioLab'],
     ['consensus-xi.js?v=1','consensusXi','RMConsensusXI'],
     ['decision-center.js?v=1','decisionCenter','RMDecisionCenter']
   ];
