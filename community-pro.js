@@ -67,7 +67,10 @@ function compareXi(reference,popular){
   return {exact,presence};
 }
 function state(){
-  const d=data(),total=Number(d?.totalPredictions)||0;if(!d||!total)return {available:false,data:d,total};
+  const d=data(),m=match(),total=Number(d?.totalPredictions)||0;
+  if(!d)return {available:false,data:d,total,reason:'Sin datos'};
+  if(d?.match?.id&&m?.id&&d.match.id!==m.id)return {available:false,data:d,total,reason:'Datos de otro partido'};
+  if(!total)return {available:false,data:d,total,reason:'Sin pronósticos'};
   capture(d);const slotsState=slotState(d),prev=previousSnapshot(d),movers=moverRows(d,prev),popular=popularXi(d),avg=slotsState.reduce((s,r)=>s+r.share,0)/(slotsState.length||1);
   const sorted=[...slotsState].sort((a,b)=>a.share-b.share||a.margin-b.margin),weakest=sorted[0],strongest=sorted.at(-1);
   return {available:true,data:d,total,closed:Boolean(d?.match?.closed),slots:slotsState,prev,movers,popular,avg,strongest,weakest,mine:compareXi(current(),popular),multi:globalPlayers(d)}
@@ -85,7 +88,7 @@ function comparisonCard(title,c){
   return `<div class="cpro-compare"><span>${esc(title)}</span><b>${c.presence}/11 titulares</b><small>${c.exact}/11 también coinciden en el puesto</small></div>`;
 }
 function renderUnavailable(root){
-  root.innerHTML=`<div class="cpro-head"><div><span>COMUNIDAD PRO</span><h3>Lectura avanzada del consenso</h3><p>Esta capa analiza fuerza del consenso, puestos divididos, cambios entre actualizaciones y coincidencia con tu XI.</p></div><b>Sin datos en vivo</b></div><div class="cpro-unavailable"><strong>La versión pública de GitHub Pages no consulta Netlify.</strong><span>Cuando exista RMCommunityData, Comunidad PRO se activa sin inventar porcentajes ni usar datos antiguos como si fueran actuales.</span></div>`;
+  root.innerHTML=`<div class="cpro-head"><div><span>COMUNIDAD PRO</span><h3>Lectura avanzada del consenso</h3><p>Esta capa analiza fuerza del consenso, puestos divididos, cambios entre actualizaciones y coincidencia con tu XI.</p></div><b>Sin datos actuales</b></div><div class="cpro-unavailable"><strong>No hay datos comunitarios válidos para este partido.</strong><span>Comunidad PRO no reutiliza porcentajes de una jornada anterior como si fueran actuales.</span></div>`;
 }
 function render(){
   const root=ensure();if(!root)return;const s=state();if(!s.available){renderUnavailable(root);return}
