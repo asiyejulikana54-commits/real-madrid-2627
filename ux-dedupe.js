@@ -101,7 +101,7 @@ function organizeHome(){
 }
 function apply(){if(!document.body.classList.contains('rm-visual-system'))return;Object.keys(PURPOSES).forEach(addPurpose);cleanHome();cleanPower();cleanComparator();cleanRadar();cleanEvolution();cleanHierarchy();cleanCommunity();cleanMvp();addHomeMap();addMvpHome();organizeHome();normalizeHomeLanguage()}
 function schedule(delay=45){clearTimeout(timer);timer=setTimeout(apply,delay)}
-function loadHomeLower(){if(document.querySelector('script[data-home-lower-redesign]'))return;const script=document.createElement('script');script.src='home-lower-redesign.js?v=4';script.dataset.homeLowerRedesign='1';document.body.appendChild(script)}
+function loadHomeLower(){if(document.querySelector('script[data-home-lower-redesign]'))return;const script=document.createElement('script');script.src='home-lower-redesign.js?v=5';script.dataset.homeLowerRedesign='1';document.body.appendChild(script)}
 function loadMobileLayer(){if(!document.querySelector('link[data-mobile-ux]')){const link=document.createElement('link');link.rel='stylesheet';link.href='mobile-ux.css?v=2';link.dataset.mobileUx='1';document.head.appendChild(link)}if(!document.querySelector('script[data-mobile-ux]')){const script=document.createElement('script');script.src='mobile-ux.js?v=8';script.dataset.mobileUx='1';document.body.appendChild(script)}}
 function install(){
   if(installed)return;if(!document.body.classList.contains('rm-visual-system')||typeof showSection!=='function'){setTimeout(install,80);return}
