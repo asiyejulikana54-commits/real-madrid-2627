@@ -39,12 +39,17 @@ function previewHtml(){
 
 function ensure(){if(document.getElementById('partido'))return document.getElementById('partido');const pred=document.getElementById('prediccion');if(!pred)return null;pred.insertAdjacentHTML('beforebegin','<section class="section" id="partido"><div id="matchdayDynamic"></div></section>');return document.getElementById('partido')}
 function loadScriptOnce(src){return new Promise(resolve=>{const existing=[...document.scripts].find(s=>String(s.src||'').includes(src.split('?')[0]));if(existing){if(existing.dataset.rmLoaded==='1'||existing.readyState==='complete'){resolve();return}existing.addEventListener('load',resolve,{once:true});setTimeout(resolve,700);return}const s=document.createElement('script');s.src=src;s.async=false;s.addEventListener('load',()=>{s.dataset.rmLoaded='1';resolve()},{once:true});s.addEventListener('error',resolve,{once:true});document.head.appendChild(s)})}
-function seasonMatchReady(){const rival=String(safe(()=>predictionMatch?.rival,'')||'').trim().toLocaleLowerCase('es-ES');return !!rival&&(window.RMSeasonData?.matches||[]).some(m=>String(m.label||'').trim().toLocaleLowerCase('es-ES')===rival)}
-function ensureSeasonExtension(){if(seasonMatchReady())return Promise.resolve(true);if(seasonLoader)return seasonLoader;seasonLoader=loadScriptOnce('season-input.js?v=2').then(()=>loadScriptOnce('season-extension.js?v=7')).then(()=>{setTimeout(render,0);return seasonMatchReady()});return seasonLoader}
+function matchKey(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
 function currentSeasonMatch(){
-  const data=window.RMSeasonData,rival=String(safe(()=>predictionMatch?.rival,'')||'').trim().toLocaleLowerCase('es-ES');if(!data||!rival)return null;
-  return (data.matches||[]).find(m=>String(m.label||'').trim().toLocaleLowerCase('es-ES')===rival)||null;
+  const data=window.RMSeasonData,current=safe(()=>predictionMatch,null);if(!data||!current)return null;
+  const rivalKey=matchKey(current.rival),idKey=matchKey(current.id);
+  return (data.matches||[]).find(m=>{
+    const labelKey=matchKey(m.label),matchId=matchKey(m.id);
+    return (rivalKey&&labelKey===rivalKey)||(matchId&&idKey.startsWith(matchId));
+  })||null;
 }
+function seasonMatchReady(){return Boolean(currentSeasonMatch())}
+function ensureSeasonExtension(){if(seasonMatchReady())return Promise.resolve(true);if(seasonLoader)return seasonLoader;seasonLoader=loadScriptOnce('season-input.js?v=2').then(()=>loadScriptOnce('season-extension.js?v=7')).then(()=>{setTimeout(render,0);return seasonMatchReady()});return seasonLoader}
 function fmtRating(v){return Number.isFinite(v)?Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 function ratingTone(v){if(!Number.isFinite(v))return 'pending';if(v>=8)return 'elite';if(v>=7)return 'good';if(v<6.5)return 'low';return 'normal'}
 function ratingColor(v){if(!Number.isFinite(v))return '#8ea2b5';if(v>=8)return '#d8b44a';if(v>=7)return '#47d18c';if(v<6.5)return '#eb6969';return '#72a8d9'}
