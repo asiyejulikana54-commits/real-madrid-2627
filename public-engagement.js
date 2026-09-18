@@ -15,6 +15,7 @@ function currentMatch(){
   try{if(typeof predictionMatch!=='undefined')return predictionMatch}catch{}
   return null;
 }
+function matchText(match){const rival=String(match?.rival||'próximo rival');return match?.home===false?`${rival}–Real Madrid`:`Real Madrid–${rival}`}
 function canUseFunctions(){return typeof location!=='undefined'&&!location.hostname.endsWith('github.io')&&/^https?:$/.test(location.protocol)}
 function powerRows(){
   if(Array.isArray(window.RMPowerMigration?.official)&&window.RMPowerMigration.official.length)return window.RMPowerMigration.official;
@@ -53,11 +54,11 @@ function stageInfo(){
   const match=currentMatch();
   if(!match)return {eyebrow:'TEMPORADA',title:'Jornada por actualizar',copy:'El siguiente partido aparecerá cuando esté registrado en la fuente principal.',action:'Ver partidos',section:'partidos',tone:'post',count:''};
   const rival=match.rival||'próximo rival',deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now();
-  if(currentAnalyzed())return {eyebrow:'PARTIDO ANALIZADO',title:`Real Madrid–${rival}`,copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',tone:'post',count:'Cerrado'};
+  if(currentAnalyzed())return {eyebrow:'PARTIDO ANALIZADO',title:matchText(match),copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',tone:'post',count:'Cerrado'};
   if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICCIÓN ABIERTA',title:`¿Qué XI sacarías contra el ${rival}?`,copy:'Elige tus 11 titulares y compárate con la comunidad.',action:'Hacer mi XI',section:'prediccion',tone:'pre',count:`Cierra en ${countdown(deadline)}`};
   if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:'Predicciones cerradas',copy:'Consulta el pulso de la comunidad antes del inicio.',action:'Ver previa',section:'partido',tone:'locked',count:`Empieza en ${countdown(kickoff)}`};
-  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Vuelve después para ver cómo cambia todo el análisis.',action:'Centro del partido',section:'partido',tone:'live',count:'En juego'};
-  return {eyebrow:'DATOS PENDIENTES',title:`Real Madrid–${rival}`,copy:'En cuanto entren minutos y notas, toda la web se recalculará automáticamente.',action:'Ver evolución',section:'evolucion',tone:'post',count:''};
+  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000)return {eyebrow:'PARTIDO',title:matchText(match),copy:'Vuelve después para ver cómo cambia todo el análisis.',action:'Centro del partido',section:'partido',tone:'live',count:'En juego'};
+  return {eyebrow:'DATOS PENDIENTES',title:matchText(match),copy:'En cuanto entren minutos y notas, toda la web se recalculará automáticamente.',action:'Ver evolución',section:'evolucion',tone:'post',count:''};
 }
 function stageHtml(){const s=stageInfo();return `<button class="pulse-card pulse-stage ${s.tone}" data-go="${s.section}"><span class="pulse-eyebrow">${s.eyebrow}</span>${s.count?`<span class="pulse-countdown">${esc(s.count)}</span>`:''}<b>${esc(s.title)}</b><small>${esc(s.copy)}</small><strong>${esc(s.action)} →</strong></button>`}
 function momentHtml(){
