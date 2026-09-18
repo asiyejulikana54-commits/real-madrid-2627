@@ -77,7 +77,7 @@ function setMode(next){
 function introCopy(){
   const done=official(),review=currentReview(),user=review?.userScore,project=review?.projectScore;
   if(done){
-    let score='';if(Number.isFinite(user)&&Number.isFinite(project))score=` Tu XI hizo ${user}/11 y Proyecto ${project}/11.`;else if(Number.isFinite(project))score=` Proyecto hizo ${project}/11.`;
+    let score='';if(Number.isFinite(user)&&Number.isFinite(project))score=` Tu XI hizo ${user}/11 y Referencia ${project}/11.`;else if(Number.isFinite(project))score=` Referencia hizo ${project}/11.`;
     return {kicker:'XI OFICIAL DISPONIBLE',title:'Lo importante primero: revisa el once y tus aciertos.',copy:`No necesitas entrar en todas las estadísticas. Empieza por la revisión rápida y abre el análisis avanzado solo si te interesa.${score}`,primary:'Ver revisión',secondary:'Ver el partido'};
   }
   return {kicker:'REAL MADRID 26/27 · MODO SENCILLO',title:'Para empezar solo necesitas tres cosas.',copy:'Mira el próximo partido, haz tu predicción y compite con la comunidad. Power, eficiencia, pp y el resto del análisis quedan disponibles en “Más”.',primary:'Hacer mi predicción',secondary:'Ir a Mi Liga'};
