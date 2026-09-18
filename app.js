@@ -4,6 +4,7 @@ const sections=[
 ['estadisticas','▥','Estadísticas','Estadísticas','Notas de 3 fuentes, minutos, aporte y eficiencia por minuto.'],
 ['partidos','▣','Partidos','Partidos','Archivo de encuentros ya analizados.'],
 ['comparador','⇄','Comparar','Comparador','Cara a cara entre jugadores por rendimiento y contexto.'],
+['once','◆','Constructor','Constructor de XI','Crea, revisa y guarda variantes de once con posiciones válidas.'],
 ['prediccion','★','Predicción','Predice el once','Haz tu pronóstico del próximo once y comprueba tus aciertos.']];
 
 const players=[
@@ -68,6 +69,28 @@ const matches=[
 
 const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'LI'],['lcb','DFC',38,75,'DFC'],['rcb','DFC',62,75,'DFC'],['rb','LD',86,73,'LD'],['dm1','MC',36,55,'MC'],['dm2','MC',64,55,'MC'],['am','MP',50,37,'MP'],['lw','EI',20,25,'EI'],['rw','ED',80,25,'ED'],['st','DC',50,12,'DC']];
 
+const baseXI=Object.freeze({
+  gk:'Courtois',lb:'Cucurella',lcb:'Huijsen',rcb:'Konaté',rb:'Dumfries',
+  dm1:'Valverde',dm2:'Bernardo Silva',am:'Bellingham',lw:'Vini Jr.',rw:'Arda Güler',st:'Mbappé'
+});
+// Alias histórico para módulos antiguos. No se muestra como referencia de jornada.
+const rayoXI=baseXI;
+function lineupPlayer(name){return players.find(p=>p.name===name)||null}
+function sanitizeLineup(xi={}){
+  const out={},used=new Set();
+  for(const s of slots){
+    const name=xi?.[s[0]]||'',p=lineupPlayer(name);
+    if(name&&p?.eligible?.includes(s[4])&&!used.has(name)){out[s[0]]=name;used.add(name)}else out[s[0]]='';
+  }
+  return out;
+}
+function lineupValues(xi={}){return slots.map(s=>xi?.[s[0]]||'').filter(Boolean)}
+function validLineup(xi={}){
+  const clean=sanitizeLineup(xi),vals=lineupValues(clean);
+  return vals.length===11&&new Set(vals).size===11&&slots.every(s=>Boolean(clean[s[0]]));
+}
+
+
 const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:30:00+02:00'});
 const officialXI=null;
 const officialXIBySlot={};
@@ -96,6 +119,63 @@ function compareOptions(){const opts=players.map(p=>`<option value="${p.name}">$
 function renderCompare(){const a=players.find(p=>p.name===document.getElementById('compareA').value),b=players.find(p=>p.name===document.getElementById('compareB').value);const card=p=>{const m=metricFor(p),r=currentRating(m);return `<div class="card compare-card"><div class="avatar">${initials(p.short||p.name)}</div><h2>${p.name}</h2><div class="muted">${p.role}</div><div style="margin-top:14px"><div class="compare-stat"><span>Posición</span><b>${p.pos}</b></div><div class="compare-stat"><span>Media actual</span><b>${r!==null?r.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Minutos</span><b>${m?m.minutes:'—'}</b></div><div class="compare-stat"><span>Aporte</span><b>${m?m.points.toFixed(2):'—'}</b></div><div class="compare-stat"><span>Min/punto</span><b>${m?m.minPerPoint.toFixed(2):'—'}</b></div></div></div>`};document.getElementById('compareView').innerHTML=card(a)+`<div class="vs">VS</div>`+card(b)}
 
 function pitchOptions(position){return `<option value="">—</option>`+players.filter(p=>p.eligible.includes(position)).map(p=>`<option value="${p.name}">${p.short||p.name}</option>`).join('')}
+function buildPitch(){
+  const pitch=document.getElementById('pitch');if(!pitch)return;
+  pitch.innerHTML=slots.map(s=>`<div class="slot" style="left:${s[2]}%;top:${s[3]}%"><label>${s[1]}</label><select id="slot_${s[0]}">${pitchOptions(s[4])}</select></div>`).join('');
+  slots.forEach(s=>{
+    const el=document.getElementById('slot_'+s[0]);if(!el)return;
+    el.addEventListener('change',()=>{
+      const xi=currentXI(),vals=lineupValues(xi);
+      if(el.value&&vals.filter(n=>n===el.value).length>1){const repeated=displayName(el.value);el.value='';toast(`No puedes repetir a ${repeated}`)}
+      window.RMLineupPro?.render?.();
+    });
+  });
+  loadPreset('base',false);renderSaved();
+}
+function currentXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('slot_'+s[0])?.value||'']))}
+function setXI(xi){
+  const clean=sanitizeLineup(xi);
+  slots.forEach(s=>{const el=document.getElementById('slot_'+s[0]);if(el)el.value=clean[s[0]]||''});
+  window.RMLineupPro?.render?.();
+}
+function loadPreset(kind='base',go=true){
+  if(kind==='prediction'){
+    const candidate=typeof currentPredictionXI==='function'?currentPredictionXI():{};
+    if(!validLineup(candidate)){toast('Completa primero una predicción válida de 11 jugadores');return}
+    setXI(candidate);
+    const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');
+    if(name)name.value='Predicción actual';if(comment)comment.value='Copia de tu predicción actual para revisarla como variante.';
+  }else{
+    setXI(baseXI);
+    const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');
+    if(name)name.value='Once base de referencia';if(comment)comment.value='Once base guardado como punto de partida para crear variantes.';
+  }
+  if(go)showSection('once');
+}
+function saveLineup(){
+  const xi=currentXI();
+  if(!validLineup(xi)){toast('Completa un XI válido: 11 jugadores distintos y en posiciones permitidas');return}
+  const name=document.getElementById('lineupName')?.value.trim()||'Once sin nombre';
+  const data={id:Date.now(),name,comment:document.getElementById('lineupComment')?.value||'',xi:sanitizeLineup(xi)};
+  let arr=[];try{arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]');if(!Array.isArray(arr))arr=[]}catch{}
+  arr.unshift(data);localStorage.setItem('rm_lineups',JSON.stringify(arr));renderSaved();toast('Once guardado');
+}
+function savedLineups(){try{const arr=JSON.parse(localStorage.getItem('rm_lineups')||'[]');return Array.isArray(arr)?arr:[]}catch{return []}}
+function renderSaved(){
+  const root=document.getElementById('savedLineups');if(!root)return;
+  const arr=savedLineups();
+  root.innerHTML=arr.length?arr.map(x=>`<div class="saved-lineup"><div><b>${String(x.name||'Once guardado').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}</b><small>${x.comment?'<br>'+String(x.comment).replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])).slice(0,80)+(String(x.comment).length>80?'…':''):''}</small></div><div><button class="btn" onclick="restoreLineup(${Number(x.id)})">Abrir</button> <button class="btn" onclick="deleteLineup(${Number(x.id)})">×</button></div></div>`).join(''):'<div class="muted">Todavía no has guardado ningún once.</div>';
+}
+function restoreLineup(id){
+  const x=savedLineups().find(row=>Number(row.id)===Number(id));if(!x)return;
+  const clean=sanitizeLineup(x.xi||{});setXI(clean);
+  const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');
+  if(name)name.value=x.name||'';if(comment)comment.value=x.comment||'';
+  if(!validLineup(clean))toast('Once cargado con huecos: había jugadores o posiciones antiguas no válidas');else toast('Once cargado');
+}
+function deleteLineup(id){const arr=savedLineups().filter(x=>Number(x.id)!==Number(id));localStorage.setItem('rm_lineups',JSON.stringify(arr));renderSaved();window.RMLineupPro?.render?.();toast('Once eliminado')}
+function clearLineup(){setXI({});const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');if(name)name.value='';if(comment)comment.value=''}
+
 function buildPredictionPitch(){document.getElementById('predictionPitch').innerHTML=slots.map(s=>`<div class="slot" style="left:${s[2]}%;top:${s[3]}%"><label>${s[1]}</label><select id="pred_${s[0]}">${pitchOptions(s[4])}</select></div>`).join('');slots.forEach(s=>document.getElementById('pred_'+s[0]).addEventListener('change',renderPredictionDraft));restorePrediction();renderPredictionStatus()}
 function currentPredictionXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('pred_'+s[0]).value]))}
 function setPredictionXI(xi){slots.forEach(s=>document.getElementById('pred_'+s[0]).value=xi[s[0]]||'');renderPredictionDraft()}
@@ -112,8 +192,8 @@ function renderPredictionResult(){const box=document.getElementById('predictionR
 async function sharePrediction(){const data=getSavedPrediction()||{xi:currentPredictionXI(),name:document.getElementById('predictionName').value.trim()};const names=predictionValues(data.xi||{});if(names.length!==11){toast('Completa primero tus 11 jugadores');return}const text=`Mi predicción del XI del Real Madrid vs ${predictionMatch.rival} (${names.map(displayName).join(', ')}). ¿Cuántos acertaré?`;try{if(navigator.share){await navigator.share({title:'RM 26/27 · Mi predicción',text})}else if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Predicción copiada')}else{toast('No se puede compartir desde este navegador')}}catch(e){if(e&&e.name!=='AbortError')toast('No se pudo compartir')}}
 
 const notes=document.getElementById('notes');notes.value=localStorage.getItem('rm_notes')||'';let noteTimer;notes.addEventListener('input',()=>{document.getElementById('saveState').textContent='Guardando…';clearTimeout(noteTimer);noteTimer=setTimeout(()=>{localStorage.setItem('rm_notes',notes.value);document.getElementById('saveState').textContent='Guardado'},400)});
-function exportData(){const payload={version:'1.4',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',prediction:getSavedPrediction()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
-document.getElementById('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(typeof d.notes==='string'){localStorage.setItem('rm_notes',d.notes);notes.value=d.notes}if(d.prediction&&d.prediction.matchId===predictionMatch.id)localStorage.setItem(predictionStorageKey,JSON.stringify(d.prediction));restorePrediction();renderPredictionStatus();toast('Datos importados')}catch{toast('Archivo no válido')}e.target.value=''});
+function exportData(){const payload={version:'1.5',exported:new Date().toISOString(),notes:localStorage.getItem('rm_notes')||'',lineups:savedLineups(),prediction:getSavedPrediction()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rm_2627_datos.json';a.click();URL.revokeObjectURL(a.href);toast('Datos exportados')}
+document.getElementById('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(typeof d.notes==='string'){localStorage.setItem('rm_notes',d.notes);notes.value=d.notes}if(Array.isArray(d.lineups))localStorage.setItem('rm_lineups',JSON.stringify(d.lineups));if(d.prediction&&d.prediction.matchId===predictionMatch.id)localStorage.setItem(predictionStorageKey,JSON.stringify(d.prediction));renderSaved();restorePrediction();renderPredictionStatus();toast('Datos importados')}catch{toast('Archivo no válido')}e.target.value=''});
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 
-renderPlayers();renderBars();renderStats();renderMatches();compareOptions();buildPredictionPitch();
+renderPlayers();renderBars();renderStats();renderMatches();compareOptions();buildPitch();buildPredictionPitch();
