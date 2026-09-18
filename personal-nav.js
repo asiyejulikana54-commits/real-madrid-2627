@@ -7,11 +7,11 @@ function loadLatestUiFixes(){
 function personalButton(){return '<button data-section="mi-temporada" onclick="showSection(\'mi-temporada\');closeUxMore?.()"><span>◎</span><b>Mi temporada</b><small>Historial, favoritos, actividad y progreso personal.</small></button>'}
 function loadPersonalSeasonPro(){
   if(!document.querySelector('link[data-personal-season-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='personal-season-pro.css?v=1';link.dataset.personalSeasonPro='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=1';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
+  if(!document.querySelector('script[data-personal-season-pro]')){const script=document.createElement('script');script.src='personal-season-pro.js?v=2';script.dataset.personalSeasonPro='1';document.body.appendChild(script)}
 }
 function loadDecisionProfile(){
   if(!document.querySelector('link[data-decision-profile]')){const link=document.createElement('link');link.rel='stylesheet';link.href='decision-profile.css?v=1';link.dataset.decisionProfile='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-decision-profile]')){const script=document.createElement('script');script.src='decision-profile.js?v=1';script.dataset.decisionProfile='1';script.addEventListener('load',()=>setTimeout(()=>window.RMDecisionProfile?.render?.(),80),{once:true});document.body.appendChild(script)}else setTimeout(()=>window.RMDecisionProfile?.render?.(),80)
+  if(!document.querySelector('script[data-decision-profile]')){const script=document.createElement('script');script.src='decision-profile.js?v=2';script.dataset.decisionProfile='1';script.addEventListener('load',()=>setTimeout(()=>window.RMDecisionProfile?.render?.(),80),{once:true});document.body.appendChild(script)}else setTimeout(()=>window.RMDecisionProfile?.render?.(),80)
 }
 function loadSimpleExperience(){
   if(!document.querySelector('link[data-simple-experience]')){const link=document.createElement('link');link.rel='stylesheet';link.href='simple-mode.css?v=2';link.dataset.simpleExperience='1';document.head.appendChild(link)}
@@ -70,8 +70,8 @@ function loadDecisionCoach(){
   ensureDecisionStyle('decision-profile.css?v=1','decisionProfile');
   ensureDecisionStyle('decision-coach.css?v=1','decisionCoach');
   decisionCoachLoader=loadDecisionCenter()
-    .then(()=>ensureDecisionScript('decision-audit.js?v=1','decisionAudit','RMDecisionAudit'))
-    .then(()=>ensureDecisionScript('decision-profile.js?v=1','decisionProfile','RMDecisionProfile'))
+    .then(()=>ensureDecisionScript('decision-audit.js?v=2','decisionAudit','RMDecisionAudit'))
+    .then(()=>ensureDecisionScript('decision-profile.js?v=2','decisionProfile','RMDecisionProfile'))
     .then(()=>ensureDecisionScript('decision-coach.js?v=1','decisionCoach','RMDecisionCoach'))
     .then(()=>{setTimeout(()=>window.RMDecisionCoach?.render?.(),120);return true})
     .catch(()=>false).finally(()=>{if(!window.RMDecisionCoach)decisionCoachLoader=null});
@@ -85,10 +85,10 @@ function loadReviewArchive(){
   ensureDecisionStyle('scenario-audit.css?v=1','scenarioAudit');
   ensureDecisionStyle('review-archive.css?v=1','reviewArchive');
   reviewArchiveLoader=loadDecisionCenter()
-    .then(()=>ensureDecisionScript('prediction-analytics.js?v=1','predictionAnalytics','RMPredictionAnalytics'))
-    .then(()=>ensureDecisionScript('decision-audit.js?v=1','decisionAudit','RMDecisionAudit'))
+    .then(()=>ensureDecisionScript('prediction-analytics.js?v=2','predictionAnalytics','RMPredictionAnalytics'))
+    .then(()=>ensureDecisionScript('decision-audit.js?v=2','decisionAudit','RMDecisionAudit'))
     .then(()=>ensureDecisionScript('scenario-audit.js?v=1','scenarioAudit','RMScenarioAudit'))
-    .then(()=>ensureDecisionScript('review-archive.js?v=1','reviewArchive','RMReviewArchive'))
+    .then(()=>ensureDecisionScript('review-archive.js?v=2','reviewArchive','RMReviewArchive'))
     .then(()=>{setTimeout(()=>window.RMReviewArchive?.render?.(),140);return true})
     .catch(()=>false).finally(()=>{if(!window.RMReviewArchive)reviewArchiveLoader=null});
   return reviewArchiveLoader
