@@ -41,6 +41,8 @@ function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&
 function display(v){return safe(()=>typeof displayName==='function'?displayName(v):v,v)||v}
 
 function currentMatch(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
+function matchTeams(match){const rival=String(match?.rival||'Rival');return match?.home===false?{home:rival,away:'Real Madrid'}:{home:'Real Madrid',away:rival}}
+function matchHtml(match){const t=matchTeams(match);return `${esc(t.home.toUpperCase())} <span>vs</span> ${esc(t.away.toUpperCase())}`}
 function seasonMatch(match){
   if(!match)return null;const data=window.RMSeasonData,rival=String(match.rival||'').trim().toLocaleLowerCase('es');
   return safe(()=>(data?.matches||[]).find(m=>String(m.label||'').trim().toLocaleLowerCase('es')===rival),null);
@@ -57,13 +59,13 @@ function formatClock(value){const d=new Date(value);return Number.isFinite(d.get
 function syncMatchCopy(){
   const match=currentMatch();if(!match)return;const rival=String(match.rival||'Rival'),done=analyzed(match),sm=seasonMatch(match),kickoff=formatKickoff(match.kickoff),deadline=formatClock(match.deadline);
   const home=document.getElementById('inicio');
-  const title=home?.querySelector('.card.hero .match-title');if(title)title.innerHTML=`REAL MADRID <span>vs</span> ${esc(rival.toUpperCase())}`;
-  const meta=home?.querySelector('.card.hero .match-meta');if(meta)meta.innerHTML=[kickoff,sm?.comp].filter(Boolean).map(v=>`<span class="pill">${esc(v)}</span>`).join('');
+  const title=home?.querySelector('.card.hero .match-title');if(title)title.innerHTML=matchHtml(match);
+  const meta=home?.querySelector('.card.hero .match-meta');if(meta)meta.innerHTML=[kickoff,sm?.comp||match.comp,match.venue].filter(Boolean).map(v=>`<span class="pill">${esc(v)}</span>`).join('');
   const focus=home?.querySelector('.card.hero .focus-box h3');if(focus)focus.textContent=done?`Claves del ${rival}`:`Debates abiertos para el ${rival}`;
   const notes=home?.querySelector('.quick-notes textarea');if(notes&&/Rayo/i.test(notes.placeholder||''))notes.placeholder=`Ej.: contra el ${rival} quiero anotar cambios, dudas tácticas o conclusiones del partido...`;
   const pred=document.getElementById('prediccion');
   const head=pred?.querySelector(':scope>.section-head h2');if(head)head.textContent=done?`XI oficial contra el ${rival}`:`Predice el XI contra el ${rival}`;
-  const rules=pred?.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong)strong.textContent=`REAL MADRID vs ${rival.toUpperCase()}`;const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente'}
+  const rules=pred?.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong){const t=matchTeams(match);strong.textContent=`${t.home.toUpperCase()} vs ${t.away.toUpperCase()}`;}const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente'}
   window.RMMatchContext=Object.freeze({current:()=>currentMatch(),seasonMatch:()=>seasonMatch(currentMatch()),analyzed:()=>analyzed(currentMatch())});
 }
 
