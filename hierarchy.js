@@ -12,7 +12,7 @@ const H_POSITIONS=[
   {id:'DC',label:'Delantero centro',slots:['st']}
 ];
 const H_PRIMARY=Object.freeze({
-  'Courtois':'POR','Lunin':'POR',
+  'Courtois':'POR',
   'Dumfries':'LD','Trent Alexander-Arnold':'LD',
   'Konaté':'DFC','Rüdiger':'DFC','Huijsen':'DFC','Raúl Asencio':'DFC',
   'Cucurella':'LI','Álvaro Carreras':'LI','Ferland Mendy':'LI',
@@ -31,12 +31,13 @@ function hRecent(p){return season()?.recentRating?.(p.name,3)||null}
 function hDelta(p){return season()?.ratingDelta?.(p.name)||null}
 function hPositionCfg(pos){return H_POSITIONS.find(x=>x.id===pos)}
 function hCoachUsage(p){
-  const data=season(),matches=(data?.matches||[]).slice(-3);if(!matches.length)return {value:0,n:0,minutes:0};
+  const data=season(),matches=[...(data?.matches||[])].reverse();if(!matches.length)return {value:0,n:0,minutes:0};
   let share=0,n=0,minutes=0;
   for(const match of matches){
     const entry=data?.minuteEntry?.(match.id,p.name),availability=`${entry?.source||''} ${entry?.note||''}`;
     if(/sanci[oó]n/i.test(availability))continue;
     const min=Math.max(0,Math.min(90,Number(entry?.value)||0));minutes+=min;share+=min/90;n++;
+    if(n>=3)break;
   }
   return {value:n?share/n*10:0,n,minutes};
 }
@@ -114,7 +115,7 @@ function renderHierarchyHome(){
 function renderHierarchy(){
   const section=document.getElementById('jerarquias');if(!section)return;const hot=hHottest(),clear=hClearest(),best=hBestLeader(),pressure=hPressure(),counts=hTierCounts(),coverage=season()?.sourceAudit?.();const states=hAllSummaries().map(hPositionState),open=states.filter(x=>x.id==='open').length,clearCount=states.filter(x=>x.id==='clear').length;
   section.innerHTML=`<div class="section-head"><div><div class="eyebrow">JERARQUÍAS PRO</div><h2>Mapa de jerarquías por posición</h2><p>Cada jugador compite en una sola posición fija para evitar duplicados entre jerarquías.</p></div><span class="pill">Posición única</span></div>
-  <div class="card h-method"><div><div class="eyebrow">ÍNDICE DE JERARQUÍA</div><h3>45% Power · 20% muestra · 20% forma · 15% uso del entrenador</h3><p>El 15% ya no usa nuestros onces ni preferencias. “Uso del entrenador” mide los minutos reales de los últimos 3 partidos en los que el jugador estuvo disponible; una sanción registrada no le penaliza.</p></div><div><b>Confianza ≠ probabilidad de ser titular</b><span>Solo indica cuánto respaldo tienen los datos que sostienen la frontera del puesto.</span><small>${coverage?.complete3||0} apariciones 3/3 · ${coverage?.partial2||0} apariciones 2+SC.</small></div></div>
+  <div class="card h-method"><div><div class="eyebrow">ÍNDICE DE JERARQUÍA</div><h3>45% Power · 20% muestra · 20% forma · 15% uso del entrenador</h3><p>El 15% ya no usa nuestros onces ni preferencias. “Uso del entrenador” mide los minutos reales de los últimos 3 partidos sin sanción registrada; si hubo una sanción, busca el partido anterior para completar una muestra de 3.</p></div><div><b>Confianza ≠ probabilidad de ser titular</b><span>Solo indica cuánto respaldo tienen los datos que sostienen la frontera del puesto.</span><small>${coverage?.complete3||0} apariciones 3/3 · ${coverage?.partial2||0} apariciones 2+SC.</small></div></div>
   <div class="h-kpis"><div class="card"><span>🔥 Puestos abiertos</span><b>${open}</b><small>${hot?.challenger?`${hot.pos}: ${hEsc(displayName(hot.boundary.p.name))} / ${hEsc(displayName(hot.challenger.p.name))}`:'Sin frontera abierta'}</small></div><div class="card"><span>🔒 Jerarquías claras</span><b>${clearCount}</b><small>${clear?.challenger?`${clear.pos} · margen ${clear.gap.toFixed(2)}`:'Sin frontera clara'}</small></div><div class="card"><span>⭐ Índice más alto</span><b>${best?hEsc(displayName(best.known[0].p.name)):'—'}</b><small>${best?`${best.pos} · ${best.known[0].score.toFixed(2)}`:'—'}</small></div><div class="card"><span>↗ Mayor presión reciente</span><b>${pressure?hEsc(displayName(pressure.row.p.name)):'—'}</b><small>${pressure?`${pressure.pos} · +${pressure.delta.toFixed(2)} última nota`:'Sin subida comparable'}</small></div></div>
   <div class="h-legend"><span class="clear">Titular claro <b>${counts.clear}</b></span><span class="edge">Ventaja <b>${counts.edge}</b></span><span class="duel">Duelo abierto <b>${counts.duel}</b></span><span class="rotation">Rotación <b>${counts.rotation}</b></span><span class="depth">Fondo <b>${counts.depth}</b></span></div>
   <div class="section-head"><div><h2>Puesto a puesto</h2><p>En DFC y MC la frontera relevante es 2.º–3.º; en el resto, 1.º–2.º.</p></div></div><div class="h-position-grid">${H_POSITIONS.map(hPositionCard).join('')}</div>
