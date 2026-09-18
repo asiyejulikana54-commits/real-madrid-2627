@@ -24,8 +24,13 @@ function formLeader(){
   return playersList().map(p=>{const recent=safe(()=>data.recentRating(p.name,3),null),metric=ranking().find(r=>String(r.name)===String(p.name)||String(r.short||'')===String(p.short||''));return recent&&recent.n>=2&&(metric?.minutes||0)>=90?{name:p.name,value:recent.value,n:recent.n}:null}).filter(Boolean).sort((a,b)=>b.value-a.value)[0]||null;
 }
 function topRiser(){
-  const data=season();if(!data)return null;
-  return playersList().map(p=>{const d=safe(()=>data.ratingDelta(p.name),null);return Number.isFinite(d?.delta)?{name:p.name,delta:d.delta}:null}).filter(x=>x&&x.delta>0).sort((a,b)=>b.delta-a.delta)[0]||null;
+  const data=season(),matches=data?.matches||[];if(matches.length<2)return null;
+  const previous=matches.at(-2),current=matches.at(-1);
+  return playersList().map(p=>{
+    const a=safe(()=>data.officialRatingEntry?.(previous.id,p.name),null),b=safe(()=>data.officialRatingEntry?.(current.id,p.name),null);
+    if(!Number.isFinite(a?.value)||!Number.isFinite(b?.value))return null;
+    return {name:p.name,delta:b.value-a.value,previous,current};
+  }).filter(x=>x&&x.delta>.049).sort((a,b)=>b.delta-a.delta)[0]||null;
 }
 function personalSummary(){
   const records=predictionRecords(),scored=records.filter(r=>Number.isFinite(r.score)),best=scored.length?Math.max(...scored.map(r=>r.score)):null,latest=records[0],fav=favorites();
@@ -82,7 +87,7 @@ function render(){
   const nowMarkup=`<div class="ux-lower-head"><div><span>AHORA MISMO</span><h2>Quién está marcando la temporada.</h2></div><p>Rendimiento puro, sin llenar Inicio de tablas.</p></div><div class="ux-lower-grid">
     <button class="ux-lower-card button" type="button" data-lower-go="power"><span class="k">LÍDER POWER</span><strong>${esc(display(power?.name||'—'))}</strong><em>${Number.isFinite(power?.power)?Number(power.power).toFixed(2):'—'}</em><small>El jugador más fuerte en el ranking actual.</small></button>
     <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MEJOR FORMA</span><strong>${esc(display(form?.name||'—'))}</strong><em>${Number.isFinite(form?.value)?Number(form.value).toFixed(2):'—'}</em><small>${form?`media en sus últimos ${form.n} partidos`:'Esperando más muestra'}</small></button>
-    <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MAYOR SUBIDA</span><strong>${esc(display(riser?.name||'—'))}</strong><em>${Number.isFinite(riser?.delta)?`+${riser.delta.toFixed(2)}`:'—'}</em><small>El cambio positivo más fuerte del último corte.</small></button>
+    <button class="ux-lower-card button" type="button" data-lower-go="evolucion"><span class="k">MAYOR SUBIDA</span><strong>${esc(display(riser?.name||'—'))}</strong><em>${Number.isFinite(riser?.delta)?`+${riser.delta.toFixed(2)}`:'—'}</em><small>Solo compara las dos últimas jornadas con nota en ambas.</small></button>
   </div>`;
   if(now.dataset.markup!==nowMarkup){now.innerHTML=nowMarkup;now.dataset.markup=nowMarkup;bindRoutes(now)}
   const rootMarkup=`
