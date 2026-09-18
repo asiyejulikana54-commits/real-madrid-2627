@@ -1,5 +1,5 @@
 (()=>{
-const css=document.createElement('link');css.rel='stylesheet';css.href='matchday.css?v=6';css.dataset.matchdayCss='6';document.head.appendChild(css);
+const css=document.createElement('link');css.rel='stylesheet';css.href='matchday.css?v=7';css.dataset.matchdayCss='6';document.head.appendChild(css);
 const performanceCss=document.createElement('link');performanceCss.rel='stylesheet';performanceCss.href='matchday-performance.css?v=2';performanceCss.dataset.matchdayPerformanceCss='2';document.head.appendChild(performanceCss);
 const entry=['partido','⚽','Partido','Centro del partido','XI oficial, notas medias y análisis del encuentro.'];
 const existingEntry=sections.find(s=>s[0]==='partido');if(existingEntry){existingEntry.splice(0,existingEntry.length,...entry)}else{sections.splice(1,0,entry)}
