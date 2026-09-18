@@ -8,7 +8,6 @@ const sections=[
 
 const players=[
 {name:'Courtois',pos:'POR',eligible:['POR'],role:'Portero · titular de referencia',tags:['Fijo']},
-{name:'Lunin',pos:'POR',eligible:['POR'],role:'Portero · segundo portero',tags:['Plantilla']},
 {name:'Dumfries',pos:'DEF',eligible:['LD','ED'],role:'LD · lateral / carrilero derecho',tags:['Titular base','Debate Trent']},
 {name:'Trent Alexander-Arnold',short:'Trent',pos:'DEF',eligible:['LD','MC'],role:'LD · lateral / opción interior',tags:['Debate Dumfries','Construcción']},
 {name:'Konaté',pos:'DEF',eligible:['DFC'],role:'DFC · central',tags:['Titular base','Debate centrales']},
