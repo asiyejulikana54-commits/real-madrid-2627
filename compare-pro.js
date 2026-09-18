@@ -171,7 +171,7 @@ async function shareLink(){
 }
 function openRadar(a,b){
   safe(()=>window.showSection?.('radar'));
-  setTimeout(()=>{if(window.RMDecisionRadar?.set)window.RMDecisionRadar.set(a.p.name,b.p.name);else if(typeof window.selectRadarPreset==='function')safe(()=>window.selectRadarPreset(a.p.name,b.p.name))},0);
+  let n=0;const go=()=>{if(window.RMDecisionRadar?.set){window.RMDecisionRadar.set(a.p.name,b.p.name);return}if(typeof window.setRadarPlayers==='function'){window.setRadarPlayers(a.p.name,b.p.name);return}if(n++<25)setTimeout(go,80)};go();
 }
 function bind(root,a,b){
   root.querySelectorAll('[data-cp-a]').forEach(btn=>btn.addEventListener('click',()=>setDuel(btn.dataset.cpA,btn.dataset.cpB)));
