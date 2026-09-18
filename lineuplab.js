@@ -10,8 +10,8 @@ const LAB_CRITERIA={
   minutes:{label:'Minutos',desc:'Prioriza a quienes más han jugado.',short:'Minutos'},
   efficiency:{label:'Eficiencia',desc:'Prioriza menor número de minutos por punto de aporte.',short:'Min/punto'}
 };
-const LAB_BASELINES={rayo:'Nuestra idea Rayo',base:'XI base',current:'Constructor actual'};
-let labCriterion='balance',labMinMinutes=0,labBaseline='rayo',labResult=null;
+const LAB_BASELINES={base:'XI base',current:'Constructor actual',prediction:'Predicción actual'};
+let labCriterion='balance',labMinMinutes=0,labBaseline='base',labResult=null;
 
 function lEsc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function lMetric(p){return metricFor(p)}
@@ -80,7 +80,17 @@ function whyText(p){const m=lMetric(p),r=lRating(p),power=lPower(p);if(!m||r===n
 }
 function safeCurrentXI(){try{return typeof currentXI==='function'?currentXI():{}}catch{return {}}}
 function safePredictionXI(){try{return typeof currentPredictionXI==='function'?currentPredictionXI():{}}catch{return {}}}
-function baselineXI(){if(labBaseline==='base')return baseXI;if(labBaseline==='current'){const xi=safeCurrentXI();return xiValues(xi).length?xi:baseXI}return rayoXI}
+function labValidXI(xi){const vals=xiValues(xi);if(vals.length!==11||new Set(vals).size!==11)return false;return slots.every(s=>{const name=xi?.[s[0]],p=players.find(x=>x.name===name);return Boolean(name&&p?.eligible?.includes(s[4]))})}
+function baselineXI(){
+  if(labBaseline==='current'){const xi=safeCurrentXI();return labValidXI(xi)?xi:baseXI}
+  if(labBaseline==='prediction'){const xi=safePredictionXI();return labValidXI(xi)?xi:baseXI}
+  return baseXI;
+}
+function baselineLabel(){
+  if(labBaseline==='current'&&!labValidXI(safeCurrentXI()))return 'Constructor incompleto → XI base';
+  if(labBaseline==='prediction'&&!labValidXI(safePredictionXI()))return 'Predicción incompleta → XI base';
+  return LAB_BASELINES[labBaseline]||'XI base';
+}
 function xiSummary(xi){
   const rows=xiValues(xi).map(name=>players.find(p=>p.name===name)).filter(Boolean).map(p=>({p,m:lMetric(p),r:lRating(p),power:lPower(p),sample:lSample(p)})).filter(x=>x.m&&x.r!==null);
   const avg=key=>rows.length?rows.reduce((s,x)=>s+x[key],0)/rows.length:null;
@@ -121,7 +131,7 @@ function renderLab(){
       <div class="lab-deltas"><div class="${deltaClass(delta.power)}"><span>Power medio</span><b>${signed(delta.power)}</b><small>${summary.power?.toFixed(2)??'—'} vs ${baseSummary.power?.toFixed(2)??'—'}</small></div><div class="${deltaClass(delta.rating)}"><span>Media</span><b>${signed(delta.rating)}</b><small>${summary.rating?.toFixed(2)??'—'} vs ${baseSummary.rating?.toFixed(2)??'—'}</small></div><div class="${deltaClass(delta.sample)}"><span>Muestra</span><b>${signed(delta.sample,0,' pp')}</b><small>${Math.round((summary.sample||0)*100)}% vs ${Math.round((baseSummary.sample||0)*100)}%</small></div><div class="${deltaClass(delta.efficiency)}"><span>Eficiencia</span><b>${signed(delta.efficiency)}</b><small>positivo = menos min/punto</small></div></div>
       <div class="lab-actions"><button class="btn primary" onclick="labToConstructor()">Revisar en Constructor</button><button class="btn" onclick="labToPrediction()">Revisar en Predicción</button></div><div class="lab-note"><b>No es una predicción de Mourinho</b><span>Es una propuesta algorítmica para contrastar rendimiento, muestra y eficiencia con nuestras decisiones tácticas.</span></div>
     </div></div>
-    <div class="lab-comparison card"><div class="section-head" style="margin-top:0"><div><h2>Impacto de los cambios</h2><p>Cada sustitución se compara en la misma posición. En eficiencia, un valor positivo significa necesitar menos minutos por punto.</p></div><span class="pill">${LAB_BASELINES[labBaseline]}</span></div>${changes.length?`<div class="lab-changes">${changes.map(changeHtml).join('')}</div>`:'<div class="lab-no-changes">Los dos onces son idénticos posición por posición.</div>'}</div>
+    <div class="lab-comparison card"><div class="section-head" style="margin-top:0"><div><h2>Impacto de los cambios</h2><p>Cada sustitución se compara en la misma posición. En eficiencia, un valor positivo significa necesitar menos minutos por punto.</p></div><span class="pill">${baselineLabel()}</span></div>${changes.length?`<div class="lab-changes">${changes.map(changeHtml).join('')}</div>`:'<div class="lab-no-changes">Los dos onces son idénticos posición por posición.</div>'}</div>
     <div class="lab-bottom"><div class="card"><div class="section-head" style="margin-top:0"><div><h2>Detalle del XI</h2><p>Qué factor empuja a cada jugador dentro del criterio seleccionado.</p></div></div><div class="lab-detail">${slots.map(s=>{const name=xi[s[0]],p=players.find(x=>x.name===name);return `<button onclick="openPlayerHub('${(name||'').replace(/'/g,"\\'")}')"><span>${s[1]}</span><b>${name?lEsc(displayName(name)):'—'}</b><small>${p?lEsc(whyText(p)):'—'}</small><strong>${p?lScoreDisplay(p):'—'}</strong></button>`}).join('')}</div></div><div class="card"><div class="section-head" style="margin-top:0"><div><h2>Banquillo por datos</h2><p>Los seis siguientes del ranking que no entraron en el XI.</p></div></div><div class="lab-bench">${benchRows.map((p,i)=>`<button onclick="openPlayerHub('${p.name.replace(/'/g,"\\'")}')"><b>#${i+1}</b><span>${lEsc(p.short||p.name)}<small>${p.pos}</small></span><strong>${lScoreDisplay(p)}</strong></button>`).join('')}</div></div></div>
     <div class="lab-integrity"><b>Cómo interpretar el resultado</b><span>Una mejora pequeña de Power con una caída grande de muestra no es una ventaja segura. Laboratorio PRO enseña ambas cosas para que el algoritmo no oculte la incertidumbre.</span></div>`;
   document.body.classList.add('lineuplab-pro-ready');
@@ -130,12 +140,14 @@ window.setLabCriterion=function(id){if(!LAB_CRITERIA[id])return;labCriterion=id;
 window.setLabMinutes=function(v){labMinMinutes=Number(v)||0;renderLab()};
 window.setLabBaseline=function(id){if(!LAB_BASELINES[id])return;labBaseline=id;renderLab()};
 window.labToConstructor=function(){
-  if(!labResult)return;const existing=safeCurrentXI(),hasExisting=xiValues(existing).length>0;
+  if(!labResult||!labValidXI(labResult.xi)){toast('El Laboratorio no ha podido formar un XI válido de 11 jugadores');return}
+  const existing=safeCurrentXI(),hasExisting=xiValues(existing).length>0;
   if(hasExisting&&!sameXI(existing,labResult.xi)&&!window.confirm('El Constructor ya contiene un XI. ¿Quieres sustituirlo por esta variante del Laboratorio?'))return;
   setXI(labResult.xi);const name=document.getElementById('lineupName');if(name)name.value=`XI datos · ${LAB_CRITERIA[labCriterion].label}`;const comment=document.getElementById('lineupComment');if(comment)comment.value=`Generado por Laboratorio XI PRO con criterio ${LAB_CRITERIA[labCriterion].label}${labMinMinutes?` y muestra mínima ${labMinMinutes} min`:''}.`;showSection('once');toast('XI enviado al Constructor para revisión')
 };
 window.labToPrediction=function(){
-  if(!labResult)return;if(predictionIsClosed()){toast('La predicción está cerrada');return}const existing=safePredictionXI(),hasExisting=xiValues(existing).length>0;
+  if(!labResult||!labValidXI(labResult.xi)){toast('El Laboratorio no ha podido formar un XI válido de 11 jugadores');return}
+  if(predictionIsClosed()){toast('La predicción está cerrada');return}const existing=safePredictionXI(),hasExisting=xiValues(existing).length>0;
   if(hasExisting&&!sameXI(existing,labResult.xi)&&!window.confirm('Tu Predicción ya contiene jugadores. ¿Quieres sustituirla por esta variante del Laboratorio?'))return;
   setPredictionXI(labResult.xi);const comment=document.getElementById('predictionComment');if(comment)comment.value=`XI generado por datos · ${LAB_CRITERIA[labCriterion].label}.`;showSection('prediccion');toast('XI cargado en Predicción. Revísalo antes de publicar')
 };
