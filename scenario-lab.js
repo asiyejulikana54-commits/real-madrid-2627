@@ -51,7 +51,7 @@ function sameXi(a,b){return defs().every(s=>same(a?.[s.key],b?.[s.key]))}
 function scenarioState(){
   const state=board();if(!state)return null;const project=projectXi(state);if(!validXi(project))return null;const strong=strongXi(project,state),community=communityXi(),mine=current(),mineCount=selectedCount(mine);
   const scenarios=[
-    {id:'project',title:'Nuestra propuesta',subtitle:'Escenario base del proyecto',xi:project,valid:true,meta:'Punto de partida'},
+    {id:'project',title:'Referencia',subtitle:'Escenario base congelado',xi:project,valid:true,meta:'Punto de partida'},
     {id:'strong',title:'Señales fuertes',subtitle:'Aplica solo debates fuertes compatibles',xi:strong.xi,valid:strong.valid,meta:strong.applied.length?`${strong.applied.length} cambio${strong.applied.length===1?'':'s'} aplicable${strong.applied.length===1?'':'s'}`:'Sin cambios fuertes aplicables',applied:strong.applied,skipped:strong.skipped},
     {id:'community',title:'Comunidad',subtitle:community.valid?'XI más votado por puesto':community.reason,xi:community.xi,valid:community.valid,meta:community.total?`${community.total} pronóstico${community.total===1?'':'s'} · ${community.final?'final':'provisional'}`:'Sin muestra',community}
   ];
@@ -65,7 +65,7 @@ function playerGrid(s,project){
 }
 function card(s,ctx){
   const diff=s.diff.in.length,den=ctx.mineCount||11,matchText=ctx.mineCount?`${s.match}/${den} con tu borrador`:'Completa tu XI para comparar',disabled=ctx.isClosed||!s.valid||s.sameCurrent;
-  const changeText=s.id==='project'?'0 titulares distintos':`${diff} titular${diff===1?'':'es'} distinto${diff===1?'':'s'} vs proyecto`;
+  const changeText=s.id==='project'?'0 titulares distintos':`${diff} titular${diff===1?'':'es'} distinto${diff===1?'':'s'} vs referencia`;
   return `<article class="sl-card ${s.id} ${s.valid?'':'unavailable'}"><div class="sl-card-head"><div><span>${esc(s.title)}</span><small>${esc(s.subtitle)}</small></div><em>${esc(s.meta)}</em></div><div class="sl-metrics"><b>${esc(matchText)}</b><span>${esc(changeText)}</span></div>${playerGrid(s,ctx.project)}${s.diff.in.length?`<p class="sl-diff"><b>Entran:</b> ${s.diff.in.map(display).map(esc).join(' · ')}<br><b>Salen:</b> ${s.diff.out.map(display).map(esc).join(' · ')}</p>`:''}<button type="button" data-sl-load="${esc(s.id)}" ${disabled?'disabled':''}>${ctx.isClosed?'Predicción cerrada':s.sameCurrent?'Ya está en tu borrador':s.valid?'Probar este escenario':'No disponible'}</button></article>`;
 }
 function ensurePrediction(){
