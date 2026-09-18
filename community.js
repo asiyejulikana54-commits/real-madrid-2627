@@ -128,7 +128,7 @@ const deferredModules=[
   {css:'history.css?v=1',cssKey:'history',script:'history.js?v=2',scriptKey:'history'},
   {css:'analytics.css?v=1',cssKey:'analytics',script:'analytics.js?v=2',scriptKey:'analytics'},
   {css:'decisionradar.css?v=1',cssKey:'decisionradar',script:'decisionradar.js?v=1',scriptKey:'decisionradar'},
-  {css:'hierarchy.css?v=1',cssKey:'hierarchy',script:'hierarchy.js?v=4',scriptKey:'hierarchy'}
+  {css:'hierarchy.css?v=1',cssKey:'hierarchy',script:'hierarchy.js?v=5',scriptKey:'hierarchy'}
 ];
 async function loadDeferredModules(){
   for(const mod of deferredModules){await idleTurn();await loadModule(mod)}
