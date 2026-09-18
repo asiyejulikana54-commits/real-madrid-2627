@@ -38,6 +38,9 @@ function closestDuel(){
   return candidates[0]||null;
 }
 function currentMatch(){return safe(()=>typeof predictionMatch!=='undefined'?predictionMatch:null,null)}
+function matchTeams(match){const rival=String(match?.rival||'Rival');return match?.home===false?{home:rival,away:'Real Madrid'}:{home:'Real Madrid',away:rival}}
+function matchText(match){const t=matchTeams(match);return `${t.home}–${t.away}`}
+function matchHtml(match){const t=matchTeams(match);return `${esc(t.home.toUpperCase())} <span>vs</span> ${esc(t.away.toUpperCase())}`}
 function seasonMatchFor(match){
   if(!match)return null;const rival=String(match.rival||'').trim().toLocaleLowerCase('es-ES');
   return (data()?.matches||[]).find(m=>String(m.label||'').trim().toLocaleLowerCase('es-ES')===rival)||null;
@@ -58,14 +61,14 @@ function formatClock(value){
 function syncLegacyMatchCopy(){
   const match=currentMatch();if(!match)return;const rival=String(match.rival||'Rival'),seasonMatch=seasonMatchFor(match),kickoff=formatKickoff(match.kickoff),deadline=formatClock(match.deadline),analyzed=isAnalyzed(match);
   const home=document.getElementById('inicio');if(home){
-    const title=home.querySelector('.card.hero .match-title');if(title)title.innerHTML=`REAL MADRID <span>vs</span> ${esc(rival.toUpperCase())}`;
-    const meta=home.querySelector('.card.hero .match-meta');if(meta)meta.innerHTML=[kickoff,seasonMatch?.comp].filter(Boolean).map(v=>`<span class="pill">${esc(v)}</span>`).join('');
+    const title=home.querySelector('.card.hero .match-title');if(title)title.innerHTML=matchHtml(match);
+    const meta=home.querySelector('.card.hero .match-meta');if(meta)meta.innerHTML=[kickoff,seasonMatch?.comp||match.comp,match.venue].filter(Boolean).map(v=>`<span class="pill">${esc(v)}</span>`).join('');
     const focus=home.querySelector('.card.hero .focus-box h3');if(focus)focus.textContent=analyzed?`Claves del ${rival}`:`Debates abiertos para el ${rival}`;
     const note=home.querySelector('.quick-notes textarea');if(note&&/contra el Rayo/i.test(note.placeholder))note.placeholder=`Ej.: contra el ${rival} quiero anotar cambios, dudas tácticas o conclusiones del partido...`;
   }
   const pred=document.getElementById('prediccion');if(pred){
     const head=pred.querySelector('.section-head h2');if(head)head.textContent=analyzed?`XI oficial contra el ${rival}`:`Predice el XI contra el ${rival}`;
-    const rules=pred.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong)strong.textContent=`REAL MADRID vs ${rival.toUpperCase()}`;const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente';}
+    const rules=pred.querySelector('.prediction-rules');if(rules){const strong=rules.querySelector('b');if(strong){const t=matchTeams(match);strong.textContent=`${t.home.toUpperCase()} vs ${t.away.toUpperCase()}`;}const spans=rules.querySelectorAll('span');if(spans[0])spans[0].textContent=kickoff||'Horario pendiente';if(spans[1])spans[1].textContent=deadline?`Se cierra: ${deadline}`:'Cierre pendiente';}
     const status=pred.querySelector('#predictionStatus');if(status&&analyzed)status.textContent='Cerrada · XI oficial';
   }
   const route=analyzed?'partido':'prediccion',cta=analyzed?'Ver análisis':'Predecir XI';
@@ -76,11 +79,11 @@ function syncLegacyMatchCopy(){
 function matchState(){
   const match=currentMatch();if(!match)return {eyebrow:'PRÓXIMO PARTIDO',title:'Calendario pendiente',copy:'El siguiente partido aparecerá aquí cuando esté registrado.',action:'Ver partidos',section:'partidos',count:''};
   const deadline=Date.parse(match.deadline),kickoff=Date.parse(match.kickoff),now=Date.now(),rival=match.rival||'próximo rival',analyzed=isAnalyzed(match);
-  if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICIÓN ABIERTA',title:`Real Madrid–${rival}`,copy:'Tu XI todavía puede guardarse o modificarse antes del cierre.',action:'Hacer mi XI',section:'prediccion',count:remaining(deadline)};
-  if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:`Real Madrid–${rival}`,copy:'La predicción ya está cerrada. Consulta la previa del partido.',action:'Ver previa',section:'partido',count:remaining(kickoff)};
-  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000&&!analyzed)return {eyebrow:'PARTIDO',title:`Real Madrid–${rival}`,copy:'Centro del partido activo. No se inventan marcador ni eventos.',action:'Centro del partido',section:'partido',count:'En juego'};
-  if(analyzed)return {eyebrow:'PARTIDO ANALIZADO',title:`Real Madrid–${rival}`,copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',count:'Cerrado'};
-  return {eyebrow:'DATOS PENDIENTES',title:`Real Madrid–${rival}`,copy:'Esperando minutos y notas oficiales para incorporar el partido al análisis.',action:'Ver evolución',section:'evolucion',count:''};
+  if(Number.isFinite(deadline)&&now<deadline)return {eyebrow:'PREDICIÓN ABIERTA',title:matchText(match),copy:'Tu XI todavía puede guardarse o modificarse antes del cierre.',action:'Hacer mi XI',section:'prediccion',count:remaining(deadline)};
+  if(Number.isFinite(kickoff)&&now<kickoff)return {eyebrow:'EN BREVE',title:matchText(match),copy:'La predicción ya está cerrada. Consulta la previa del partido.',action:'Ver previa',section:'partido',count:remaining(kickoff)};
+  if(Number.isFinite(kickoff)&&now<kickoff+3*60*60*1000&&!analyzed)return {eyebrow:'PARTIDO',title:matchText(match),copy:'Centro del partido activo. No se inventan marcador ni eventos.',action:'Centro del partido',section:'partido',count:'En juego'};
+  if(analyzed)return {eyebrow:'PARTIDO ANALIZADO',title:matchText(match),copy:'XI oficial, notas medias y análisis del encuentro ya disponibles.',action:'Ver análisis',section:'partido',count:'Cerrado'};
+  return {eyebrow:'DATOS PENDIENTES',title:matchText(match),copy:'Esperando minutos y notas oficiales para incorporar el partido al análisis.',action:'Ver evolución',section:'evolucion',count:''};
 }
 function remaining(target){const ms=target-Date.now();if(ms<=0)return '';const min=Math.max(1,Math.floor(ms/60000)),days=Math.floor(min/1440),hours=Math.floor((min%1440)/60),mins=min%60;if(days)return `${days}d ${hours}h`;if(hours)return `${hours}h ${mins}m`;return `${mins} min`}
 function go(id){safe(()=>showSection(id))}
