@@ -41,7 +41,7 @@ function roundTable(d){
   return `<div class="cgl-round-head"><div><span>ÚLTIMA JORNADA PUNTUADA</span><b>Real Madrid · ${esc(m.rival||m.id)}</b></div><strong>${rows.length}<small>participantes</small></strong></div><div class="cgl-table round"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Aciertos</span><span></span><span></span><span></span></div>${rows.slice(0,50).map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span>${esc(r.alias)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}/11</strong><em></em><em></em><em></em></div>`).join('')}</div>`;
 }
 function leagueCards(d){
-  const leagues=d?.myLeagues||[];if(!leagues.length)return `<div class="cgl-empty compact"><b>No estás en ninguna liga privada</b><span>Crea una para tu grupo o entra con un código.</span></div>`;
+  const leagues=d?.myLeagues||[];if(!leagues.length)return `<div class="cgl-empty compact"><b>No encontramos ligas vinculadas a este navegador</b><span>Actualizamos la pertenencia al abrir esta sección. Si tienes un código de invitación, introdúcelo debajo para entrar.</span></div>`;
   return `<div class="cgl-leagues">${leagues.map(l=>`<button type="button" class="${selectedLeague===l.code?'active':''}" data-cgl-league="${esc(l.code)}"><span>${esc(l.name)}</span><b>${esc(l.code)}</b><small>${l.memberCount} miembro${l.memberCount===1?'':'s'}${l.owner?' · creada por ti':''}</small></button>`).join('')}</div>`;
 }
 function predTime(value){if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}
@@ -97,9 +97,12 @@ async function createLeague(){
   const alias=setAlias(document.getElementById('cglAlias')?.value),name=document.getElementById('cglName')?.value?.trim();if(alias.length<2){safe(()=>toast('Pon un apodo de al menos 2 caracteres'));return}if((name||'').length<3){safe(()=>toast('Pon un nombre de liga de al menos 3 caracteres'));return}
   try{const result=await post({action:'createLeague',participantId:participantId(),alias,name});selectedLeague=result.league.code;tab='private';leagueViews.delete(selectedLeague);await refresh(true);await loadLeague(selectedLeague,true);safe(()=>toast(`Liga creada · código ${selectedLeague}`))}catch(error){safe(()=>toast(error.message||'No se pudo crear la liga'))}
 }
+async function joinWith(aliasValue,codeValue){
+  const alias=setAlias(aliasValue),code=String(codeValue||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(alias.length<2){safe(()=>toast('Pon un apodo de al menos 2 caracteres'));return null}if(!code){safe(()=>toast('Introduce el código de la liga'));return null}
+  try{const result=await post({action:'joinLeague',participantId:participantId(),alias,code});selectedLeague=result.league.code;tab='private';leagueViews.delete(selectedLeague);await refresh(true);await loadLeague(selectedLeague,true);safe(()=>toast(`Ya estás en ${result.league.name}`));return result}catch(error){safe(()=>toast(error.message||'No se pudo entrar en la liga'));return null}
+}
 async function joinLeague(){
-  const alias=setAlias(document.getElementById('cglAlias')?.value),code=String(document.getElementById('cglCode')?.value||'').trim().toUpperCase();if(alias.length<2){safe(()=>toast('Pon un apodo de al menos 2 caracteres'));return}if(!code){safe(()=>toast('Introduce el código de la liga'));return}
-  try{const result=await post({action:'joinLeague',participantId:participantId(),alias,code});selectedLeague=result.league.code;tab='private';leagueViews.delete(selectedLeague);await refresh(true);await loadLeague(selectedLeague,true);safe(()=>toast(`Ya estás en ${result.league.name}`))}catch(error){safe(()=>toast(error.message||'No se pudo entrar en la liga'))}
+  return joinWith(document.getElementById('cglAlias')?.value,document.getElementById('cglCode')?.value);
 }
 async function leaveLeague(code){
   try{await post({action:'leaveLeague',participantId:participantId(),code});leagueViews.delete(code);selectedMemberByLeague.delete(code);selectedLeague='';await refresh(true);safe(()=>toast('Has salido de la liga'))}catch(error){safe(()=>toast(error.message||'No se pudo salir'))}
@@ -114,7 +117,7 @@ async function shareCode(code){
   try{if(navigator.share){await navigator.share({title:'Liga privada RM 26/27',text,url:url.href});return}await navigator.clipboard.writeText(`${text}\n${url.href}`);safe(()=>toast('Código y enlace copiados'))}catch{}
 }
 function bind(root){
-  root.querySelectorAll('[data-cgl-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.cglTab;render()}));
+  root.querySelectorAll('[data-cgl-tab]').forEach(b=>b.addEventListener('click',async()=>{tab=b.dataset.cglTab;if(tab==='private'){root.querySelector('.cgl-body').innerHTML='<div class="cgl-empty compact"><b>Sincronizando tus ligas…</b><span>Comprobando la pertenencia con el servidor.</span></div>';await refresh(true)}else render()}));
   root.querySelectorAll('[data-cgl-league]').forEach(b=>b.addEventListener('click',()=>loadLeague(b.dataset.cglLeague)));
   root.querySelectorAll('[data-cgl-member]').forEach(b=>b.addEventListener('click',()=>{if(!selectedLeague)return;selectedMemberByLeague.set(selectedLeague,b.dataset.cglMember);render()}));
   root.querySelector('[data-cgl-create]')?.addEventListener('click',createLeague);root.querySelector('[data-cgl-join]')?.addEventListener('click',joinLeague);
@@ -122,10 +125,10 @@ function bind(root){
 }
 function install(){
   if(installed)return;if(!document.getElementById('comunidad')||!api()){if(++attempts<100)setTimeout(install,90);return}
-  installed=true;if(queryLeague())tab='private';render();
+  installed=true;const sharedLeague=queryLeague();if(sharedLeague){tab='private';selectedLeague=sharedLeague}render();if(sharedLeague)setTimeout(()=>loadLeague(sharedLeague,true),80);
   document.addEventListener('rm-community-updated',()=>setTimeout(()=>{render();if(selectedLeague)loadLeague(selectedLeague,true)},50));document.addEventListener('rm-local-prediction-updated',()=>setTimeout(()=>refresh(true),120));window.addEventListener('storage',()=>setTimeout(render,40));
   const idle=()=>refresh(false);if('requestIdleCallback'in window)requestIdleCallback(idle,{timeout:2200});else setTimeout(idle,1400);
-  window.RMCommunityLeague=Object.freeze({render,refresh,loadLeague,state:()=>({tab,selectedLeague,data:data(),mine:currentUser()})});
+  window.RMCommunityLeague=Object.freeze({render,refresh,loadLeague,join:joinWith,state:()=>({tab,selectedLeague,data:data(),mine:currentUser()})});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
 install();
