@@ -19,7 +19,7 @@ function loadSimpleExperience(){
 }
 function loadCommunityPro(){
   if(!document.querySelector('link[data-community-pro]')){const link=document.createElement('link');link.rel='stylesheet';link.href='community-pro.css?v=3';link.dataset.communityPro='1';document.head.appendChild(link)}
-  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=3';script.dataset.communityPro='1';document.body.appendChild(script)}
+  if(!document.querySelector('script[data-community-pro]')){const script=document.createElement('script');script.src='community-pro.js?v=4';script.dataset.communityPro='1';document.body.appendChild(script)}
 }
 function loadCommunityLeague(){
   if(window.RMCommunityApi&&!window.RMCommunityApi.available?.())return false;
@@ -56,7 +56,7 @@ function loadDecisionCenter(){
     ['prediction-readiness.js?v=2','predictionReadiness','RMPredictionReadiness'],
     ['scenario-lab.js?v=2','scenarioLab','RMScenarioLab'],
     ['consensus-xi.js?v=1','consensusXi','RMConsensusXI'],
-    ['decision-center.js?v=1','decisionCenter','RMDecisionCenter']
+    ['decision-center.js?v=2','decisionCenter','RMDecisionCenter']
   ];
   decisionCenterLoader=scripts.reduce((promise,args)=>promise.then(()=>ensureDecisionScript(...args)),Promise.resolve()).then(()=>{
     setTimeout(()=>window.RMDecisionCenter?.render?.(),80);return true
