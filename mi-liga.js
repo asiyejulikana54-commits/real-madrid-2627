@@ -7,10 +7,10 @@ const observedRoots=new WeakSet();
 const COMMUNITY_SLOT_LABELS=Object.freeze({gk:'POR',lb:'LI',lcb:'DFC',rcb:'DFC',rb:'LD',dm1:'MC',dm2:'MC',am:'MP',lw:'EI',rw:'ED',st:'DC'});
 function ensureCommunityLeagueAssets(){
   if(!document.querySelector('link[href*="community-league.css"]')){
-    const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=4';link.dataset.communityLeague='1';document.head.appendChild(link);
+    const link=document.createElement('link');link.rel='stylesheet';link.href='community-league.css?v=5';link.dataset.communityLeague='1';document.head.appendChild(link);
   }
   if(window.RMCommunityLeague||document.querySelector('script[src*="community-league.js"]'))return;
-  const script=document.createElement('script');script.src='community-league.js?v=4';script.dataset.communityLeague='1';script.async=false;document.head.appendChild(script);
+  const script=document.createElement('script');script.src='community-league.js?v=5';script.dataset.communityLeague='1';script.async=false;document.head.appendChild(script);
 }
 function ensureWebAnalyticsAssets(){
   if(window.RMWebAnalytics||document.querySelector('script[src*="web-analytics.js"]'))return;
@@ -19,6 +19,7 @@ function ensureWebAnalyticsAssets(){
 function esc(v){return String(v??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function data(){return window.RMCommunityData||null}
 function participantId(){try{return window.RMCommunityApi?.participantId?.()||''}catch{return ''}}
+function savedLeagueAlias(){try{return String(localStorage.getItem('rm_league_alias_v1')||document.getElementById('predictionName')?.value||'').trim().slice(0,24)}catch{return ''}}
 function me(d){const id=participantId();return d?.myCompetition||d?.leaderboard?.find(x=>x.participantId===id)||null}
 function numberFromText(value){const m=String(value??'').replace(',','.').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
 function canonicalPlayer(name){try{return window.RMSeasonData?.canonical?.(name)||String(name||'')}catch{return String(name||'')}}
@@ -88,8 +89,16 @@ function leagues(d){
 function render(){
   const root=document.getElementById('milContent'),d=data();if(!root)return;
   if(!d){root.innerHTML='<div class="card mil-loading">Cargando datos de la comunidad…</div>';return}
-  const mine=me(d),names=popularNames(d),leagueCount=d.myLeagues?.length||0;
+  const mine=me(d),names=popularNames(d),leagueCount=d.myLeagues?.length||0,quickAlias=savedLeagueAlias();
   root.innerHTML=`
+    <section class="card mil-join">
+      <div class="mil-title"><div><span>LIGA PRIVADA</span><h3>Entrar en una liga privada</h3><small>Introduce tu apodo y el código de invitación. La pertenencia se comprueba de nuevo en el servidor.</small></div><button type="button" data-mil-manage>Crear o gestionar</button></div>
+      <div class="mil-join-form">
+        <label>Tu apodo<input id="milJoinAlias" maxlength="24" value="${esc(quickAlias)}" placeholder="Ej.: Pedro"></label>
+        <label>Código de liga<input id="milJoinCode" maxlength="8" placeholder="ABC123"></label>
+        <button type="button" data-mil-join>Entrar en la liga</button>
+      </div>
+    </section>
     <div class="grid cols-4 mil-kpis">
       <div class="card kpi"><div class="label">Tu puesto</div><div class="value">${mine?.rank?`#${mine.rank}`:'—'}</div><div class="hint">clasificación general</div></div>
       <div class="card kpi"><div class="label">Tus puntos</div><div class="value">${mine?.hits??0}</div><div class="hint">${mine?.scoredMatches||0} jornada${mine?.scoredMatches===1?'':'s'} puntuada${mine?.scoredMatches===1?'':'s'}</div></div>
@@ -102,7 +111,8 @@ function render(){
     </div>
     <section class="card mil-private"><div class="mil-title"><div><span>MI LIGA</span><h3>Ligas privadas</h3></div><button type="button" data-mil-manage>Gestionar ligas</button></div>${leagues(d)}</section>`;
   root.querySelector('[data-mil-community]')?.addEventListener('click',()=>showSection('comunidad'));
-  root.querySelector('[data-mil-manage]')?.addEventListener('click',openPrivate);
+  root.querySelectorAll('[data-mil-manage]').forEach(b=>b.addEventListener('click',()=>openPrivate()));
+  root.querySelector('[data-mil-join]')?.addEventListener('click',joinPrivateFromHub);
   root.querySelectorAll('[data-mil-league]').forEach(b=>b.addEventListener('click',()=>openPrivate(b.dataset.milLeague)));
   scheduleCommunityPresentationFix(0);
 }
@@ -110,12 +120,29 @@ async function refresh(force=false){
   addSection();if(force||!data())try{await window.RMCommunityApi?.refresh?.()}catch{}
   render();
 }
+async function joinPrivateFromHub(){
+  const alias=String(document.getElementById('milJoinAlias')?.value||'').trim(),code=String(document.getElementById('milJoinCode')?.value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+  if(alias.length<2){try{toast('Pon un apodo de al menos 2 caracteres')}catch{}return}
+  if(!code){try{toast('Introduce el código de la liga')}catch{}return}
+  try{localStorage.setItem('rm_league_alias_v1',alias)}catch{}
+  ensureCommunityLeagueAssets();
+  let tries=0;
+  const join=async()=>{
+    if(window.RMCommunityLeague?.join){
+      const result=await window.RMCommunityLeague.join(alias,code);
+      if(result?.league?.code){await refresh(true);openPrivate(result.league.code)}
+      return;
+    }
+    if(++tries<30)setTimeout(join,100);
+  };
+  join();
+}
 function openPrivate(code=''){
   ensureCommunityLeagueAssets();
   showSection('comunidad');
   let tries=0;const open=()=>{
     const tab=document.querySelector('#communityLeague [data-cgl-tab="private"]');
-    if(tab){tab.click();if(code)window.RMCommunityLeague?.loadLeague?.(code,true);setTimeout(()=>document.getElementById('communityLeague')?.scrollIntoView({behavior:'smooth',block:'start'}),50)}
+    if(tab){tab.click();if(code)setTimeout(()=>window.RMCommunityLeague?.loadLeague?.(code,true),80);setTimeout(()=>document.getElementById('communityLeague')?.scrollIntoView({behavior:'smooth',block:'start'}),80)}
     else if(++tries<30)setTimeout(open,100);
   };setTimeout(open,80);
 }
@@ -147,7 +174,7 @@ function observeNavRoots(){
   observeRoot(document.getElementById('navDesktop'));
   observeRoot(document.getElementById('uxMoreSheet'));
 }
-window.openMiLiga=function(){addSection();showSection(SECTION_ID);refresh(false);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active');scheduleCommunityPresentationFix(0);window.RMWebAnalytics?.summary?.()},0)};
+window.openMiLiga=function(){addSection();showSection(SECTION_ID);const root=document.getElementById('milContent');if(root)root.innerHTML='<div class="card mil-loading">Sincronizando tus ligas…</div>';refresh(true);setTimeout(()=>{patchNav();document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('active',b.dataset.section===SECTION_ID));document.getElementById('uxMoreTab')?.classList.remove('active');scheduleCommunityPresentationFix(0);window.RMWebAnalytics?.summary?.()},0)};
 function install(){if(installed)return;installed=true;ensureCommunityLeagueAssets();ensureWebAnalyticsAssets();addSection();patchNav();observeNavRoots();render();document.addEventListener('rm-community-updated',()=>{render();scheduleCommunityPresentationFix(80)});document.addEventListener('rm-community-pro-rendered',()=>scheduleCommunityPresentationFix(0));document.addEventListener('rm-modules-ready',()=>{schedulePatch();scheduleCommunityPresentationFix(0)});new MutationObserver(schedulePatch).observe(document.body,{childList:true});[100,500,1200,2600].forEach(ms=>{setTimeout(schedulePatch,ms);setTimeout(()=>scheduleCommunityPresentationFix(0),ms)});setTimeout(()=>refresh(false),500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
