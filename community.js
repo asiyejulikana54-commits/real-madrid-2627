@@ -5,7 +5,11 @@ document.getElementById('navDesktop').innerHTML=navHtml(false);
 document.getElementById('navMobile').innerHTML=navHtml(true);
 
 const participantStorageKey='rm_community_participant_id';
-function getParticipantId(){let id=localStorage.getItem(participantStorageKey);if(!id){id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);localStorage.setItem(participantStorageKey,id)}return id}
+const participantCookieKey='rm_community_pid';
+function validParticipantId(id){return /^[A-Za-z0-9_-]{16,80}$/.test(String(id||''))}
+function participantCookie(){try{const prefix=participantCookieKey+'=';return document.cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith(prefix))?.slice(prefix.length)||''}catch{return ''}}
+function persistParticipantId(id){try{localStorage.setItem(participantStorageKey,id)}catch{}try{document.cookie=`${participantCookieKey}=${encodeURIComponent(id)}; Max-Age=63072000; Path=/; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`}catch{}}
+function getParticipantId(){let id='';try{id=localStorage.getItem(participantStorageKey)||''}catch{}if(!validParticipantId(id)){try{id=decodeURIComponent(participantCookie())}catch{id=''}}if(!validParticipantId(id))id=(crypto.randomUUID?crypto.randomUUID():`rm_${Date.now()}_${Math.random().toString(36).slice(2)}`);persistParticipantId(id);return id}
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
 function communityBackendAvailable(){return /^https?:$/.test(location.protocol)&&!location.hostname.endsWith('github.io')}
 function communityApiUrl(params={}){const url=new URL('/.netlify/functions/community-v2',location.origin);for(const [key,value] of Object.entries(params))if(value!==undefined&&value!==null&&value!=='')url.searchParams.set(key,String(value));return url.href}
