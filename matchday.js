@@ -86,7 +86,12 @@ function performanceHtml(){
 }
 function headerHtml(){
   const real=official(),p=phase(),m=safe(()=>predictionMatch,null);
-  return `<div class="section-head md-section-head"><div><h2>Centro del partido</h2><p>${real?'XI oficial, notas medias, análisis y comparación de pronósticos.':`Previa de ${esc(matchText(m))}. Los datos del encuentro aparecerán solo cuando estén confirmados.`}</p></div><span class="pill ${real?'closed':'open'}">${esc(p.label)} · ${esc(p.clock)}</span></div>`
+  return `<div class="section-head md-section-head"><div><h2>Centro del partido</h2><p>${real?'XI oficial, resultado, comparación de pronósticos y análisis cuando estén verificadas las notas.':`Previa de ${esc(matchText(m))}. Los datos del encuentro aparecerán solo cuando estén confirmados.`}</p></div><span class="pill ${real?'closed':'open'}">${esc(p.label)} · ${esc(p.clock)}</span></div>`
+}
+function finalResultHtml(){
+  const m=safe(()=>predictionMatch,null),r=m?.result;if(!r)return '';
+  const t=m.home===false?{home:m.rival,away:'Real Madrid'}:{home:'Real Madrid',away:m.rival};
+  return `<section class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap"><div><span class="md-label">RESULTADO FINAL · ${esc(m.comp||'')}</span><h2 style="margin:5px 0 4px">${esc(t.home)} ${esc(r.home)} - ${esc(r.away)} ${esc(t.away)}</h2><p class="muted" style="margin:0">Jornada cerrada. El XI oficial ya está publicado y las predicciones se han puntuado.</p></div><span class="pill closed">FINAL</span></div></section>`;
 }
 function xiValues(xi){return Object.values(xi||{}).filter(Boolean)}
 function validXi(xi){const values=xiValues(xi);return values.length===11&&new Set(values).size===11}
@@ -111,7 +116,7 @@ function writtenAnalysisHtml(){
 function requestCommunity(){const loader=safe(()=>typeof loadCommunity==='function'?loadCommunity:null,null);if(!loader)return;Promise.resolve(loader(false)).then(()=>setTimeout(render,0)).catch(()=>{})}
 function render(){
   const section=ensure();if(!section)return;let root=document.getElementById('matchdayDynamic');if(!root){root=document.createElement('div');root.id='matchdayDynamic';section.appendChild(root)}
-  root.innerHTML=`${headerHtml()}${previewHtml()}${performanceHtml()}${writtenAnalysisHtml()}${xiComparisonHtml()}`;
+  root.innerHTML=`${headerHtml()}${finalResultHtml()}${previewHtml()}${performanceHtml()}${writtenAnalysisHtml()}${xiComparisonHtml()}`;
 }
 function install(){if(installed)return;const section=ensure();if(!section){setTimeout(install,100);return}installed=true;render();ensureSeasonExtension();const base=showSection;showSection=function(id){base(id);if(id==='partido'){ensureSeasonExtension();requestCommunity();setTimeout(render,0)}};document.addEventListener('rm-ranking-official-ready',render);document.addEventListener('rm-season-data-ready',()=>{seasonLoader=null;setTimeout(render,20)});document.addEventListener('rm-season-extension-ready',()=>setTimeout(render,20));document.addEventListener('rm-community-updated',()=>setTimeout(render,0));window.RMMatchdayCenter=Object.freeze({render,phase,performance:performanceData,comparison:xiComparisonHtml})}
 install();
