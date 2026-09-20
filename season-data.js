@@ -4,7 +4,8 @@ const MATCHES=Object.freeze([
   {id:'real-sociedad',label:'Real Sociedad',short:'RSO',comp:'LaLiga'},
   {id:'malaga',label:'Málaga',short:'MÁL',comp:'LaLiga'},
   {id:'betis',label:'Betis',short:'BET',comp:'LaLiga'},
-  {id:'inter',label:'Inter',short:'INT',comp:'Champions'}
+  {id:'inter',label:'Inter',short:'INT',comp:'Champions'},
+  {id:'atletico',label:'Atlético de Madrid',short:'ATM',comp:'LaLiga'}
 ]);
 const SOURCE_ORDER=Object.freeze(['sofascore','fotmob','statmuse']);
 const SOURCE_LABELS=Object.freeze({sofascore:'Sofascore',fotmob:'FotMob',statmuse:'StatMuse'});
@@ -20,6 +21,9 @@ const rec=(value,source,status='confirmed',note='')=>Object.freeze({value,source
 const fm=value=>rec(value,'FotMob','confirmed','Serie histórica y minutos verificados el 11-09-2026.');
 const ss=value=>rec(value,'Sofascore','confirmed','Ficha pública o captura directa del proyecto verificada el 11-09-2026.');
 const sm=value=>rec(value,'StatMuse FC','confirmed','Valoración de partido verificada el 11-09-2026.');
+const fm20=value=>rec(value,'FotMob','confirmed','Captura del Atlético de Madrid-Real Madrid verificada el 20-09-2026.');
+const ss20=value=>rec(value,'Sofascore','confirmed','Captura del Atlético de Madrid-Real Madrid verificada el 20-09-2026.');
+const sm20=value=>rec(value,'StatMuse FC','confirmed','Captura del Atlético de Madrid-Real Madrid verificada el 20-09-2026.');
 const nr=source=>Object.freeze({value:null,source,status:'unrated',note:'La fuente fue comprobada y no publicó valoración para esta aparición.'});
 function parse(text,factory){
   const out={}; if(!text)return out;
@@ -31,14 +35,16 @@ const RATINGS={
   'real-sociedad':parse('Courtois=6.9|Dumfries=7|Konaté=6.9|Huijsen=7.8|Cucurella=6.8|Álvaro Carreras=6.6|Valverde=8.1|Bernardo Silva=7.8|Camavinga=6.3|Bellingham=9|Arda Güler=8.2|Brahim Díaz=6.6|Mbappé=9.8|Vini Jr.=8.6',fm),
   espanyol:parse('Courtois=6.4|Dumfries=7.3|Konaté=7.7|Huijsen=7.1|Cucurella=6.7|Álvaro Carreras=7.4|Valverde=8.1|Bernardo Silva=7|Camavinga=6.4|Bellingham=8.3|Arda Güler=8.6|Mbappé=7.4|Vini Jr.=7.2|Trent Alexander-Arnold=6.3|Diomande=6.4|Carlos Espí=7.5',fm),
   betis:parse('Courtois=6.7|Dumfries=6.6|Konaté=6.6|Huijsen=7.5|Cucurella=6.8|Valverde=6.6|Bernardo Silva=6.4|Camavinga=6.1|Bellingham=7.4|Arda Güler=7.5|Mbappé=6.7|Vini Jr.=7.8|Trent Alexander-Arnold=6.6|Diomande=6.2',fm),
-  inter:parse('Courtois=7.5|Dumfries=6.7|Konaté=6.9|Huijsen=7.4|Cucurella=7.2|Valverde=8.1|Bellingham=7.6|Brahim Díaz=8.3|Mbappé=8.4|Vini Jr.=7.3|Trent Alexander-Arnold=7|Diomande=5.9|Tchouaméni=6',fm)
+  inter:parse('Courtois=7.5|Dumfries=6.7|Konaté=6.9|Huijsen=7.4|Cucurella=7.2|Valverde=8.1|Bellingham=7.6|Brahim Díaz=8.3|Mbappé=8.4|Vini Jr.=7.3|Trent Alexander-Arnold=7|Diomande=5.9|Tchouaméni=6',fm),
+  atletico:parse('Courtois=7.4|Dumfries=6.6|Konaté=7.3|Huijsen=5.5|Cucurella=6.8|Valverde=6.7|Tchouaméni=6.8|Bellingham=7.9|Arda Güler=6.5|Mbappé=6.4|Vini Jr.=6.5|Rüdiger=7.2|Diomande=6.7|Camavinga=6.6',fm20)
 };
 const MINUTES={
   malaga:parse('Courtois=90|Lunin=0|Dumfries=0|Konaté=0|Rüdiger=90|Huijsen=90|Cucurella=90|Álvaro Carreras=0|Valverde=77|Bernardo Silva=13|Camavinga=90|Bellingham=87|Arda Güler=3|Brahim Díaz=65|Mbappé=90|Vini Jr.=90|Trent Alexander-Arnold=90|Diomande=25|Carlos Espí=0',fm),
   'real-sociedad':parse('Courtois=90|Lunin=0|Dumfries=90|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=45|Álvaro Carreras=45|Valverde=90|Bernardo Silva=86|Camavinga=12|Bellingham=78|Arda Güler=78|Brahim Díaz=12|Mbappé=90|Vini Jr.=84|Trent Alexander-Arnold=0|Diomande=6|Carlos Espí=4',fm),
   espanyol:parse('Courtois=90|Lunin=0|Dumfries=80|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=26|Álvaro Carreras=64|Valverde=90|Bernardo Silva=80|Camavinga=10|Bellingham=80|Arda Güler=64|Brahim Díaz=0|Mbappé=90|Vini Jr.=90|Trent Alexander-Arnold=10|Diomande=26|Carlos Espí=10',fm),
   betis:parse('Courtois=90|Lunin=0|Dumfries=64|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=88|Álvaro Carreras=2|Valverde=82|Bernardo Silva=26|Camavinga=64|Bellingham=90|Arda Güler=64|Brahim Díaz=0|Mbappé=90|Vini Jr.=90|Trent Alexander-Arnold=26|Diomande=26|Carlos Espí=8',fm),
-  inter:parse('Courtois=90|Lunin=0|Dumfries=90|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=90|Álvaro Carreras=3|Valverde=90|Bellingham=90|Brahim Díaz=79|Mbappé=89|Vini Jr.=87|Trent Alexander-Arnold=79|Diomande=11|Tchouaméni=11|Carlos Espí=1|Arda Güler=0|Camavinga=0|Bernardo Silva=0',fm)
+  inter:parse('Courtois=90|Lunin=0|Dumfries=90|Konaté=90|Rüdiger=0|Huijsen=90|Cucurella=90|Álvaro Carreras=3|Valverde=90|Bellingham=90|Brahim Díaz=79|Mbappé=89|Vini Jr.=87|Trent Alexander-Arnold=79|Diomande=11|Tchouaméni=11|Carlos Espí=1|Arda Güler=0|Camavinga=0|Bernardo Silva=0',fm),
+  atletico:parse('Courtois=90|Lunin=0|Dumfries=90|Konaté=90|Rüdiger=36|Huijsen=52|Cucurella=90|Álvaro Carreras=0|Raúl Asencio=0|Valverde=90|Bernardo Silva=8|Camavinga=19|Bellingham=82|Arda Güler=54|Brahim Díaz=0|Mbappé=90|Vini Jr.=54|Trent Alexander-Arnold=0|Diomande=36|Carlos Espí=0',fm20)
 };
 MINUTES.inter['Arda Güler']=rec(0,'UEFA · sanción','confirmed','Sancionado para Real Madrid-Inter.');
 MINUTES.inter['Camavinga']=rec(0,'UEFA · sanción','confirmed','Sancionado para Real Madrid-Inter.');
@@ -48,14 +54,16 @@ const SOFASCORE={
   'real-sociedad':parse('Courtois=6.6|Dumfries=6.1|Konaté=7.3|Huijsen=7.3|Cucurella=6.9|Álvaro Carreras=6.2|Valverde=7.7|Bernardo Silva=7|Camavinga=6.8|Bellingham=9|Arda Güler=7.4|Brahim Díaz=6.6|Mbappé=10|Vini Jr.=7.8|Diomande=6.6|Carlos Espí=6.4',ss),
   espanyol:parse('Courtois=6.5|Dumfries=6.6|Konaté=7.2|Huijsen=7|Cucurella=6.9|Álvaro Carreras=6.8|Valverde=7.3|Bernardo Silva=6.2|Camavinga=6.6|Bellingham=8.1|Arda Güler=8|Mbappé=6.4|Vini Jr.=7|Trent Alexander-Arnold=7|Diomande=6.5|Carlos Espí=7.8',ss),
   betis:parse('Courtois=6.7|Dumfries=6.6|Konaté=6.5|Huijsen=7.7|Cucurella=6.8|Álvaro Carreras=6.9|Valverde=6.7|Bernardo Silva=6.6|Camavinga=6.8|Bellingham=7.1|Arda Güler=7.4|Mbappé=6|Vini Jr.=7|Trent Alexander-Arnold=6.5|Diomande=6.5|Carlos Espí=6.4',ss),
-  inter:parse('Courtois=6.8|Dumfries=6.4|Konaté=7|Huijsen=6.9|Cucurella=7|Valverde=8.4|Bellingham=6.9|Brahim Díaz=8.2|Mbappé=7.7|Vini Jr.=7.2|Trent Alexander-Arnold=6.7|Diomande=6.5|Tchouaméni=6.6',ss)
+  inter:parse('Courtois=6.8|Dumfries=6.4|Konaté=7|Huijsen=6.9|Cucurella=7|Valverde=8.4|Bellingham=6.9|Brahim Díaz=8.2|Mbappé=7.7|Vini Jr.=7.2|Trent Alexander-Arnold=6.7|Diomande=6.5|Tchouaméni=6.6',ss),
+  atletico:parse('Courtois=8.6|Dumfries=6.5|Konaté=7.5|Huijsen=6.2|Cucurella=6.5|Valverde=6.9|Tchouaméni=6.8|Bellingham=7.1|Arda Güler=6.9|Mbappé=6.9|Vini Jr.=6.6|Rüdiger=7.5|Diomande=7.2|Camavinga=7.5|Bernardo Silva=7.1',ss20)
 };
 const STATMUSE={
   malaga:parse('Courtois=6.9|Rüdiger=7.8|Huijsen=6.7|Cucurella=7.6|Valverde=7.6|Bernardo Silva=6.5|Camavinga=7.5|Bellingham=9.3|Brahim Díaz=7.2|Arda Güler=8.9|Mbappé=9.1|Vini Jr.=8.9|Trent Alexander-Arnold=8.6|Diomande=6.8',sm),
   'real-sociedad':parse('Courtois=6.7|Dumfries=7.1|Konaté=7.5|Huijsen=7.5|Cucurella=7.2|Álvaro Carreras=7|Valverde=8.2|Bernardo Silva=7.2|Camavinga=6.8|Bellingham=9.1|Arda Güler=8.6|Brahim Díaz=7|Mbappé=9.9|Vini Jr.=9|Diomande=6.7|Carlos Espí=6.6',sm),
   espanyol:parse('Courtois=6.6|Dumfries=6.6|Konaté=7.4|Huijsen=7.1|Cucurella=7.2|Álvaro Carreras=7.1|Valverde=8.4|Bernardo Silva=6.8|Camavinga=6.8|Bellingham=9|Arda Güler=9|Mbappé=5.7|Vini Jr.=6|Trent Alexander-Arnold=6.9|Diomande=6.7|Carlos Espí=8.7',sm),
   betis:parse('Courtois=7|Dumfries=7|Konaté=7.2|Huijsen=7.8|Cucurella=7.7|Álvaro Carreras=7|Valverde=6.6|Bernardo Silva=6.8|Camavinga=7.1|Bellingham=7.3|Arda Güler=9.2|Mbappé=7|Vini Jr.=8|Trent Alexander-Arnold=7|Diomande=6.6|Carlos Espí=6.9',sm),
-  inter:parse('Courtois=7.4|Dumfries=7|Konaté=7|Huijsen=7|Cucurella=7.6|Valverde=8.5|Bellingham=7.2|Brahim Díaz=9.3|Mbappé=9|Vini Jr.=6|Trent Alexander-Arnold=6.7|Diomande=6.6|Tchouaméni=6.6',sm)
+  inter:parse('Courtois=7.4|Dumfries=7|Konaté=7|Huijsen=7|Cucurella=7.6|Valverde=8.5|Bellingham=7.2|Brahim Díaz=9.3|Mbappé=9|Vini Jr.=6|Trent Alexander-Arnold=6.7|Diomande=6.6|Tchouaméni=6.6',sm),
+  atletico:parse('Courtois=6.5|Dumfries=6.8|Konaté=6.9|Huijsen=5|Cucurella=6.8|Valverde=7.1|Tchouaméni=7.1|Bellingham=7.2|Arda Güler=6.4|Mbappé=6.3|Vini Jr.=5.4|Rüdiger=7.4|Diomande=6.9|Camavinga=7|Bernardo Silva=7.6',sm20)
 };
 const UNRATED=Object.freeze({
   malaga:Object.freeze({'Arda Güler':Object.freeze({fotmob:nr('FotMob')})}),
@@ -64,6 +72,9 @@ const UNRATED=Object.freeze({
   inter:Object.freeze({
     'Álvaro Carreras':Object.freeze({sofascore:nr('Sofascore'),fotmob:nr('FotMob'),statmuse:nr('StatMuse FC')}),
     'Carlos Espí':Object.freeze({sofascore:nr('Sofascore'),fotmob:nr('FotMob'),statmuse:nr('StatMuse FC')})
+  }),
+  atletico:Object.freeze({
+    'Bernardo Silva':Object.freeze({fotmob:nr('FotMob')})
   })
 });
 function canonical(name){return ALIASES[name]||name}
@@ -149,9 +160,9 @@ function audit(){
   return out;
 }
 function statusLabel(status){return status==='confirmed'?'Confirmado':status==='reconstructed'?'Reconstruido':status==='unrated'?'SC · Sin calificación':'Pendiente'}
-const CHRONOLOGY=Object.freeze({version:3,source:'canonical',order:Object.freeze(MATCHES.map(m=>m.id)),labels:Object.freeze(MATCHES.map(m=>m.label)),note:'Orden canónico de jornadas: Espanyol J1, Real Sociedad J2, Málaga J3, Betis J4, Inter J5.'});
+const CHRONOLOGY=Object.freeze({version:4,source:'canonical',order:Object.freeze(MATCHES.map(m=>m.id)),labels:Object.freeze(MATCHES.map(m=>m.label)),note:'Orden canónico de jornadas: Espanyol J1, Real Sociedad J2, Málaga J3, Betis J4, Inter J5, Atlético de Madrid J6.'});
 window.RMSeasonData=Object.freeze({
-  version:6,formSource:'official-combined',
+  version:7,formSource:'official-combined',
   matches:MATCHES,sources:SOURCE_ORDER,sourceLabels:SOURCE_LABELS,chronology:CHRONOLOGY,
   canonical,ratingEntry,minuteEntry,rating,minutes,sourceRatings,sourceUnrated,combinedRatingEntry,officialRatingEntry,ratingSeries,recentRating,ratingDelta,
   aggregatePlayer,aggregateRanking,sourceAudit,audit,statusLabel,
@@ -164,5 +175,5 @@ window.RMSeasonData=Object.freeze({
     unrated:'SC significa que la fuente fue comprobada y no publicó valoración; no equivale a cero ni a dato pendiente.'
   })
 });
-document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:6}}));
+document.dispatchEvent(new CustomEvent('rm-season-data-ready',{detail:{version:7}}));
 })();
