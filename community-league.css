@@ -34,4 +34,4 @@
   .cgl-form{grid-template-columns:minmax(0,1fr) 104px}
   .cgl-xi-pitch{min-height:410px}
   .cgl-xi-player{width:68px}
-}
+}.cgl-user{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}.cgl-perfect{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#18a957;color:#fff;font-size:10px;font-weight:950;line-height:1;white-space:nowrap}.cgl-user>small{margin-left:0!important}
