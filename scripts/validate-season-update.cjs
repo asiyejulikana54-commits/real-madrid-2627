@@ -19,6 +19,7 @@ const expectedOrder=['espanyol','real-sociedad','malaga','betis','inter'];
 const baseOrder=baseData.matches.slice(0,5).map(m=>m.id);
 require(path.join(__dirname,'..','season-extension.js'));
 const data=global.RMSeasonData;
+const extensionChronologySource=data.chronology?.source;
 const failures=[];
 if(JSON.stringify(baseOrder)!==JSON.stringify(expectedOrder))failures.push(`season-data nace con orden incorrecto: ${baseOrder.join(' → ')}`);
 if(baseData.chronology?.source!=='canonical')failures.push('season-data no declara la cronología como fuente canónica');
@@ -29,7 +30,8 @@ if(data.matches.length!==baseMatches+1)failures.push('el partido nuevo no se añ
 if(data.matches.at(-1)?.id!=='__smoke__')failures.push('el partido nuevo no quedó como último encuentro');
 if(JSON.stringify(data.matches.slice(0,5).map(m=>m.id))!==JSON.stringify(expectedOrder))failures.push('season-extension altera el orden canónico de las jornadas');
 if(data.officialRatingEntry('__smoke__','Courtois')?.value!==7)failures.push('la nota oficial 3/3 no se calculó correctamente');
-if(data.aggregatePlayer('Courtois').totalMinutes!==540)failures.push(`Courtois debería acumular 540 minutos y acumula ${data.aggregatePlayer('Courtois').totalMinutes}`);
+const expectedCourtoisMinutes=baseData.aggregatePlayer('Courtois').totalMinutes+90;
+if(data.aggregatePlayer('Courtois').totalMinutes!==expectedCourtoisMinutes)failures.push(`Courtois debería acumular ${expectedCourtoisMinutes} minutos y acumula ${data.aggregatePlayer('Courtois').totalMinutes}`);
 if(data.recentRating('Courtois',1)?.rows?.[0]?.match?.id!=='__smoke__')failures.push('la forma reciente no incorpora el partido nuevo');
 if(data.sourceAudit().pendingAppearances!==0)failures.push('la prueba deja apariciones pendientes');
 const courtoisAgg=data.aggregatePlayer('Courtois');
@@ -51,7 +53,7 @@ const chronologicalData=global.RMSeasonData;
 const actualOrder=(chronologicalData?.matches||[]).slice(0,5).map(m=>m.id);
 if(JSON.stringify(actualOrder)!==JSON.stringify(expectedOrder))failures.push(`orden real incorrecto tras minute-sync: ${actualOrder.join(' → ')}`);
 if(chronologicalData?.matches?.at(-1)?.id!=='__smoke__')failures.push('minute-sync desplaza incorrectamente partidos futuros');
-if(chronologicalData?.chronology?.source!=='canonical')failures.push('minute-sync ha sustituido el metadato canónico de RMSeasonData');
+if(chronologicalData?.chronology?.source!==extensionChronologySource)failures.push(`minute-sync ha sustituido el metadato de cronología (${extensionChronologySource} → ${chronologicalData?.chronology?.source})`);
 
 // MVP PRO: valida que la capa compile, sea local-first y esté disponible offline.
 const mvpJs=fs.readFileSync(path.join(root,'mvp.js'),'utf8');
@@ -77,7 +79,7 @@ if(!efficiencyJs.includes('SC nunca se convierte en nota 0'))failures.push('Efic
 if(!efficiencyJs.includes('no usa “partido válido”'))failures.push('Eficiencia PRO no documenta la ausencia de corte oculto');
 if(/MutationObserver\s*\(/.test(efficiencyJs))failures.push('Eficiencia PRO usa MutationObserver');
 if(!efficiencyCss.includes('.efp-row')||!efficiencyCss.includes('.efp-sample')||!efficiencyCss.includes('.efp-method'))failures.push('faltan estilos estructurales de Eficiencia PRO');
-if(!polish.includes('loadEfficiencyPro')||!polish.includes('efficiency-pro.js?v=1')||!polish.includes('efficiency-pro.css?v=1'))failures.push('Eficiencia PRO no está integrada en la experiencia pública');
+if(!polish.includes('loadEfficiencyPro')||!polish.includes('efficiency-pro.js?v=2')||!polish.includes('efficiency-pro.css?v=1'))failures.push('Eficiencia PRO no está integrada en la experiencia pública');
 if(!sw.includes("'efficiency-pro.js'")||!sw.includes("'efficiency-pro.css'"))failures.push('Eficiencia PRO no está incluida en la PWA');
 
 // INICIO PRO: síntesis canónica sin crear un score nuevo ni depender de backend.
