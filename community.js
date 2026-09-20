@@ -140,7 +140,6 @@ const deferredModules=[
   {script:'season-input.js?v=1',scriptKey:'season-input'},
   {script:'season-extension.js?v=2',scriptKey:'season-extension'},
   {css:'lineup-pro.css?v=1',cssKey:'lineup-pro',script:'lineup-pro.js?v=1',scriptKey:'lineup-pro'},
-  {css:'lineuplab.css?v=1',cssKey:'lineuplab',script:'lineuplab.js?v=2',scriptKey:'lineuplab'},
   {css:'history.css?v=1',cssKey:'history',script:'history.js?v=2',scriptKey:'history'},
   {css:'analytics.css?v=1',cssKey:'analytics',script:'analytics.js?v=2',scriptKey:'analytics'},
   {css:'decisionradar.css?v=1',cssKey:'decisionradar',script:'decisionradar.js?v=2',scriptKey:'decisionradar'},
