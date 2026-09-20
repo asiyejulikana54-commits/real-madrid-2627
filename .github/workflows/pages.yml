@@ -25,13 +25,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate season update flow
-        continue-on-error: true
         run: |
           node scripts/validate-season-update.cjs
           node scripts/validate-rayo-data.cjs
 
       - name: Validate public frontend
-        continue-on-error: true
         run: |
           for file in *.js; do node --check "$file"; done
           node scripts/validate-pro-surface.cjs
@@ -42,7 +40,6 @@ jobs:
           node scripts/validate-power-sorting.cjs
 
       - name: Validate PWA
-        continue-on-error: true
         run: node scripts/validate-pwa.cjs
 
       - name: Configure Pages
