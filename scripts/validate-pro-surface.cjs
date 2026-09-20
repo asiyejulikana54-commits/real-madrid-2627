@@ -45,7 +45,7 @@ if(!exists('analysis-context.js'))failures.push('Falta analysis-context.js');els
   if(!polish.includes('loadAnalysisContext')||!sw.includes("'analysis-context.js'"))failures.push('Contexto compartido no está conectado/caché PWA');
 }
 
-const semantic=[['Jerarquías','hierarchy.js','RMHierarchyPro','JERARQUÍAS PRO'],['Radar de decisión','decisionradar.js','RMDecisionRadar','VENTAJA REAL']];
+const semantic=[['Jerarquías','hierarchy.js','RMHierarchyPro','JERARQUÍAS PRO'],['Radar de decisión','decisionradar.js','RMDecisionRadar','VENTAJA EN EL RADAR']];
 for(const [name,file,api,marker] of semantic){if(!exists(file)){failures.push(`${name}: falta ${file}`);continue}compile(file);const code=read(file);if(!code.includes(api)||!code.includes(marker))failures.push(`${name}: no conserva su contrato funcional`)}
 
 if(failures.length){console.error('PRO surface audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
