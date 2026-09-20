@@ -24,7 +24,7 @@ const failures=[];
 if(JSON.stringify(baseOrder)!==JSON.stringify(expectedOrder))failures.push(`season-data nace con orden incorrecto: ${baseOrder.join(' → ')}`);
 if(baseData.chronology?.source!=='canonical')failures.push('season-data no declara la cronología como fuente canónica');
 if(baseData.chronology?.labels?.[0]!=='Espanyol'||baseData.chronology?.labels?.[2]!=='Málaga')failures.push('season-data no identifica Espanyol J1 y Málaga J3 en metadatos');
-if(data.version!==7)failures.push(`versión esperada 7, recibida ${data.version}`);
+if(data.version!==9)failures.push(`versión esperada 9, recibida ${data.version}`);
 if(!data.validation?.ok)failures.push(`validación fallida: ${JSON.stringify(data.validation?.errors||[])}`);
 if(data.matches.length!==baseMatches+1)failures.push('el partido nuevo no se añadió exactamente una vez');
 if(data.matches.at(-1)?.id!=='__smoke__')failures.push('el partido nuevo no quedó como último encuentro');
