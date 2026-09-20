@@ -1,7 +1,7 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='74';
+const SW_VERSION='77';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const MATCH_ANNOUNCEMENT=Object.freeze({
   id:'atletico-xi-open-2026-09-18',
