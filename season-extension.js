@@ -15,7 +15,7 @@ function validateAndStage(raw,index){
   if(!id||!label||!short||!comp){issue(errors,`Entrada #${index+1}: faltan id, label, short o comp.`,id||null);return}
   if(base.matches.some(m=>m.id===id)||extraMatches.some(m=>m.id===id)){issue(errors,`${id}: id de partido duplicado.`,id);return}
   if(!raw.players||typeof raw.players!=='object'||Array.isArray(raw.players)){issue(errors,`${id}: falta el bloque players.`,id);return}
-  const final=raw.final!==false,duration=Number.isFinite(Number(raw.duration))?Number(raw.duration):90,expectedMinutes=duration*11;
+  const final=raw.final!==false,duration=Number.isFinite(Number(raw.duration))?Number(raw.duration):90,expectedMinutes=duration*11,substitutionAdjustment=Math.max(0,Number(raw.substitutionAdjustment)||0);
   let totalMinutes=0,played=0;const seen=new Set(),localMinutes={},localRatings={sofascore:{},fotmob:{},statmuse:{}},localUnrated={};
   for(const [inputName,rowRaw] of Object.entries(raw.players)){
     const name=canonical(inputName),row=rowRaw||{};
@@ -34,10 +34,11 @@ function validateAndStage(raw,index){
     if(minutes===0&&SOURCE_ORDER.some(s=>row[s]!==undefined&&row[s]!==null&&row[s]!==''))issue(warnings,`${id}: ${name} tiene 0 minutos y además una valoración/SC.`,id,name);
     if(minutes>0&&missing.length)issue(final?errors:warnings,`${id}: faltan ${missing.join(', ')} para ${name}.`,id,name);
   }
-  if(totalMinutes!==expectedMinutes)issue(final?errors:warnings,`${id}: suma de minutos ${totalMinutes}; esperaba ${expectedMinutes} (${duration}' × 11).`,id);
+  const validationMinutes=totalMinutes+substitutionAdjustment;
+  if(validationMinutes!==expectedMinutes)issue(final?errors:warnings,`${id}: suma de minutos ${totalMinutes} + ajuste de sustitución ${substitutionAdjustment} = ${validationMinutes}; esperaba ${expectedMinutes} (${duration}' × 11).`,id);
   if(!played)issue(warnings,`${id}: no hay jugadores con minutos > 0.`,id);
   const hasError=errors.some(e=>e.matchId===id);
-  entryAudit.push(Object.freeze({id,label,final,totalMinutes,expectedMinutes,players:Object.keys(raw.players).length,played,applied:final&&!hasError}));
+  entryAudit.push(Object.freeze({id,label,final,totalMinutes,substitutionAdjustment,validationMinutes,expectedMinutes,players:Object.keys(raw.players).length,played,applied:final&&!hasError}));
   if(!final||hasError)return;
   extraMatches.push(Object.freeze({id,label,short,comp,date:raw.date||null,duration}));minuteMap[id]=localMinutes;
   for(const source of SOURCE_ORDER)ratingMaps[source][id]=localRatings[source];
