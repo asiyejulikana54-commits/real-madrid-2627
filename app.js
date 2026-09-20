@@ -91,7 +91,7 @@ function validLineup(xi={}){
 }
 
 
-const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:30:00+02:00'});
+const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:45:00+02:00'});
 const officialXI=null;
 const officialXIBySlot={};
 window.RMOfficialXIBySlot=Object.freeze({...officialXIBySlot});
