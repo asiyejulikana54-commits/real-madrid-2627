@@ -95,7 +95,7 @@ window.RMSeasonMatchEntries=Object.freeze([
       'Rüdiger':Object.freeze({minutes:36,sofascore:7.5,fotmob:7.2,statmuse:7.4,note:'Entró en el 54; gol en el 89.'}),
       'Diomande':Object.freeze({minutes:36,sofascore:7.2,fotmob:6.7,statmuse:6.9,note:'Entró en el 54.'}),
       'Camavinga':Object.freeze({minutes:19,sofascore:7.5,fotmob:6.6,statmuse:7.0,note:'Entró en el 71.'}),
-      'Bernardo Silva':Object.freeze({minutes:8,sofascore:7.1,fotmob:7.2,statmuse:7.6,note:'Entró en el 82; asistencia a Rüdiger.'})
+      'Bernardo Silva':Object.freeze({minutes:8,sofascore:7.1,fotmob:'SC',statmuse:7.6,note:'Entró en el 82; asistencia a Rüdiger. FotMob: sin calificación visible en la captura.'})
     })
   })
 ]);
