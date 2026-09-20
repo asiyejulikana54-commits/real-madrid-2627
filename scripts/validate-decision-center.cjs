@@ -16,7 +16,7 @@ if(/MutationObserver\s*\(/.test(js))failures.push('decision-center.js no debe us
 if(!js.includes("window.RMConsensusXI?.auditableState"))failures.push('El XI guía debe preferir la síntesis auditable');
 if(!js.includes("if(!r.complete)")||!js.includes("if(!r.reviewed)"))failures.push('El centro debe derivar la siguiente acción del estado real de cierre');
 for(const marker of ['.decision-center','.dc-center-grid','.dc-center-xi','.dc-focus-mode','.dc-center-close'])if(!css.includes(marker))failures.push(`decision-center.css: falta ${marker}`);
-for(const marker of ['loadDecisionCenter','decision-center.js?v=1','decision-center.css?v=1','RMDecisionCenter?.render'])if(!nav.includes(marker))failures.push(`personal-nav.js: falta ${marker}`);
+for(const marker of ['loadDecisionCenter','decision-center.js?v=2','decision-center.css?v=1','RMDecisionCenter?.render'])if(!nav.includes(marker))failures.push(`personal-nav.js: falta ${marker}`);
 if(!sw.includes("'decision-center.js'")||!sw.includes("'decision-center.css'"))failures.push('PWA no incluye el Centro de decisión');
 const version=Number((sw.match(/rm2627-static-v(\d+)/)||[])[1]);if(!Number.isFinite(version)||version<38)failures.push('PWA debe usar caché v38 o superior para el Centro de decisión');
 if(failures.length){console.error('Decision center audit: FAIL');for(const f of failures)console.error(`- ${f}`);process.exit(1)}
