@@ -76,10 +76,11 @@ function popularNames(d){
   const order=['gk','lb','lcb','rcb','rb','dm1','dm2','am','lw','rw','st'];
   return order.map(k=>d.popularXI[k]).map(x=>typeof x==='string'?x:x?.name).filter(Boolean);
 }
+function perfectBadge(count){const n=Number(count)||0;return n>0?`<span class="mil-perfect" title="${n} pleno${n===1?'':'s'}">★${n>1?`×${n}`:''}</span>`:''}
 function topTable(d){
   const rows=(d?.leaderboard||[]).slice(0,10),id=participantId();
   if(!rows.length)return '<div class="mil-empty">La clasificación empezará cuando exista una jornada puntuada.</div>';
-  return `<div class="mil-table"><div class="mil-tr head"><span>#</span><span>Usuario</span><span>Puntos</span><span>Media</span></div>${rows.map(r=>`<div class="mil-tr ${r.participantId===id?'me':''}"><b>${r.rank||'—'}</b><span>${esc(r.alias)}${r.participantId===id?' <small>Tú</small>':''}</span><strong>${r.hits??0}</strong><em>${Number.isFinite(r.avg)?Number(r.avg).toFixed(2):'—'}</em></div>`).join('')}</div>`;
+  return `<div class="mil-table"><div class="mil-tr head"><span>#</span><span>Usuario</span><span>Puntos</span><span>Media</span></div>${rows.map(r=>`<div class="mil-tr ${r.participantId===id?'me':''}"><b>${r.rank||'—'}</b><span class="mil-user">${esc(r.alias)}${perfectBadge(r.perfect)}${r.participantId===id?' <small>Tú</small>':''}</span><strong>${r.hits??0}</strong><em>${Number.isFinite(r.avg)?Number(r.avg).toFixed(2):'—'}</em></div>`).join('')}</div>`;
 }
 function leagues(d){
   const rows=d?.myLeagues||[];
