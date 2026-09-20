@@ -69,6 +69,33 @@ window.RMSeasonMatchEntries=Object.freeze([
       'Carlos Espí':Object.freeze({minutes:3,sofascore:7.8,fotmob:'SC',statmuse:8.2}),
       'Dumfries':Object.freeze({minutes:0})
     })
+  }),
+  Object.freeze({
+    id:'atletico',
+    label:'Atlético de Madrid',
+    short:'ATM',
+    comp:'LaLiga',
+    date:'2026-09-20',
+    duration:90,
+    final:false,
+    sourceNote:'Borrador postpartido · minutos y cambios verificados en StatMuse/Sofascore; notas StatMuse disponibles. SofaScore/FotMob pendientes para cerrar la media 3/3.',
+    players:Object.freeze({
+      'Courtois':Object.freeze({minutes:90,statmuse:6.5}),
+      'Dumfries':Object.freeze({minutes:90,statmuse:6.8}),
+      'Konaté':Object.freeze({minutes:90,statmuse:6.9}),
+      'Huijsen':Object.freeze({minutes:52,statmuse:5.0,note:'Expulsado en el 52.'}),
+      'Cucurella':Object.freeze({minutes:90,statmuse:6.8}),
+      'Tchouaméni':Object.freeze({minutes:71,statmuse:7.1}),
+      'Valverde':Object.freeze({minutes:90,statmuse:7.1}),
+      'Arda Güler':Object.freeze({minutes:54,statmuse:6.4}),
+      'Vini Jr.':Object.freeze({minutes:54,statmuse:5.4}),
+      'Bellingham':Object.freeze({minutes:82,statmuse:7.2}),
+      'Mbappé':Object.freeze({minutes:90,statmuse:6.3}),
+      'Rüdiger':Object.freeze({minutes:36,statmuse:7.4,note:'Entró en el 54; gol en el 89.'}),
+      'Diomande':Object.freeze({minutes:36,statmuse:6.9,note:'Entró en el 54.'}),
+      'Camavinga':Object.freeze({minutes:19,statmuse:7.0,note:'Entró en el 71.'}),
+      'Bernardo Silva':Object.freeze({minutes:8,statmuse:7.6,note:'Entró en el 82; asistencia a Rüdiger.'})
+    })
   })
 ]);
 
