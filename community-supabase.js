@@ -48,8 +48,8 @@
     if(!data){box.innerHTML='<div class="result-pending"><b>No publicaste una predicción para esta jornada.</b><span>La clasificación sí muestra los resultados de quienes participaron.</span></div>';return}
     const real=publishedOfficial(),when=new Date(data.savedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
     if(!real){box.innerHTML=`<div class="result-pending"><b>Predicción guardada ✓</b><span>${data.name?`${data.name} · `:''}${when}</span><span>El resultado aparecerá aquí cuando publiquemos el once oficial del Real Madrid.</span></div>`;return}
-    const actual=new Set(real),chosen=Object.values(data.xi||{}).filter(Boolean),hits=chosen.filter(n=>actual.has(n)),misses=chosen.filter(n=>!actual.has(n)),points=hits.length+(hits.length===11?1:0);
-    box.innerHTML=`<div class="prediction-score"><span>Tu resultado</span><strong>${points}<small> pts</small></strong></div><div class="result-breakdown"><b>${hits.length}/11 titulares acertados${hits.length===11?' · +1 bonus por pleno':''}</b><div class="prediction-list good">${hits.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>${misses.length?`<b>No fueron titulares</b><div class="prediction-list bad">${misses.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>`:''}</div>`;
+    const actual=new Set(real),chosen=Object.values(data.xi||{}).filter(Boolean),hits=chosen.filter(n=>actual.has(n)),misses=chosen.filter(n=>!actual.has(n)),points=hits.length;
+    box.innerHTML=`<div class="prediction-score"><span>Tu resultado</span><strong>${points}<small> pts</small></strong></div><div class="result-breakdown"><b>${hits.length}/11 titulares acertados${hits.length===11?' · ★ PLENO conseguido':''}</b><div class="prediction-list good">${hits.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>${misses.length?`<b>No fueron titulares</b><div class="prediction-list bad">${misses.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>`:''}</div>`;
   };
   savePrediction=async function(){
     if(closed()){toast('La predicción ya está cerrada');return}
