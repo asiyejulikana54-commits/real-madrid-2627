@@ -1,5 +1,5 @@
 (()=>{
-const AUDIT_DATE='2026-09-11';
+const AUDIT_DATE='2026-09-20';
 const CHRONOLOGY_IDS=Object.freeze(['espanyol','real-sociedad','malaga','betis','inter']);
 const POLICY=Object.freeze({
   full:'3 notas publicadas → media aritmética de SofaScore + FotMob + StatMuse.',
@@ -119,7 +119,7 @@ function applyOfficialRanking(){
     rankedPlayers:official.length,totalMinutes,mismatches:Object.freeze(minuteMismatches)
   });
   window.RMRankingMigration=Object.freeze({
-    date:AUDIT_DATE,version:4,status:'official',source:'SofaScore + FotMob + StatMuse',formSource:data.formSource,
+    date:AUDIT_DATE,version:6,status:'official',source:'SofaScore + FotMob + StatMuse',formSource:data.formSource,
     policy:POLICY,totalMinutes,totalRatedMinutes,legacy:Object.freeze(legacy),official:Object.freeze(official),
     comparison:Object.freeze(comparison),positionChanges:Object.freeze(comparison.filter(row=>row.positionDelta!==0))
   });
