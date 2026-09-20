@@ -64,7 +64,8 @@ const matches=[
 {rival:'Málaga',comp:'LaLiga',note:'Notas individuales y comparación con el Betis incorporadas al seguimiento.',state:'Analizado'},
 {rival:'Real Sociedad',comp:'LaLiga',note:'Valoración por jugador y comparación del tipo de partido con los anteriores.',state:'Analizado'},
 {rival:'Espanyol',comp:'LaLiga',note:'Cuarto partido del primer corte histórico.',state:'Analizado'},
-{rival:'Inter',comp:'Champions',note:'Partido posterior incorporado al seguimiento de tres fuentes y eficiencia por minutos.',state:'Analizado'}
+{rival:'Inter',comp:'Champions',note:'Partido posterior incorporado al seguimiento de tres fuentes y eficiencia por minutos.',state:'Analizado'},
+{rival:'Atlético de Madrid',comp:'LaLiga',note:'Derrota 2-1 en el Metropolitano. Jornada cerrada y predicciones puntuadas; las notas de rendimiento se incorporarán cuando estén verificadas.',state:'Finalizado'}
 ];
 
 const slots=[['gk','POR',50,91,'POR'],['lb','LI',14,73,'LI'],['lcb','DFC',38,75,'DFC'],['rcb','DFC',62,75,'DFC'],['rb','LD',86,73,'LD'],['dm1','MC',36,55,'MC'],['dm2','MC',64,55,'MC'],['am','MP',50,37,'MP'],['lw','EI',20,25,'EI'],['rw','ED',80,25,'ED'],['st','DC',50,12,'DC']];
@@ -91,9 +92,9 @@ function validLineup(xi={}){
 }
 
 
-const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:45:00+02:00'});
-const officialXI=null;
-const officialXIBySlot={};
+const predictionMatch=Object.freeze({id:'atletico-2026-09-20',rival:'Atlético de Madrid',home:false,venue:'Riyadh Air Metropolitano',comp:'LaLiga',kickoff:'2026-09-20T16:15:00+02:00',deadline:'2026-09-20T14:45:00+02:00',result:Object.freeze({home:2,away:1,status:'Final'})});
+const officialXI=Object.freeze(['Courtois','Dumfries','Konaté','Huijsen','Cucurella','Tchouaméni','Valverde','Arda Güler','Vini Jr.','Bellingham','Mbappé']);
+const officialXIBySlot=Object.freeze({gk:'Courtois',lb:'Cucurella',lcb:'Huijsen',rcb:'Konaté',rb:'Dumfries',dm1:'Tchouaméni',dm2:'Valverde',am:'Bellingham',lw:'Vini Jr.',rw:'Arda Güler',st:'Mbappé'});
 window.RMOfficialXIBySlot=Object.freeze({...officialXIBySlot});
 const predictionStorageKey=`rm_prediction_${predictionMatch.id}`;
 
