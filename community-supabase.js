@@ -15,10 +15,10 @@
   function syncCopy(){
     const t=teams(),hero=document.querySelector('#inicio .next-match');
     if(hero){
-      const title=hero.querySelector('.match-title');if(title)title.innerHTML=`${escapeHtml(t.home.toUpperCase())} <span>vs</span> ${escapeHtml(t.away.toUpperCase())}`;
-      const meta=hero.querySelector('.match-meta');if(meta)meta.innerHTML=[formatKickoff(match.kickoff),match.comp,match.venue].filter(Boolean).map(v=>`<span class="pill">${escapeHtml(v)}</span>`).join('');
+      const title=hero.querySelector('.match-title');if(title)title.innerHTML=match.result?`${escapeHtml(t.home.toUpperCase())} <span>${match.result.home} - ${match.result.away}</span> ${escapeHtml(t.away.toUpperCase())}`:`${escapeHtml(t.home.toUpperCase())} <span>vs</span> ${escapeHtml(t.away.toUpperCase())}`;
+      const meta=hero.querySelector('.match-meta');if(meta)meta.innerHTML=(match.result?[`FINAL · ${match.result.home}-${match.result.away}`,match.comp,match.venue]:[formatKickoff(match.kickoff),match.comp,match.venue]).filter(Boolean).map(v=>`<span class="pill">${escapeHtml(v)}</span>`).join('');
     }
-    const focus=document.querySelector('#inicio .focus-box h3');if(focus)focus.textContent=`Debates abiertos para el ${match.rival}`;
+    const focus=document.querySelector('#inicio .focus-box h3');if(focus)focus.textContent=match.result?`Partido finalizado · ${match.rival}`:`Debates abiertos para el ${match.rival}`;
     const notes=document.getElementById('notes');if(notes)notes.placeholder=`Ej.: contra el ${match.rival} quiero anotar rotaciones, descansos y dudas tácticas...`;
     const predHead=document.querySelector('#prediccion .section-head h2');if(predHead)predHead.textContent=`Predice el XI contra el ${match.rival}`;
     const rules=document.querySelector('#prediccion .prediction-rules');if(rules)rules.innerHTML=`<b>${escapeHtml(t.home.toUpperCase())} vs ${escapeHtml(t.away.toUpperCase())}</b><span>${escapeHtml(formatKickoff(match.kickoff))}</span><span>Se cierra: ${escapeHtml(formatClock(match.deadline))}</span>`;
@@ -34,9 +34,10 @@
       if(name)name.value=data.name||'';if(comment)comment.value=data.comment||'';
     }else setPredictionXI({});
   };
+  function publishedOfficial(){const fromServer=window.RMCommunityData?.match?.officialXI;return Array.isArray(fromServer)&&fromServer.length===11?fromServer:(Array.isArray(officialXI)&&officialXI.length===11?officialXI:null)}
   renderPredictionStatus=function(){
-    const status=document.getElementById('predictionStatus'),isClosed=closed();
-    if(status){status.textContent=isClosed?'Predicción cerrada':'Predicción abierta';status.className='pill '+(isClosed?'closed':'open')}
+    const status=document.getElementById('predictionStatus'),real=publishedOfficial(),isClosed=closed()||Boolean(real);
+    if(status){status.textContent=real?'Once oficial publicado':isClosed?'Predicción cerrada':'Predicción abierta';status.className='pill '+(isClosed?'closed':'open')}
     slots.forEach(s=>{const el=document.getElementById('pred_'+s[0]);if(el)el.disabled=isClosed});
     const save=document.getElementById('savePredictionBtn');if(save)save.disabled=isClosed;
     renderPredictionResult();
@@ -44,9 +45,11 @@
   renderPredictionResult=function(){
     const box=document.getElementById('predictionResult');if(!box)return;
     const data=saved();
-    if(!data){box.innerHTML='<div class="result-pending"><b>Aún no has guardado una predicción.</b><span>Completa el once y pulsa “Publicar predicción”.</span></div>';return}
-    const when=new Date(data.savedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
-    box.innerHTML=`<div class="result-pending"><b>Predicción guardada ✓</b><span>${data.name?`${data.name} · `:''}${when}</span><span>El resultado aparecerá aquí cuando publiquemos el once oficial del Real Madrid.</span></div>`;
+    if(!data){box.innerHTML='<div class="result-pending"><b>No publicaste una predicción para esta jornada.</b><span>La clasificación sí muestra los resultados de quienes participaron.</span></div>';return}
+    const real=publishedOfficial(),when=new Date(data.savedAt).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'});
+    if(!real){box.innerHTML=`<div class="result-pending"><b>Predicción guardada ✓</b><span>${data.name?`${data.name} · `:''}${when}</span><span>El resultado aparecerá aquí cuando publiquemos el once oficial del Real Madrid.</span></div>`;return}
+    const actual=new Set(real),chosen=Object.values(data.xi||{}).filter(Boolean),hits=chosen.filter(n=>actual.has(n)),misses=chosen.filter(n=>!actual.has(n)),points=hits.length+(hits.length===11?1:0);
+    box.innerHTML=`<div class="prediction-score"><span>Tu resultado</span><strong>${points}<small> pts</small></strong></div><div class="result-breakdown"><b>${hits.length}/11 titulares acertados${hits.length===11?' · +1 bonus por pleno':''}</b><div class="prediction-list good">${hits.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>${misses.length?`<b>No fueron titulares</b><div class="prediction-list bad">${misses.map(n=>`<span>${escapeHtml(displayName(n))}</span>`).join('')}</div>`:''}</div>`;
   };
   savePrediction=async function(){
     if(closed()){toast('La predicción ya está cerrada');return}
@@ -86,6 +89,6 @@
 
   window.RMCommunityApi=Object.freeze({url:apiUrl,available:communityBackendAvailable,participantId:getParticipantId,refresh:()=>loadCommunity(true),match:Object.freeze({...match})});
 
-  function boot(){syncCopy();restorePrediction();renderPredictionStatus();setTimeout(()=>loadCommunity(true),0)}
+  function boot(){syncCopy();restorePrediction();renderPredictionStatus();document.addEventListener('rm-community-updated',()=>setTimeout(()=>renderPredictionStatus(),0));setTimeout(()=>loadCommunity(true),0)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
