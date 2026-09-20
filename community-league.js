@@ -16,6 +16,7 @@ function savedAlias(){
 function setAlias(value){const alias=String(value||'').trim().slice(0,24);if(alias)safe(()=>localStorage.setItem(ALIAS_KEY,alias));return alias}
 function fmt(v,d=2){return Number.isFinite(v)?Number(v).toFixed(d):'—'}
 function rankLabel(row){return row?.rank?`#${row.rank}`:'—'}
+function perfectBadge(count){const n=Number(count)||0;return n>0?`<span class="cgl-perfect" title="${n} pleno${n===1?'':'s'}">★${n>1?`×${n}`:''}</span>`:''}
 function scoredLabel(d){const n=Number(d?.scoredMatches)||0;return `${n} jornada${n===1?'':'s'} puntuada${n===1?'':'s'}`}
 function currentUser(d=data()){return d?.myCompetition||d?.leaderboard?.find(mine)||null}
 function ensureRoot(){
@@ -34,11 +35,11 @@ function personalCard(d){
 }
 function generalTable(d){
   const rows=(d?.leaderboard||[]).slice(0,50);if(!rows.length)return `<div class="cgl-empty"><b>Clasificación todavía sin resultados</b><span>Se activará en cuanto exista un XI oficial para una jornada con pronósticos reales.</span></div>`;
-  return `<div class="cgl-table"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Puntos</span><span>Media</span><span>Racha 8+</span><span>J.</span></div>${rows.map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span>${esc(r.alias)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}</strong><em>${fmt(r.avg)}</em><em>${r.streak8||0}</em><em>${r.scoredMatches||0}</em></div>`).join('')}</div><p class="cgl-method">La general ordena por aciertos acumulados; en empate, manda la media y después los plenos. Solo cuentan predicciones realmente publicadas antes del cierre.</p>`;
+  return `<div class="cgl-table"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Puntos</span><span>Media</span><span>Racha 8+</span><span>J.</span></div>${rows.map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span class="cgl-user">${esc(r.alias)}${perfectBadge(r.perfect)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}</strong><em>${fmt(r.avg)}</em><em>${r.streak8||0}</em><em>${r.scoredMatches||0}</em></div>`).join('')}</div><p class="cgl-method">La general ordena por puntos acumulados; cada acierto vale 1 punto y un pleno vale 11. En empate, los plenos sirven como desempate. Solo cuentan predicciones realmente publicadas antes del cierre.</p>`;
 }
 function roundTable(d){
   const rows=d?.roundLeaderboard||[],m=d?.latestScoredMatch;if(!m||!rows.length)return `<div class="cgl-empty"><b>Ranking de jornada pendiente</b><span>Aparecerá al publicarse el primer XI oficial puntuable.</span></div>`;
-  return `<div class="cgl-round-head"><div><span>ÚLTIMA JORNADA PUNTUADA</span><b>Real Madrid · ${esc(m.rival||m.id)}</b></div><strong>${rows.length}<small>participantes</small></strong></div><div class="cgl-table round"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Aciertos</span><span></span><span></span><span></span></div>${rows.slice(0,50).map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span>${esc(r.alias)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}/11</strong><em></em><em></em><em></em></div>`).join('')}</div>`;
+  return `<div class="cgl-round-head"><div><span>ÚLTIMA JORNADA PUNTUADA</span><b>Real Madrid · ${esc(m.rival||m.id)}</b></div><strong>${rows.length}<small>participantes</small></strong></div><div class="cgl-table round"><div class="cgl-tr head"><span>#</span><span>Pronosticador</span><span>Aciertos</span><span></span><span></span><span></span></div>${rows.slice(0,50).map(r=>`<div class="cgl-tr ${mine(r)?'me':''}"><b>${r.rank}</b><span class="cgl-user">${esc(r.alias)}${perfectBadge(r.perfect?1:0)}${mine(r)?'<small>Tú</small>':''}</span><strong>${r.hits}/11</strong><em></em><em></em><em></em></div>`).join('')}</div>`;
 }
 function leagueCards(d){
   const leagues=d?.myLeagues||[];if(!leagues.length)return `<div class="cgl-empty compact"><b>No encontramos ligas vinculadas a este navegador</b><span>Actualizamos la pertenencia al abrir esta sección. Si tienes un código de invitación, introdúcelo debajo para entrar.</span></div>`;
