@@ -49,7 +49,7 @@ function currentSeasonMatch(){
   })||null;
 }
 function seasonMatchReady(){return Boolean(currentSeasonMatch())}
-function ensureSeasonExtension(){if(seasonMatchReady())return Promise.resolve(true);if(seasonLoader)return seasonLoader;seasonLoader=loadScriptOnce('season-input.js?v=4').then(()=>loadScriptOnce('season-extension.js?v=9')).then(()=>{setTimeout(render,0);return seasonMatchReady()});return seasonLoader}
+function ensureSeasonExtension(){if(seasonMatchReady())return Promise.resolve(true);if(seasonLoader)return seasonLoader;seasonLoader=loadScriptOnce('season-input.js?v=5').then(()=>loadScriptOnce('season-extension.js?v=9')).then(()=>{setTimeout(render,0);return seasonMatchReady()});return seasonLoader}
 function fmtRating(v){return Number.isFinite(v)?Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 function ratingTone(v){if(!Number.isFinite(v))return 'pending';if(v>=8)return 'elite';if(v>=7)return 'good';if(v<6.5)return 'low';return 'normal'}
 function ratingColor(v){if(!Number.isFinite(v))return '#8ea2b5';if(v>=8)return '#d8b44a';if(v>=7)return '#47d18c';if(v<6.5)return '#eb6969';return '#72a8d9'}
