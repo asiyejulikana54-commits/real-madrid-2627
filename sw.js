@@ -19,7 +19,7 @@ self.addEventListener('activate',event=>{
   })());
 });
 
-function isBackend(url){return url.pathname.includes('/.netlify/functions/')||url.hostname.endsWith('.supabase.co');}
+function isBackend(url){return url.hostname.endsWith('.supabase.co');}
 function isSameOrigin(url){return url.origin===self.location.origin;}
 
 async function cachedFallback(cache,request){
