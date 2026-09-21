@@ -1,14 +1,14 @@
 (()=>{
 let deferredInstallPrompt=null;
 let installed=false;
-const SW_VERSION='77';
+const SW_VERSION='78';
 const SW_RELOAD_KEY=`rm_sw_reload_v${SW_VERSION}`;
 const MATCH_ANNOUNCEMENT=Object.freeze({
-  id:'atletico-xi-open-2026-09-18',
-  title:'Ya puedes hacer tu once',
-  body:'La predicción contra el Atlético de Madrid ya está abierta.',
-  action:'Hacer mi XI',
-  section:'prediccion'
+  id:'atletico-postmatch-2026-09-21',
+  title:'Atlético 2–1 Real Madrid',
+  body:'El partido ya está cerrado: XI oficial, notas y análisis están disponibles.',
+  action:'Ver análisis',
+  section:'partido'
 });
 const ANNOUNCEMENT_DISMISSED_KEY=`rm_announcement_dismissed_${MATCH_ANNOUNCEMENT.id}`;
 const ANNOUNCEMENT_NATIVE_KEY=`rm_announcement_native_${MATCH_ANNOUNCEMENT.id}`;
