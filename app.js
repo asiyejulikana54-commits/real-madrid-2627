@@ -131,7 +131,7 @@ function buildPitch(){
       window.RMLineupPro?.render?.();
     });
   });
-  loadPreset('base',false);renderSaved();
+  loadPreset('official',false);renderSaved();
 }
 function currentXI(){return Object.fromEntries(slots.map(s=>[s[0],document.getElementById('slot_'+s[0])?.value||'']))}
 function setXI(xi){
@@ -139,7 +139,11 @@ function setXI(xi){
   slots.forEach(s=>{const el=document.getElementById('slot_'+s[0]);if(el)el.value=clean[s[0]]||''});
   window.RMLineupPro?.render?.();
 }
-function loadPreset(kind='base',go=true){
+function latestOfficialLineup(){
+  const candidate=(window.RMOfficialXIBySlot&&typeof window.RMOfficialXIBySlot==='object')?window.RMOfficialXIBySlot:(typeof officialXIBySlot!=='undefined'?officialXIBySlot:null);
+  return candidate&&validLineup(candidate)?candidate:null;
+}
+function loadPreset(kind='official',go=true){
   if(kind==='prediction'){
     const candidate=typeof currentPredictionXI==='function'?currentPredictionXI():{};
     if(!validLineup(candidate)){toast('Completa primero una predicción válida de 11 jugadores');return}
@@ -147,9 +151,11 @@ function loadPreset(kind='base',go=true){
     const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');
     if(name)name.value='Predicción actual';if(comment)comment.value='Copia de tu predicción actual para revisarla como variante.';
   }else{
-    setXI(baseXI);
-    const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment');
-    if(name)name.value='Once base de referencia';if(comment)comment.value='Once base guardado como punto de partida para crear variantes.';
+    const candidate=latestOfficialLineup();
+    if(!candidate){toast('Todavía no hay un XI oficial completo disponible');return}
+    setXI(candidate);
+    const name=document.getElementById('lineupName'),comment=document.getElementById('lineupComment'),rival=predictionMatch?.rival||'último partido';
+    if(name)name.value=`XI oficial · ${rival}`;if(comment)comment.value='Último XI oficial registrado, cargado como punto de partida para crear variantes.';
   }
   if(go)showSection('once');
 }
