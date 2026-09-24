@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f6fff">
+<title>GuardShift</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--nav:#0b2a4d;--primary:#0f6fff;--text:#172033;--muted:#6b7280;--border:#dfe7f2;--green:#0a8f47;--red:#c93636}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+.auth{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at top right,#d7e8ff,transparent 35%)}
+.auth-card{width:min(440px,100%);background:#fff;border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 20px 60px rgba(18,35,60,.12)}
+.logo{font-size:24px;font-weight:900;display:flex;gap:10px;align-items:center}.muted{color:var(--muted);font-size:14px}
+.tabs{display:flex;background:#eef3fa;padding:4px;border-radius:12px;margin:20px 0}.tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:700}.tabs .on{background:#fff;box-shadow:0 2px 8px #0001}
+.form{display:grid;gap:13px}.field{display:grid;gap:6px}.field label{font-size:13px;font-weight:700}.field input,.field select{border:1px solid #cfd9e7;border-radius:12px;padding:11px 12px;width:100%;background:#fff}
+.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800}.primary{background:var(--primary);color:#fff}.secondary{background:#eaf1fb;color:#234}
+.msg{padding:11px 13px;border-radius:12px;font-size:13px;margin:12px 0}.err{background:#fdecec;color:#9d1c1c}.ok{background:#e7f7ee;color:#08723a}
+.shell{min-height:100vh;display:grid;grid-template-columns:235px 1fr}.side{background:var(--nav);color:#fff;padding:20px 14px;position:sticky;top:0;height:100vh}
+.side .logo{font-size:20px;margin:3px 8px 26px}.nav{display:grid;gap:7px}.nav button{border:0;background:transparent;color:#dce9f8;text-align:left;padding:12px;border-radius:11px}.nav button.on,.nav button:hover{background:#17426f;color:#fff}
+.logout{position:absolute;bottom:18px;left:14px;right:14px;border:1px solid #ffffff40;background:transparent;color:#fff;padding:10px;border-radius:11px}
+.main{padding:26px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}.top h1{margin:0;font-size:27px}.actions{display:flex;gap:9px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid var(--border);border-radius:17px;padding:17px;box-shadow:0 8px 24px rgba(18,35,60,.06)}
+.kpi strong{display:block;font-size:30px;margin-top:8px}.section{margin-top:17px}.section h2{font-size:18px}.table{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}
+table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13px;border-bottom:1px solid #edf1f6;text-align:left;font-size:14px}th{font-size:12px;text-transform:uppercase;color:var(--muted);background:#fbfcfe}
+.badge{display:inline-block;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:800}.green{background:#e8f7ef;color:var(--green)}.red{background:#fdecec;color:var(--red)}.blue{background:#eaf2ff;color:#1456b8}
+.empty{text-align:center;color:var(--muted);padding:26px}.mobile{display:none;gap:7px;overflow:auto;margin-bottom:15px}.mobile button{white-space:nowrap;border:1px solid var(--border);background:#fff;padding:9px;border-radius:10px}.mobile .on{background:var(--nav);color:#fff}
+.modal-bg{position:fixed;inset:0;background:#0b1b2e88;display:grid;place-items:center;padding:16px;z-index:20}.modal{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center}.x{border:0;background:#eef3f8;border-radius:9px;width:36px;height:36px}
+.week{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}.weekgrid{display:grid;grid-template-columns:165px repeat(7,125px);min-width:1040px}.weekgrid>div{padding:9px;border-right:1px solid #e9eef5;border-bottom:1px solid #e9eef5;min-height:64px}.wh{font-weight:800;background:#f9fbfd}.chip{background:#eaf2ff;color:#1456b8;padding:7px;border-radius:9px;font-size:12px;margin-bottom:5px}.chip.open{background:#fdecec;color:#b42318}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.mobile{display:flex}.cards{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
+@media(max-width:560px){.cards{grid-template-columns:1fr}.top{display:grid}.actions .btn{flex:1}.auth-card{padding:22px}}
+</style>
+</head>
+<body><div id="app"></div>
+<script>
+(function(){
+var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
+var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
+var sb=supabase.createClient(URL,KEY);
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[]};
+var app=document.getElementById('app');
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
+function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
+function t(v){return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit'}).format(new Date(v))}
+function msg(text,ok){return '<div class="msg '+(ok?'ok':'err')+'">'+esc(text)+'</div>'}
+function auth(mode,message){
+ mode=mode||'login';
+ app.innerHTML='<div class="auth"><div class="auth-card"><div class="logo">🛟 GuardShift</div><p class="muted">Gestión de personal, turnos y sustituciones.</p>'+
+ '<div class="tabs"><button id="tabLogin" class="'+(mode==='login'?'on':'')+'">Entrar</button><button id="tabSignup" class="'+(mode==='signup'?'on':'')+'">Crear cuenta</button></div>'+
+ (message?msg(message,message.indexOf('✅')===0):'')+
+ '<form id="authForm" class="form">'+(mode==='signup'?'<div class="field"><label>Nombre y apellidos</label><input name="name" required></div>':'')+
+ '<div class="field"><label>Correo electrónico</label><input name="email" type="email" required></div>'+
+ '<div class="field"><label>Contraseña</label><input name="password" type="password" minlength="6" required></div>'+
+ '<button class="btn primary">'+(mode==='login'?'Entrar':'Crear cuenta')+'</button></form></div></div>';
+ document.getElementById('tabLogin').onclick=function(){auth('login')};
+ document.getElementById('tabSignup').onclick=function(){auth('signup')};
+ document.getElementById('authForm').onsubmit=function(e){handleAuth(e,mode)};
+}
+async function handleAuth(e,mode){
+ e.preventDefault();var f=new FormData(e.target),res;
+ if(mode==='signup'){
+   res=await sb.auth.signUp({email:f.get('email'),password:f.get('password'),options:{data:{full_name:f.get('name')},emailRedirectTo:location.href}});
+   if(res.error){auth('signup',res.error.message);return}
+   if(!res.data.session){auth('login','✅ Cuenta creada. Confirma el correo y vuelve aquí para iniciar sesión.');return}
+ }else{
+   res=await sb.auth.signInWithPassword({email:f.get('email'),password:f.get('password')});
+   if(res.error){auth('login',res.error.message);return}
+ }
+ boot();
+}
+async function boot(){
+ var r=await sb.auth.getSession();state.session=r.data.session;
+ if(!state.session){auth();return}
+ var p=await sb.from('profiles').select('*').eq('id',state.session.user.id).maybeSingle();
+ if(p.error){fatal(p.error.message);return}
+ state.profile=p.data;
+ if(!state.profile){onboard();return}
+ var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
+ state.company=c.data;await load();render();
+}
+function onboard(error){
+ var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
+ app.innerHTML='<div class="auth"><div class="auth-card"><div class="logo">🛟 GuardShift</div><h2>Configura tu empresa</h2><p class="muted">Crearás el espacio de trabajo del coordinador.</p>'+
+ (error?msg(error,false):'')+'<form id="onb" class="form"><div class="field"><label>Tu nombre</label><input name="full_name" value="'+esc(name)+'" required></div>'+
+ '<div class="field"><label>Empresa</label><input name="company" placeholder="Socorrismo Mediterráneo" required></div>'+
+ '<div class="field"><label>Teléfono</label><input name="phone"></div><button class="btn primary">Crear GuardShift</button><button type="button" id="outOnb" class="btn secondary">Cerrar sesión</button></form></div></div>';
+ document.getElementById('onb').onsubmit=createWorkspace;document.getElementById('outOnb').onclick=logout;
+}
+async function createWorkspace(e){
+ e.preventDefault();var f=new FormData(e.target),uid=state.session.user.id;
+ var c=await sb.from('companies').insert({name:f.get('company'),email:state.session.user.email,phone:f.get('phone')||null,created_by:uid}).select().single();
+ if(c.error){onboard(c.error.message);return}
+ var p=await sb.from('profiles').insert({id:uid,company_id:c.data.id,full_name:f.get('full_name'),phone:f.get('phone')||null,role:'coordinator',active:true});
+ if(p.error){onboard(p.error.message);return}boot();
+}
+async function load(){
+ var rs=await Promise.all([
+  sb.from('facilities').select('*').order('name'),
+  sb.from('workers').select('*').order('full_name'),
+  sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at')
+ ]);
+ if(rs[0].error||rs[1].error||rs[2].error){fatal((rs[0].error||rs[1].error||rs[2].error).message);return}
+ state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];
+}
+function nav(){
+ var items=[['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos']];
+ return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
+}
+function shell(title,sub,body,actions){
+ app.innerHTML='<div class="shell"><aside class="side"><div class="logo">🛟 GuardShift</div><div class="nav">'+nav()+'</div><button class="logout" id="logout">Cerrar sesión</button></aside>'+
+ '<main class="main"><div class="mobile">'+nav()+'</div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
+ document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');render()}});
+ document.getElementById('logout').onclick=logout;
+}
+function badge(s){var x={assigned:['Asignado','green'],open:['Sin cubrir','red'],cancelled:['Cancelado','blue'],completed:['Completado','blue']}[s]||[s,'blue'];return '<span class="badge '+x[1]+'">'+x[0]+'</span>'}
+function shiftTable(rows){
+ if(!rows.length)return '<div class="card empty">No hay turnos que mostrar.</div>';
+ return '<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Horario</th><th>Trabajador</th><th>Estado</th></tr></thead><tbody>'+
+ rows.map(function(s){return '<tr><td>'+d(s.starts_at)+'</td><td>'+esc(s.facilities&&s.facilities.name||'—')+'</td><td>'+t(s.starts_at)+'–'+t(s.ends_at)+'</td><td>'+esc(s.workers&&s.workers.full_name||'Sin asignar')+'</td><td>'+badge(s.status)+'</td></tr>'}).join('')+'</tbody></table></div>';
+}
+function dashboard(){
+ var open=state.shifts.filter(function(s){return s.status==='open'});
+ var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div></div>'+
+ '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8))+'</div><div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8))+'</div>';
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;
+}
+function facilities(){
+ var body=state.facilities.length?'<div class="cards">'+state.facilities.map(function(f){return '<div class="card"><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay instalaciones.</div>';
+ shell('Instalaciones','Hoteles, piscinas y otros centros.',body,'<button class="btn primary" id="add">+ Instalación</button>');document.getElementById('add').onclick=facilityModal;
+}
+function workers(){
+ var body=state.workers.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Estado</th></tr></thead><tbody>'+
+ state.workers.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay trabajadores.</div>';
+ shell('Trabajadores','Gestiona la plantilla.',body,'<button class="btn primary" id="add">+ Trabajador</button>');document.getElementById('add').onclick=workerModal;
+}
+function shifts(){shell('Turnos','Crea y asigna turnos.',shiftTable(state.shifts),'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=shiftModal}
+function monday(){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
+function schedule(){
+ var start=monday(),days=[],names=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];for(var i=0;i<7;i++){var q=new Date(start);q.setDate(q.getDate()+i);days.push(q)}
+ var grid='<div class="week"><div class="weekgrid"><div class="wh">Trabajador</div>'+days.map(function(x,i){return '<div class="wh">'+names[i]+'<br><span class="muted">'+x.getDate()+'/'+(x.getMonth()+1)+'</span></div>'}).join('');
+ state.workers.forEach(function(w){grid+='<div class="wh">'+esc(w.full_name)+'</div>';days.forEach(function(day){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.worker_id===w.id&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});grid+='<div>'+list.map(function(s){return '<div class="chip">'+esc(s.facilities&&s.facilities.name||'Turno')+'<br>'+t(s.starts_at)+'–'+t(s.ends_at)+'</div>'}).join('')+'</div>'})});
+ grid+='<div class="wh">⚠️ Sin cubrir</div>';days.forEach(function(day){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.status==='open'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});grid+='<div>'+list.map(function(s){return '<div class="chip open">'+esc(s.facilities&&s.facilities.name||'Turno')+'<br>'+t(s.starts_at)+'–'+t(s.ends_at)+'</div>'}).join('')+'</div>'});grid+='</div></div>';
+ shell('Cuadrante','Semana actual',grid,'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=shiftModal;
+}
+function modal(title,body){
+ var el=document.createElement('div');el.className='modal-bg';el.innerHTML='<div class="modal"><div class="modal-head"><h3>'+esc(title)+'</h3><button class="x">✕</button></div>'+body+'</div>';document.body.appendChild(el);el.querySelector('.x').onclick=function(){el.remove()};return el;
+}
+function ferr(form,text){var x=form.querySelector('.formerr');if(!x){x=document.createElement('div');x.className='msg err formerr';form.prepend(x)}x.textContent=text}
+function facilityModal(){
+ var el=modal('Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" required></div><div class="field"><label>Dirección</label><input name="address"></div><div class="field"><label>Socorristas necesarios</label><input name="required" type="number" min="1" value="1" required></div><button class="btn primary">Guardar</button></form>');
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target);var r=await sb.from('facilities').insert({company_id:state.profile.company_id,name:f.get('name'),address:f.get('address')||null,required_workers:Number(f.get('required'))});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
+}
+function workerModal(){
+ var el=modal('Nuevo trabajador','<form class="form"><div class="field"><label>Nombre y apellidos</label><input name="name" required></div><div class="field"><label>Email</label><input name="email" type="email"></div><div class="field"><label>Teléfono</label><input name="phone"></div><div class="field"><label>Zona</label><input name="zone"></div><button class="btn primary">Añadir</button></form>');
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target);var r=await sb.from('workers').insert({company_id:state.profile.company_id,full_name:f.get('name'),email:f.get('email')||null,phone:f.get('phone')||null,zone:f.get('zone')||null});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
+}
+function shiftModal(){
+ if(!state.facilities.length){alert('Primero crea una instalación.');return}
+ var fo=state.facilities.map(function(f){return '<option value="'+f.id+'">'+esc(f.name)+'</option>'}).join('');
+ var wo='<option value="">Sin asignar</option>'+state.workers.filter(function(w){return w.active}).map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
+ var el=modal('Nuevo turno','<form class="form"><div class="field"><label>Instalación</label><select name="facility" required>'+fo+'</select></div><div class="field"><label>Trabajador</label><select name="worker">'+wo+'</select></div><div class="field"><label>Inicio</label><input name="start" type="datetime-local" required></div><div class="field"><label>Fin</label><input name="end" type="datetime-local" required></div><button class="btn primary">Crear turno</button></form>');
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}var r=await sb.from('shifts').insert({company_id:state.profile.company_id,facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open',created_by:state.profile.id});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
+}
+function render(){({dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule}[state.page]||dashboard)()}
+async function logout(){await sb.auth.signOut();state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[]};auth()}
+function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
+sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
+})();
+</script></body></html>
