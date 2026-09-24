@@ -87,7 +87,7 @@ async function boot(){
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
  if(c.error){fatal(c.error.message);return}
- state.company=c.data;await load();setupRealtime();render();
+ state.company=c.data;await ensureServiceWorker();await load();setupRealtime();render();
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
@@ -242,18 +242,31 @@ async function uploadDocument(e){
 }
 function bindDocumentButtons(){document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}})}
 function mydocuments(){shell('Documentos','Tus titulaciones y documentos.',documentList(state.documents,false),'');bindDocumentButtons()}
+async function ensureServiceWorker(){
+ if(!('serviceWorker' in navigator))return null;
+ try{return await navigator.serviceWorker.register('./sw.js',{scope:'./'})}catch(e){return null}
+}
+async function showGuardShiftNotification(title,body){
+ if(!('serviceWorker' in navigator)||!('Notification' in window)||Notification.permission!=='granted')return;
+ var reg=await navigator.serviceWorker.ready;
+ await reg.showNotification(title,{body:body,tag:'guardshift-offer',renotify:true,data:{url:location.href}});
+}
 async function enableNotifications(){
- if(!('Notification' in window)){alert('Este navegador no admite notificaciones.');return}
- var p=await Notification.requestPermission();if(p==='granted')new Notification('GuardShift',{body:'Avisos activados correctamente.'});
+ if(!('Notification' in window)||!('serviceWorker' in navigator)){alert('Este navegador no admite notificaciones web compatibles.');return}
+ var p=await Notification.requestPermission();
+ if(p==='granted'){await ensureServiceWorker();await showGuardShiftNotification('GuardShift','Avisos activados correctamente.')}
+ else alert('Las notificaciones no están permitidas. Revisa los permisos del navegador.');
 }
 function setupRealtime(){
  if(state.realtime){sb.removeChannel(state.realtime);state.realtime=null}
  if(!state.profile)return;
- state.realtime=sb.channel('guardshift-live-'+state.profile.id)
-  .on('postgres_changes',{event:'*',schema:'public',table:'substitution_offers'},async function(payload){
+ var channel=sb.channel('guardshift-live-'+state.profile.id);
+ var cfg={event:'*',schema:'public',table:'substitution_offers'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)cfg.filter='worker_id=eq.'+state.profile.worker_id;
+ state.realtime=channel.on('postgres_changes',cfg,async function(payload){
     await load();
     if(state.profile.role==='worker'&&payload.eventType==='INSERT'){
-      if('Notification' in window&&Notification.permission==='granted')new Notification('Nuevo turno disponible',{body:'Tienes una nueva oferta de sustitución en GuardShift.'});
+      await showGuardShiftNotification('Nuevo turno disponible','Tienes una nueva oferta de sustitución en GuardShift.');
     }
     render();
   }).subscribe();
