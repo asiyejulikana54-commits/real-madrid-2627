@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -139,10 +139,11 @@ async function load(){
     sb.from('availability').select('*').order('starts_at',{ascending:true}),
     sb.from('worker_documents').select('*').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
-    sb.from('incidents').select('*').order('occurred_at',{ascending:false})
+    sb.from('incidents').select('*').order('occurred_at',{ascending:false}),
+    sb.from('leave_requests').select('*').order('starts_on',{ascending:false})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
@@ -151,16 +152,17 @@ async function load(){
     sb.from('substitutions').select('id,status,reason,created_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
-    sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false})
+    sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false}),
+    sb.from('leave_requests').select('*,workers(full_name)').order('starts_on',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];
  }
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
-   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['incidents','Incidencias'],['mydocuments','Documentos']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['incidents','Incidencias'],['documents','Documentos']];
+   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -187,14 +189,18 @@ function dashboard(){
  var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
  var today=new Date();today.setHours(0,0,0,0);var limit=new Date(today);limit.setDate(limit.getDate()+30);
  var expiring=state.documents.filter(function(x){return x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
+ var tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);var tomorrowEnd=new Date(tomorrow);tomorrowEnd.setHours(23,59,59,999);
+ var coverageIssues=state.facilities.filter(function(f){if(!f.active)return false;var count=state.shifts.filter(function(s){return s.facility_id===f.id&&s.status==='assigned'&&new Date(s.starts_at)>=tomorrow&&new Date(s.starts_at)<=tomorrowEnd}).length;return count<(f.required_workers||1)});
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Sustituciones pendientes</span><strong>'+pendingSubs.length+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div></div>'+
+ '<div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Cobertura insuficiente mañana</span><strong>'+coverageIssues.length+'</strong></div></div>'+
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
+ '<div class="section"><h2>Alertas de cobertura</h2>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(f){var count=state.shifts.filter(function(s){return s.facility_id===f.id&&s.status==='assigned'&&new Date(s.starts_at)>=tomorrow&&new Date(s.starts_at)<=tomorrowEnd}).length;return '<div class="card notice"><strong>'+esc(f.name)+'</strong><div class="muted">Asignados mañana: '+count+' · Necesarios: '+(f.required_workers||1)+'</div></div>'}).join('')+'</div>':'<div class="card empty">Cobertura completa para mañana.</div>')+'</div>'+
  '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>';
  shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;bindCoverButtons();
@@ -441,12 +447,13 @@ function availability(){
 function hoursPage(){
  var rows=state.timeEntries||[];
  var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
- var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div></div>'+
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisar</span><strong>'+rows.filter(function(x){return x.approval_status==='pending'}).length+'</strong></div></div>'+
  '<div class="section"><div class="mini-actions"><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button></div></div>'+
- (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Notas</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td>'+esc(x.notes||'')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
- shell('Horas trabajadas','Control de presencia y cómputo de horas.',body,'');
- document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Notas\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),(x.notes||'').replace(/"/g,'""')].map(function(v){return '"'+String(v)+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();URL.revokeObjectURL(a.href)};
+ (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
+ shell('Horas trabajadas','Control de presencia y revisión de fichajes.',body,'');
+ document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Estado\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending'].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();URL.revokeObjectURL(a.href)};
  document.getElementById('exportPdf').onclick=function(){window.print()};
+ document.querySelectorAll('[data-review-time]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_time_entry',{p_entry_id:b.getAttribute('data-review-time'),p_status:b.getAttribute('data-status'),p_clock_in:null,p_clock_out:null});if(r.error){alert(r.error.message);return}await load();render()}});
 }
 function clocking(){
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
@@ -456,6 +463,22 @@ function clocking(){
  shell('Fichaje','Registra entrada y salida.',body,'');
  document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('clock_in_shift',{p_shift_id:b.getAttribute('data-clock-in')});if(r.error){alert(r.error.message);return}await load();render()}});
  var co=document.getElementById('clockOut');if(co)co.onclick=async function(){var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;var r=await sb.rpc('clock_out_current',{p_notes:notes||null});if(r.error){alert(r.error.message);return}await load();render()};
+}
+
+function leavePage(){
+ if(state.profile.role==='worker'){
+   var body='<div class="card"><form id="leaveForm" class="form"><div class="field"><label>Tipo</label><select name="type"><option value="vacation">Vacaciones</option><option value="personal">Asunto personal</option><option value="sick">Baja / enfermedad</option><option value="other">Otro</option></select></div><div class="field"><label>Desde</label><input type="date" name="start" required></div><div class="field"><label>Hasta</label><input type="date" name="end" required></div><div class="field"><label>Motivo</label><input name="reason"></div><button class="btn primary">Enviar solicitud</button></form></div><div class="section">'+leaveList(state.leaveRequests||[],false)+'</div>';
+   shell('Ausencias','Solicitudes de vacaciones y ausencias.',body,'');
+   document.getElementById('leaveForm').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target);if(f.get('end')<f.get('start')){ferr(e.target,'La fecha final no puede ser anterior.');return}var r=await sb.from('leave_requests').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,starts_on:f.get('start'),ends_on:f.get('end'),leave_type:f.get('type'),reason:f.get('reason')||null});if(r.error){ferr(e.target,r.error.message);return}await load();render()};
+   document.querySelectorAll('[data-cancel-leave]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('cancel_own_leave_request',{p_request_id:b.getAttribute('data-cancel-leave')});if(r.error){alert(r.error.message);return}await load();render()}});
+ }else{
+   shell('Ausencias','Revisa solicitudes de vacaciones y ausencias.',leaveList(state.leaveRequests||[],true),'');
+   document.querySelectorAll('[data-review-leave]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_leave_request',{p_request_id:b.getAttribute('data-review-leave'),p_status:b.getAttribute('data-status')});if(r.error){alert(r.error.message);return}await load();render()}});
+ }
+}
+function leaveList(list,coordinator){
+ if(!list.length)return '<div class="card empty">No hay solicitudes.</div>';
+ return '<div class="stack">'+list.map(function(x){var w=x.workers||{};var st=x.status==='approved'?['Aprobada','green']:x.status==='rejected'?['Rechazada','red']:x.status==='cancelled'?['Cancelada','blue']:['Pendiente','amber'];return '<div class="card"><div class="doc-row"><div><strong>'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.leave_type)+'</strong><div class="muted">'+d(x.starts_on)+' → '+d(x.ends_on)+(x.reason?' · '+esc(x.reason):'')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+(x.status==='pending'?(coordinator?'<div class="mini-actions" style="margin-top:10px"><button class="btn small secondary" data-review-leave="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-leave="'+x.id+'" data-status="rejected">Rechazar</button></div>':'<button class="btn small danger" style="margin-top:10px" data-cancel-leave="'+x.id+'">Cancelar solicitud</button>'):'')+'</div>'}).join('')+'</div>';
 }
 function incidentsPage(){
  if(state.profile.role==='worker'){
@@ -474,12 +497,12 @@ function incidentList(list,coordinator){
 }
 function render(){
  var map=state.profile&&state.profile.role==='worker'
-   ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,offers:offers,availability:availability,incidents:incidentsPage,mydocuments:mydocuments}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,hours:hoursPage,incidents:incidentsPage,documents:documentsPage};
+   ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
