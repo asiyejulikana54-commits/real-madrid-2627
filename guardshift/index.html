@@ -38,6 +38,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 (function(){
 var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
+var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
 var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],realtime:null};
 var app=document.getElementById('app');
@@ -252,11 +253,43 @@ async function showGuardShiftNotification(title,body){
  var reg=await navigator.serviceWorker.ready;
  await reg.showNotification(title,{body:body,tag:'guardshift-offer',renotify:true,data:{url:location.href}});
 }
+function urlBase64ToUint8Array(base64String){
+ var padding='='.repeat((4-base64String.length%4)%4);
+ var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+ var rawData=atob(base64);var outputArray=new Uint8Array(rawData.length);
+ for(var i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);
+ return outputArray;
+}
+async function registerPushSubscription(){
+ var reg=await navigator.serviceWorker.ready;
+ var sub=await reg.pushManager.getSubscription();
+ if(!sub){
+   sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)});
+ }
+ var json=sub.toJSON();
+ var r=await sb.from('push_subscriptions').upsert({
+   company_id:state.profile.company_id,
+   worker_id:state.profile.worker_id,
+   endpoint:sub.endpoint,
+   p256dh:json.keys&&json.keys.p256dh,
+   auth:json.keys&&json.keys.auth,
+   user_agent:navigator.userAgent,
+   updated_at:new Date().toISOString()
+ },{onConflict:'endpoint'});
+ if(r.error)throw r.error;
+ return sub;
+}
 async function enableNotifications(){
- if(!('Notification' in window)||!('serviceWorker' in navigator)){alert('Este navegador no admite notificaciones web compatibles.');return}
+ if(state.profile.role!=='worker'){alert('Los avisos push se activan desde una cuenta de trabajador.');return}
+ if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window)){alert('Este navegador no admite notificaciones push compatibles.');return}
  var p=await Notification.requestPermission();
- if(p==='granted'){await ensureServiceWorker();await showGuardShiftNotification('GuardShift','Avisos activados correctamente.')}
- else alert('Las notificaciones no están permitidas. Revisa los permisos del navegador.');
+ if(p==='granted'){
+   try{
+     await ensureServiceWorker();
+     await registerPushSubscription();
+     await showGuardShiftNotification('GuardShift','Avisos push activados. Ya puedes recibirlos aunque cierres GuardShift.');
+   }catch(e){alert(e.message||'No se pudo registrar este dispositivo.')}
+ }else alert('Las notificaciones no están permitidas. Revisa los permisos del navegador.');
 }
 function setupRealtime(){
  if(state.realtime){sb.removeChannel(state.realtime);state.realtime=null}
@@ -291,7 +324,15 @@ function showCandidates(subId,sh,list){
  body+='</div>';
  var el=modal('Buscar sustituto',body);
  var form=el.querySelector('#candidateForm');
- if(form)form.onsubmit=async function(e){e.preventDefault();var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render();alert('Turno ofrecido a '+r.data+' trabajador(es).')};
+ if(form)form.onsubmit=async function(e){e.preventDefault();var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});if(r.error){ferr(e.target,r.error.message);return}
+ var sh=state.shifts.find(function(x){return x.id===shiftId})||null;
+ await sb.functions.invoke('send-guardshift-push',{body:{
+   worker_ids:ids,
+   title:'Nuevo turno disponible',
+   body:(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+'Tienes una nueva oferta de sustitución en GuardShift.',
+   url:location.href
+ }}).catch(function(){});
+ el.remove();await load();render();alert('Turno ofrecido a '+r.data+' trabajador(es).')};
 }
 function workerhome(){
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});

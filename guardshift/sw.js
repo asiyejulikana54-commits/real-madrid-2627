@@ -15,3 +15,14 @@ self.addEventListener('notificationclick',event=>{
     if(clients.openWindow)return clients.openWindow(target);
   })());
 });
+
+self.addEventListener('push',event=>{
+  let data={title:'GuardShift',body:'Tienes una nueva notificación.',url:'./'};
+  try{if(event.data)data=Object.assign(data,event.data.json())}catch(e){}
+  event.waitUntil(self.registration.showNotification(data.title,{
+    body:data.body,
+    tag:'guardshift-push',
+    renotify:true,
+    data:{url:data.url||'./'}
+  }));
+});
