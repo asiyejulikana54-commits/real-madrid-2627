@@ -28,6 +28,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 .empty{text-align:center;color:var(--muted);padding:26px}.mobile{display:none;gap:7px;overflow:auto;margin-bottom:15px}.mobile button{white-space:nowrap;border:1px solid var(--border);background:#fff;padding:9px;border-radius:10px}.mobile .on{background:var(--nav);color:#fff}
 .modal-bg{position:fixed;inset:0;background:#0b1b2e88;display:grid;place-items:center;padding:16px;z-index:20}.modal{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center}.x{border:0;background:#eef3f8;border-radius:9px;width:36px;height:36px}
 .week{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}.weekgrid{display:grid;grid-template-columns:165px repeat(7,125px);min-width:1040px}.weekgrid>div{padding:9px;border-right:1px solid #e9eef5;border-bottom:1px solid #e9eef5;min-height:64px}.wh{font-weight:800;background:#f9fbfd}.chip{background:#eaf2ff;color:#1456b8;padding:7px;border-radius:9px;font-size:12px;margin-bottom:5px}.chip.open{background:#fdecec;color:#b42318}
+.offer-card{display:grid;gap:10px}.offer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.candidate{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius:12px}.candidate input{margin-top:4px}.stack{display:grid;gap:10px}.mini-actions{display:flex;gap:7px;flex-wrap:wrap}.btn.small{padding:7px 10px;font-size:12px}.amber{background:#fff4df;color:#946200}.portal-hero{background:linear-gradient(135deg,#0b2a4d,#0f6fff);color:#fff}.portal-hero .muted{color:#dce9f8}
 @media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.mobile{display:flex}.cards{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
 @media(max-width:560px){.cards{grid-template-columns:1fr}.top{display:grid}.actions .btn{flex:1}.auth-card{padding:22px}}
 </style>
@@ -38,7 +39,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[]};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[]};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -75,13 +76,22 @@ async function boot(){
  var p=await sb.from('profiles').select('*').eq('id',state.session.user.id).maybeSingle();
  if(p.error){fatal(p.error.message);return}
  state.profile=p.data;
+ if(!state.profile){
+   var claim=await sb.rpc('claim_worker_account');
+   if(!claim.error && claim.data){
+     var p2=await sb.from('profiles').select('*').eq('id',state.session.user.id).maybeSingle();
+     if(p2.error){fatal(p2.error.message);return}
+     state.profile=p2.data;
+   }
+ }
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
+ if(c.error){fatal(c.error.message);return}
  state.company=c.data;await load();render();
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
- app.innerHTML='<div class="auth"><div class="auth-card"><div class="logo">🛟 GuardShift</div><h2>Configura tu empresa</h2><p class="muted">Crearás el espacio de trabajo del coordinador.</p>'+
+ app.innerHTML='<div class="auth"><div class="auth-card"><div class="logo">🛟 GuardShift</div><h2>Configura tu empresa</h2><p class="muted">Crearás el espacio de trabajo del coordinador. Si eres trabajador, entra con el mismo correo que tu empresa haya guardado en tu ficha.</p>'+
  (error?msg(error,false):'')+'<form id="onb" class="form"><div class="field"><label>Tu nombre</label><input name="full_name" value="'+esc(name)+'" required></div>'+
  '<div class="field"><label>Empresa</label><input name="company" placeholder="Socorrismo Mediterráneo" required></div>'+
  '<div class="field"><label>Teléfono</label><input name="phone"></div><button class="btn primary">Crear GuardShift</button><button type="button" id="outOnb" class="btn secondary">Cerrar sesión</button></form></div></div>';
@@ -95,16 +105,30 @@ async function createWorkspace(e){
  if(p.error){onboard(p.error.message);return}boot();
 }
 async function load(){
- var rs=await Promise.all([
-  sb.from('facilities').select('*').order('name'),
-  sb.from('workers').select('*').order('full_name'),
-  sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at')
- ]);
- if(rs[0].error||rs[1].error||rs[2].error){fatal((rs[0].error||rs[1].error||rs[2].error).message);return}
- state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];
+ if(state.profile.role==='worker'){
+   var wr=await Promise.all([
+    sb.from('facilities').select('*').order('name'),
+    sb.from('workers').select('*'),
+    sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
+    sb.from('substitution_offers').select('id,accepted,responded_at,substitution_id,substitutions(id,status,reason,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name,address)))').order('offered_at',{ascending:false}),
+    sb.from('availability').select('*').order('starts_at',{ascending:true})
+   ]);
+   var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];
+ }else{
+   var rs=await Promise.all([
+    sb.from('facilities').select('*').order('name'),
+    sb.from('workers').select('*').order('full_name'),
+    sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at')
+   ]);
+   if(rs[0].error||rs[1].error||rs[2].error){fatal((rs[0].error||rs[1].error||rs[2].error).message);return}
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];
+ }
 }
 function nav(){
- var items=[['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos']];
+ var items=state.profile&&state.profile.role==='worker'
+   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['offers','Turnos disponibles'],['availability','Disponibilidad']]
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -114,30 +138,32 @@ function shell(title,sub,body,actions){
  document.getElementById('logout').onclick=logout;
 }
 function badge(s){var x={assigned:['Asignado','green'],open:['Sin cubrir','red'],cancelled:['Cancelado','blue'],completed:['Completado','blue']}[s]||[s,'blue'];return '<span class="badge '+x[1]+'">'+x[0]+'</span>'}
-function shiftTable(rows){
+function shiftTable(rows,actions){
  if(!rows.length)return '<div class="card empty">No hay turnos que mostrar.</div>';
- return '<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Horario</th><th>Trabajador</th><th>Estado</th></tr></thead><tbody>'+
- rows.map(function(s){return '<tr><td>'+d(s.starts_at)+'</td><td>'+esc(s.facilities&&s.facilities.name||'—')+'</td><td>'+t(s.starts_at)+'–'+t(s.ends_at)+'</td><td>'+esc(s.workers&&s.workers.full_name||'Sin asignar')+'</td><td>'+badge(s.status)+'</td></tr>'}).join('')+'</tbody></table></div>';
+ var act=actions&&state.profile&&state.profile.role==='coordinator';
+ return '<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Horario</th><th>Trabajador</th><th>Estado</th>'+(act?'<th>Acción</th>':'')+'</tr></thead><tbody>'+
+ rows.map(function(x){return '<tr><td>'+d(x.starts_at)+'</td><td>'+esc(x.facilities&&x.facilities.name||'—')+'</td><td>'+t(x.starts_at)+'–'+t(x.ends_at)+'</td><td>'+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</td><td>'+badge(x.status)+'</td>'+(act?'<td><button class="btn small secondary" data-cover="'+x.id+'">'+(x.status==='open'?'Buscar candidato':'Sustituir')+'</button></td>':'')+'</tr>'}).join('')+'</tbody></table></div>';
 }
+function bindCoverButtons(){document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}})}
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div></div>'+
- '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8))+'</div><div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8))+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;
+ '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div><div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>';
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;bindCoverButtons();
 }
 function facilities(){
  var body=state.facilities.length?'<div class="cards">'+state.facilities.map(function(f){return '<div class="card"><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay instalaciones.</div>';
  shell('Instalaciones','Hoteles, piscinas y otros centros.',body,'<button class="btn primary" id="add">+ Instalación</button>');document.getElementById('add').onclick=facilityModal;
 }
 function workers(){
- var body=state.workers.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Estado</th></tr></thead><tbody>'+
+ var body=state.workers.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Cuenta</th><th>Estado</th></tr></thead><tbody>'+
  state.workers.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay trabajadores.</div>';
  shell('Trabajadores','Gestiona la plantilla.',body,'<button class="btn primary" id="add">+ Trabajador</button>');document.getElementById('add').onclick=workerModal;
 }
-function shifts(){shell('Turnos','Crea y asigna turnos.',shiftTable(state.shifts),'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=shiftModal}
+function shifts(){shell('Turnos','Crea, asigna y cubre turnos.',shiftTable(state.shifts,true),'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=shiftModal;bindCoverButtons()}
 function monday(){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
 function schedule(){
  var start=monday(),days=[],names=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];for(var i=0;i<7;i++){var q=new Date(start);q.setDate(q.getDate()+i);days.push(q)}
@@ -165,8 +191,66 @@ function shiftModal(){
  var el=modal('Nuevo turno','<form class="form"><div class="field"><label>Instalación</label><select name="facility" required>'+fo+'</select></div><div class="field"><label>Trabajador</label><select name="worker">'+wo+'</select></div><div class="field"><label>Inicio</label><input name="start" type="datetime-local" required></div><div class="field"><label>Fin</label><input name="end" type="datetime-local" required></div><button class="btn primary">Crear turno</button></form>');
  el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}var r=await sb.from('shifts').insert({company_id:state.profile.company_id,facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open',created_by:state.profile.id});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
 }
-function render(){({dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule}[state.page]||dashboard)()}
-async function logout(){await sb.auth.signOut();state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[]};auth()}
+
+async function startSubstitution(shiftId){
+ var sh=state.shifts.find(function(x){return x.id===shiftId}); if(!sh)return;
+ var reason=prompt('Motivo de la sustitución (opcional):','');
+ if(reason===null)return;
+ var cr=await sb.rpc('create_substitution',{p_shift_id:shiftId,p_reason:reason||null});
+ if(cr.error){alert(cr.error.message);return}
+ var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:cr.data});
+ if(ca.error){alert(ca.error.message);return}
+ showCandidates(cr.data,sh,ca.data||[]);
+}
+function showCandidates(subId,sh,list){
+ var body='<div class="stack"><div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div></div>';
+ if(!list.length){body+='<div class="msg err">No hay candidatos válidos: tienen otro turno o han marcado que no están disponibles.</div>'}
+ else{
+  body+='<form id="candidateForm" class="form"><div class="stack">'+list.map(function(w){return '<label class="candidate"><input type="checkbox" name="worker" value="'+w.worker_id+'" '+(w.priority===0?'checked':'')+'><span><strong>'+esc(w.full_name)+'</strong><br><span class="muted">'+esc(w.zone||'Sin zona')+' · '+esc(w.availability_label)+'</span></span></label>'}).join('')+'</div><button class="btn primary">Ofrecer turno a seleccionados</button></form>';
+ }
+ body+='</div>';
+ var el=modal('Buscar sustituto',body);
+ var form=el.querySelector('#candidateForm');
+ if(form)form.onsubmit=async function(e){e.preventDefault();var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render();alert('Turno ofrecido a '+r.data+' trabajador(es).')};
+}
+function workerhome(){
+ var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});
+ var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
+ var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong></div></div>'+
+ '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
+ '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
+ shell('Inicio','Tu actividad en GuardShift',body,'');
+ bindOfferButtons();
+}
+function myshifts(){
+ var mine=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id});
+ shell('Mis turnos','Tus turnos asignados.',shiftTable(mine),'');
+}
+function offerCards(list){
+ if(!list.length)return '<div class="card empty">No tienes ofertas pendientes.</div>';
+ return '<div class="stack">'+list.map(function(o){var su=o.substitutions||{},sh=su.shifts||{},fa=sh.facilities||{};return '<div class="card offer-card"><div class="offer-head"><div><strong>'+esc(fa.name||'Turno disponible')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">'+esc(fa.address||'')+'</div></div><span class="badge amber">Disponible</span></div>'+(su.reason?'<div>Motivo: '+esc(su.reason)+'</div>':'')+'<button class="btn primary" data-accept-offer="'+o.id+'">Aceptar turno</button></div>'}).join('')+'</div>';
+}
+function offers(){
+ var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
+ var history=state.offers.filter(function(o){return o.accepted!==null||!o.substitutions||['open','offered'].indexOf(o.substitutions.status)<0});
+ var body='<div class="section"><h2>Disponibles ahora</h2>'+offerCards(pending)+'</div><div class="section"><h2>Historial</h2>'+(history.length?'<div class="stack">'+history.map(function(o){var su=o.substitutions||{},sh=su.shifts||{},fa=sh.facilities||{};return '<div class="card"><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div style="margin-top:8px">'+(o.accepted===true?'<span class="badge green">Aceptado</span>':o.accepted===false?'<span class="badge blue">Cerrado</span>':'<span class="badge blue">Finalizado</span>')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay historial.</div>')+'</div>';
+ shell('Turnos disponibles','Acepta sustituciones ofrecidas por tu coordinador.',body,'');bindOfferButtons();
+}
+function bindOfferButtons(){document.querySelectorAll('[data-accept-offer]').forEach(function(b){b.onclick=async function(){if(!confirm('¿Aceptar este turno?'))return;var r=await sb.rpc('accept_substitution_offer',{p_offer_id:b.getAttribute('data-accept-offer')});if(r.error){alert(r.error.message);return}await load();render();alert('Turno asignado correctamente.')}})}
+function availability(){
+ var body='<div class="card"><form id="availabilityForm" class="form"><div class="field"><label>Desde</label><input type="datetime-local" name="start" required></div><div class="field"><label>Hasta</label><input type="datetime-local" name="end" required></div><div class="field"><label>Estado</label><select name="status"><option value="available">Disponible</option><option value="unavailable">No disponible</option><option value="prefer_not">Preferiría no</option></select></div><button class="btn primary">Guardar disponibilidad</button></form></div>'+
+ '<div class="section"><h2>Periodos guardados</h2>'+(state.availability.length?'<div class="stack">'+state.availability.map(function(a){var label={available:'Disponible',unavailable:'No disponible',prefer_not:'Preferiría no'}[a.status]||a.status;var cls=a.status==='available'?'green':a.status==='unavailable'?'red':'amber';return '<div class="card"><strong>'+d(a.starts_at)+' '+t(a.starts_at)+' → '+d(a.ends_at)+' '+t(a.ends_at)+'</strong><div style="margin-top:8px"><span class="badge '+cls+'">'+label+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">No has marcado disponibilidad todavía.</div>')+'</div>';
+ shell('Disponibilidad','Indica cuándo puedes cubrir turnos.',body,'');
+ document.getElementById('availabilityForm').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La fecha final debe ser posterior.');return}var r=await sb.from('availability').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,starts_at:a.toISOString(),ends_at:b.toISOString(),status:f.get('status')});if(r.error){ferr(e.target,r.error.message);return}await load();render()};
+}
+function render(){
+ var map=state.profile&&state.profile.role==='worker'
+   ? {workerhome:workerhome,myshifts:myshifts,offers:offers,availability:availability}
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule};
+ if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts'].indexOf(state.page)>=0)state.page='workerhome';
+ (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
+}
+async function logout(){await sb.auth.signOut();state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[]};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
