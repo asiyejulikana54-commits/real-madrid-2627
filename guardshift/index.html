@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -140,10 +140,11 @@ async function load(){
     sb.from('worker_documents').select('*').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*').order('occurred_at',{ascending:false}),
-    sb.from('leave_requests').select('*').order('starts_on',{ascending:false})
+    sb.from('leave_requests').select('*').order('starts_on',{ascending:false}),
+    sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
@@ -153,10 +154,11 @@ async function load(){
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false}),
-    sb.from('leave_requests').select('*,workers(full_name)').order('starts_on',{ascending:false})
+    sb.from('leave_requests').select('*,workers(full_name)').order('starts_on',{ascending:false}),
+    sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];
  }
 }
 function nav(){
@@ -444,12 +446,28 @@ function availability(){
  document.getElementById('availabilityForm').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La fecha final debe ser posterior.');return}var r=await sb.from('availability').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,starts_at:a.toISOString(),ends_at:b.toISOString(),status:f.get('status')});if(r.error){ferr(e.target,r.error.message);return}await load();render()};
 }
 
+
+function getGeoPosition(){
+ return new Promise(function(resolve,reject){
+  if(!navigator.geolocation){reject(new Error('Este dispositivo no permite obtener ubicación.'));return}
+  navigator.geolocation.getCurrentPosition(function(pos){
+    resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy});
+  },function(err){
+    var m=err&&err.code===1?'Debes permitir la ubicación para fichar.':'No se pudo obtener la ubicación. Inténtalo de nuevo.';
+    reject(new Error(m));
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+ });
+}
+function geoLink(lat,lng){return 'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng)}
+function locationForEntry(entryId,type){
+ return (state.timeLocations||[]).find(function(x){return x.time_entry_id===entryId&&x.event_type===type});
+}
 function hoursPage(){
  var rows=state.timeEntries||[];
  var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
  var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisar</span><strong>'+rows.filter(function(x){return x.approval_status==='pending'}).length+'</strong></div></div>'+
  '<div class="section"><div class="mini-actions"><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button></div></div>'+
- (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
+ (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];var li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out');return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="mini-actions">'+(li?'<a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Entrada ±'+Math.round(li.accuracy_m||0)+' m</a>':'—')+(lo?'<a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Salida ±'+Math.round(lo.accuracy_m||0)+' m</a>':'')+'</div></td><td><div class="mini-actions"><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
  shell('Horas trabajadas','Control de presencia y revisión de fichajes.',body,'');
  document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Estado\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending'].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();URL.revokeObjectURL(a.href)};
  document.getElementById('exportPdf').onclick=function(){window.print()};
@@ -458,13 +476,36 @@ function hoursPage(){
 function clocking(){
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
- var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada: '+d(open.clock_in)+' '+t(open.clock_in)+'</div><button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
+ var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+t(open.clock_in)+'</div><button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
  (upcoming.length?'<div class="stack">'+upcoming.slice(0,5).map(function(x){return '<div class="card"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button></div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos asignados.</div>');
- shell('Fichaje','Registra entrada y salida.',body,'');
- document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('clock_in_shift',{p_shift_id:b.getAttribute('data-clock-in')});if(r.error){alert(r.error.message);return}await load();render()}});
- var co=document.getElementById('clockOut');if(co)co.onclick=async function(){var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;var r=await sb.rpc('clock_out_current',{p_notes:notes||null});if(r.error){alert(r.error.message);return}await load();render()};
+ shell('Fichaje','La hora se registra en el servidor. La ubicación se solicita solo al fichar.',body,'');
+ document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){
+   try{
+     b.disabled=true;b.textContent='Obteniendo ubicación…';
+     var pos=await getGeoPosition();
+     var r=await sb.rpc('clock_in_shift',{p_shift_id:b.getAttribute('data-clock-in')});
+     if(r.error)throw r.error;
+     var g=await sb.from('time_entry_locations').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,time_entry_id:r.data,event_type:'clock_in',latitude:pos.latitude,longitude:pos.longitude,accuracy_m:pos.accuracy});
+     if(g.error)throw g.error;
+     await load();render();
+   }catch(e){alert(e.message||'No se pudo fichar.');b.disabled=false;b.textContent='Fichar entrada'}
+ }});
+ var co=document.getElementById('clockOut');if(co)co.onclick=async function(){
+   var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;
+   try{
+     co.disabled=true;co.textContent='Obteniendo ubicación…';
+     var pos=await getGeoPosition();
+     var current=(state.timeEntries||[]).find(function(x){return !x.clock_out});
+     var r=await sb.rpc('clock_out_current',{p_notes:notes||null});
+     if(r.error)throw r.error;
+     if(current){
+       var g=await sb.from('time_entry_locations').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,time_entry_id:current.id,event_type:'clock_out',latitude:pos.latitude,longitude:pos.longitude,accuracy_m:pos.accuracy});
+       if(g.error)throw g.error;
+     }
+     await load();render();
+   }catch(e){alert(e.message||'No se pudo fichar salida.');co.disabled=false;co.textContent='Fichar salida'}
+ };
 }
-
 function leavePage(){
  if(state.profile.role==='worker'){
    var body='<div class="card"><form id="leaveForm" class="form"><div class="field"><label>Tipo</label><select name="type"><option value="vacation">Vacaciones</option><option value="personal">Asunto personal</option><option value="sick">Baja / enfermedad</option><option value="other">Otro</option></select></div><div class="field"><label>Desde</label><input type="date" name="start" required></div><div class="field"><label>Hasta</label><input type="date" name="end" required></div><div class="field"><label>Motivo</label><input name="reason"></div><button class="btn primary">Enviar solicitud</button></form></div><div class="section">'+leaveList(state.leaveRequests||[],false)+'</div>';
@@ -502,7 +543,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
