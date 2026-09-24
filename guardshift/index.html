@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -74,10 +74,33 @@ async function handleAuth(e,mode){
 }
 async function boot(){
  var r=await sb.auth.getSession();state.session=r.data.session;
- if(!state.session){auth();return}
+ if(!state.session){
+   var tok=new URLSearchParams(location.search).get('invite');
+   if(tok){
+     var info=await sb.rpc('get_worker_invite',{p_token:tok});
+     if(!info.error&&info.data&&info.data.length){
+       var x=info.data[0];
+       auth('signup','Invitación para '+x.worker_name+' · '+x.company_name+'. Crea la cuenta con el correo indicado para unirte.');
+       var emailInput=document.querySelector('input[name="email"]');if(emailInput&&x.worker_email)emailInput.value=x.worker_email;
+       return;
+     }
+   }
+   auth();return
+ }
  var p=await sb.from('profiles').select('*').eq('id',state.session.user.id).maybeSingle();
  if(p.error){fatal(p.error.message);return}
  state.profile=p.data;
+ if(!state.profile){
+   var inviteToken=new URLSearchParams(location.search).get('invite');
+   if(inviteToken){
+     var inviteClaim=await sb.rpc('claim_worker_invite',{p_token:inviteToken});
+     if(!inviteClaim.error&&inviteClaim.data){
+       history.replaceState({},'',location.pathname);
+       var ip=await sb.from('profiles').select('*').eq('id',state.session.user.id).maybeSingle();
+       if(!ip.error)state.profile=ip.data;
+     } else if(inviteClaim.error){alert(inviteClaim.error.message)}
+   }
+ }
  if(!state.profile){
    var claim=await sb.rpc('claim_worker_account');
    if(!claim.error && claim.data){
@@ -114,26 +137,30 @@ async function load(){
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
     sb.from('substitution_offers').select('id,accepted,responded_at,offered_at,substitution_id,substitutions(id,status,reason,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name,address)))').order('offered_at',{ascending:false}),
     sb.from('availability').select('*').order('starts_at',{ascending:true}),
-    sb.from('worker_documents').select('*').order('expires_on',{ascending:true})
+    sb.from('worker_documents').select('*').order('expires_on',{ascending:true}),
+    sb.from('time_entries').select('*,shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
+    sb.from('incidents').select('*').order('occurred_at',{ascending:false})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*').order('full_name'),
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
     sb.from('substitutions').select('id,status,reason,created_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
-    sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true})
+    sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
+    sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('clock_in',{ascending:false}),
+    sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];
  }
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
-   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['mydocuments','Documentos']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['documents','Documentos']];
+   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['incidents','Incidencias'],['mydocuments','Documentos']]
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['incidents','Incidencias'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -192,8 +219,9 @@ function workers(){
  function draw(){
   var q=(document.getElementById('workerSearch').value||'').toLowerCase(),st=document.getElementById('workerStatus').value;
   var list=state.workers.filter(function(w){return (!q||(w.full_name||'').toLowerCase().includes(q)||(w.email||'').toLowerCase().includes(q)||(w.zone||'').toLowerCase().includes(q))&&(st==='all'||(st==='active'&&w.active)||(st==='inactive'&&!w.active))});
-  document.getElementById('workerList').innerHTML=list.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Cuenta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+list.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.user_id?'green':'amber')+'">'+(w.user_id?'Conectada':'Pendiente')+'</span></td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-edit-worker="'+w.id+'">Editar</button><button class="btn small '+(w.active?'danger':'secondary')+'" data-toggle-worker="'+w.id+'">'+(w.active?'Desactivar / eliminar':'Reactivar')+'</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores con esos filtros.</div>';
+  document.getElementById('workerList').innerHTML=list.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Cuenta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+list.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.user_id?'green':'amber')+'">'+(w.user_id?'Conectada':'Pendiente')+'</span></td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-edit-worker="'+w.id+'">Editar</button><button class="btn small secondary" data-invite-worker="'+w.id+'">Invitar</button><button class="btn small '+(w.active?'danger':'secondary')+'" data-toggle-worker="'+w.id+'">'+(w.active?'Desactivar / eliminar':'Reactivar')+'</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores con esos filtros.</div>';
   document.querySelectorAll('[data-edit-worker]').forEach(function(b){b.onclick=function(){workerModal(b.getAttribute('data-edit-worker'))}});
+  document.querySelectorAll('[data-invite-worker]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('create_worker_invite',{p_worker_id:b.getAttribute('data-invite-worker')});if(r.error){alert(r.error.message);return}var link=location.origin+location.pathname+'?invite='+r.data;try{await navigator.clipboard.writeText(link);alert('Enlace de invitación copiado:\n'+link)}catch(e){prompt('Copia este enlace de invitación:',link)}}});
   document.querySelectorAll('[data-toggle-worker]').forEach(function(b){b.onclick=async function(){var w=state.workers.find(function(x){return x.id===b.getAttribute('data-toggle-worker')});if(!w)return;if(!w.active){var u=await sb.from('workers').update({active:true}).eq('id',w.id);if(u.error){alert(u.error.message);return}}else{if(!confirm('Si tiene historial se desactivará; si no lo tiene se eliminará definitivamente. ¿Continuar?'))return;var r=await sb.rpc('safe_delete_worker',{p_worker_id:w.id});if(r.error){alert(r.error.message);return}}await load();draw()}});
  }
  document.getElementById('workerSearch').oninput=draw;document.getElementById('workerStatus').onchange=draw;draw();
@@ -409,14 +437,49 @@ function availability(){
  shell('Disponibilidad','Indica cuándo puedes cubrir turnos.',body,'');
  document.getElementById('availabilityForm').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La fecha final debe ser posterior.');return}var r=await sb.from('availability').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,starts_at:a.toISOString(),ends_at:b.toISOString(),status:f.get('status')});if(r.error){ferr(e.target,r.error.message);return}await load();render()};
 }
+
+function hoursPage(){
+ var rows=state.timeEntries||[];
+ var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div></div>'+
+ '<div class="section"><div class="mini-actions"><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button></div></div>'+
+ (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Notas</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td>'+esc(x.notes||'')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
+ shell('Horas trabajadas','Control de presencia y cómputo de horas.',body,'');
+ document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Notas\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),(x.notes||'').replace(/"/g,'""')].map(function(v){return '"'+String(v)+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();URL.revokeObjectURL(a.href)};
+ document.getElementById('exportPdf').onclick=function(){window.print()};
+}
+function clocking(){
+ var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
+ var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
+ var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada: '+d(open.clock_in)+' '+t(open.clock_in)+'</div><button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
+ (upcoming.length?'<div class="stack">'+upcoming.slice(0,5).map(function(x){return '<div class="card"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button></div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos asignados.</div>');
+ shell('Fichaje','Registra entrada y salida.',body,'');
+ document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('clock_in_shift',{p_shift_id:b.getAttribute('data-clock-in')});if(r.error){alert(r.error.message);return}await load();render()}});
+ var co=document.getElementById('clockOut');if(co)co.onclick=async function(){var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;var r=await sb.rpc('clock_out_current',{p_notes:notes||null});if(r.error){alert(r.error.message);return}await load();render()};
+}
+function incidentsPage(){
+ if(state.profile.role==='worker'){
+  var opts='<option value="">Sin turno asociado</option>'+state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id}).map(function(x){return '<option value="'+x.id+'">'+d(x.starts_at)+' · '+esc(x.facilities&&x.facilities.name||'Turno')+'</option>'}).join('');
+  var body='<div class="card"><form id="incidentForm" class="form"><div class="field"><label>Turno</label><select name="shift">'+opts+'</select></div><div class="field"><label>Tipo</label><select name="type"><option value="general">General</option><option value="material">Material</option><option value="seguridad">Seguridad</option><option value="personal">Personal</option><option value="usuario">Usuario/cliente</option></select></div><div class="field"><label>Gravedad</label><select name="severity"><option value="low">Baja</option><option value="normal" selected>Normal</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div><div class="field"><label>Título</label><input name="title" required></div><div class="field"><label>Descripción</label><input name="description" required></div><button class="btn primary">Registrar incidencia</button></form></div><div class="section">'+incidentList(state.incidents||[])+'</div>';
+  shell('Incidencias','Comunica problemas o hechos relevantes.',body,'');
+  document.getElementById('incidentForm').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target);var r=await sb.from('incidents').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,shift_id:f.get('shift')||null,incident_type:f.get('type'),severity:f.get('severity'),title:f.get('title'),description:f.get('description')});if(r.error){ferr(e.target,r.error.message);return}await load();render()};
+ }else{
+  shell('Incidencias','Seguimiento de incidencias de la plantilla.',incidentList(state.incidents||[],true),'');
+  document.querySelectorAll('[data-resolve-incident]').forEach(function(b){b.onclick=async function(){var r=await sb.from('incidents').update({status:'resolved',resolved_at:new Date().toISOString()}).eq('id',b.getAttribute('data-resolve-incident'));if(r.error){alert(r.error.message);return}await load();render()}});
+ }
+}
+function incidentList(list,coordinator){
+ if(!list.length)return '<div class="card empty">No hay incidencias registradas.</div>';
+ return '<div class="stack">'+list.map(function(x){var w=x.workers||{};return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.title)+'</strong><div class="muted">'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+d(x.occurred_at)+' '+t(x.occurred_at)+' · '+esc(x.incident_type)+'</div></div><span class="badge '+(x.severity==='urgent'||x.severity==='high'?'red':x.status==='resolved'?'green':'amber')+'">'+esc(x.status)+'</span></div><p>'+esc(x.description)+'</p>'+(coordinator&&x.status!=='resolved'?'<button class="btn small secondary" data-resolve-incident="'+x.id+'">Marcar resuelta</button>':'')+'</div>'}).join('')+'</div>';
+}
 function render(){
  var map=state.profile&&state.profile.role==='worker'
-   ? {workerhome:workerhome,myshifts:myshifts,offers:offers,availability:availability,mydocuments:mydocuments}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,documents:documentsPage};
+   ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,offers:offers,availability:availability,incidents:incidentsPage,mydocuments:mydocuments}
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,hours:hoursPage,incidents:incidentsPage,documents:documentsPage};
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
