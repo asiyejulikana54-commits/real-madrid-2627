@@ -28,7 +28,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 .empty{text-align:center;color:var(--muted);padding:26px}.mobile{display:none;gap:7px;overflow:auto;margin-bottom:15px}.mobile button{white-space:nowrap;border:1px solid var(--border);background:#fff;padding:9px;border-radius:10px}.mobile .on{background:var(--nav);color:#fff}
 .modal-bg{position:fixed;inset:0;background:#0b1b2e88;display:grid;place-items:center;padding:16px;z-index:20}.modal{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center}.x{border:0;background:#eef3f8;border-radius:9px;width:36px;height:36px}
 .week{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}.weekgrid{display:grid;grid-template-columns:165px repeat(7,125px);min-width:1040px}.weekgrid>div{padding:9px;border-right:1px solid #e9eef5;border-bottom:1px solid #e9eef5;min-height:64px}.wh{font-weight:800;background:#f9fbfd}.chip{background:#eaf2ff;color:#1456b8;padding:7px;border-radius:9px;font-size:12px;margin-bottom:5px}.chip.open{background:#fdecec;color:#b42318}
-.offer-card{display:grid;gap:10px}.offer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.candidate{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius:12px}.candidate input{margin-top:4px}.stack{display:grid;gap:10px}.mini-actions{display:flex;gap:7px;flex-wrap:wrap}.btn.small{padding:7px 10px;font-size:12px}.amber{background:#fff4df;color:#946200}.portal-hero{background:linear-gradient(135deg,#0b2a4d,#0f6fff);color:#fff}.portal-hero .muted{color:#dce9f8}
+.offer-card{display:grid;gap:10px}.notice{border-left:4px solid var(--primary)}.doc-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#94a3b8}.status-dot.green{background:#10b981}.status-dot.amber{background:#f59e0b}.status-dot.red{background:#ef4444}.offer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.candidate{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius:12px}.candidate input{margin-top:4px}.stack{display:grid;gap:10px}.mini-actions{display:flex;gap:7px;flex-wrap:wrap}.btn.small{padding:7px 10px;font-size:12px}.amber{background:#fff4df;color:#946200}.portal-hero{background:linear-gradient(135deg,#0b2a4d,#0f6fff);color:#fff}.portal-hero .muted{color:#dce9f8}
 @media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.mobile{display:flex}.cards{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
 @media(max-width:560px){.cards{grid-template-columns:1fr}.top{display:grid}.actions .btn{flex:1}.auth-card{padding:22px}}
 </style>
@@ -39,7 +39,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[]};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -87,7 +87,7 @@ async function boot(){
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
  if(c.error){fatal(c.error.message);return}
- state.company=c.data;await load();render();
+ state.company=c.data;await load();setupRealtime();render();
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
@@ -110,25 +110,28 @@ async function load(){
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*'),
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
-    sb.from('substitution_offers').select('id,accepted,responded_at,substitution_id,substitutions(id,status,reason,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name,address)))').order('offered_at',{ascending:false}),
-    sb.from('availability').select('*').order('starts_at',{ascending:true})
+    sb.from('substitution_offers').select('id,accepted,responded_at,offered_at,substitution_id,substitutions(id,status,reason,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name,address)))').order('offered_at',{ascending:false}),
+    sb.from('availability').select('*').order('starts_at',{ascending:true}),
+    sb.from('worker_documents').select('*').order('expires_on',{ascending:true})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*').order('full_name'),
-    sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at')
+    sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
+    sb.from('substitutions').select('id,status,reason,created_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
+    sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true})
    ]);
-   if(rs[0].error||rs[1].error||rs[2].error){fatal((rs[0].error||rs[1].error||rs[2].error).message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];
+   var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];
  }
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
-   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['offers','Turnos disponibles'],['availability','Disponibilidad']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos']];
+   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['mydocuments','Documentos']]
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -147,11 +150,19 @@ function shiftTable(rows,actions){
 function bindCoverButtons(){document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}})}
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
+ var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
+ var today=new Date();today.setHours(0,0,0,0);var limit=new Date(today);limit.setDate(limit.getDate()+30);
+ var expiring=state.documents.filter(function(x){return x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div></div>'+
- '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div><div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>';
+ '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Sustituciones pendientes</span><strong>'+pendingSubs.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div></div>'+
+ '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
+ '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
+ '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
+ '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>';
  shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;bindCoverButtons();
 }
 function facilities(){
@@ -160,7 +171,7 @@ function facilities(){
 }
 function workers(){
  var body=state.workers.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Cuenta</th><th>Estado</th></tr></thead><tbody>'+
- state.workers.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay trabajadores.</div>';
+ state.workers.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.user_id?'green':'amber')+'">'+(w.user_id?'Conectada':'Pendiente')+'</span></td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay trabajadores.</div>';
  shell('Trabajadores','Gestiona la plantilla.',body,'<button class="btn primary" id="add">+ Trabajador</button>');document.getElementById('add').onclick=workerModal;
 }
 function shifts(){shell('Turnos','Crea, asigna y cubre turnos.',shiftTable(state.shifts,true),'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=shiftModal;bindCoverButtons()}
@@ -192,6 +203,61 @@ function shiftModal(){
  el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}var r=await sb.from('shifts').insert({company_id:state.profile.company_id,facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open',created_by:state.profile.id});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
 }
 
+
+function substitutionSummary(list){
+ if(!list.length)return '<div class="card empty">No hay sustituciones activas.</div>';
+ return '<div class="stack">'+list.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},offers=x.substitution_offers||[];var pending=offers.filter(function(o){return o.accepted===null}).length,accepted=offers.filter(function(o){return o.accepted===true}).length;return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div></div><span class="badge '+(x.status==='accepted'?'green':'amber')+'">'+esc(x.status)+'</span></div><div class="muted" style="margin-top:8px">Ofertas: '+offers.length+' · Pendientes: '+pending+' · Aceptadas: '+accepted+'</div></div>'}).join('')+'</div>';
+}
+function documentExpiryCards(list){
+ if(!list.length)return '<div class="card empty">No hay documentos que caduquen en los próximos 30 días.</div>';
+ return '<div class="stack">'+list.map(function(x){var w=x.workers||{},days=Math.ceil((new Date(x.expires_on)-new Date())/86400000);return '<div class="card doc-row"><div><strong>'+esc(w.full_name||'Trabajador')+' · '+esc(x.document_type)+'</strong><div class="muted">Caduca: '+d(x.expires_on)+'</div></div><span class="badge '+(days<=7?'red':'amber')+'">'+Math.max(days,0)+' días</span></div>'}).join('')+'</div>';
+}
+function substitutionsPage(){
+ var body=state.substitutions.length?'<div class="stack">'+state.substitutions.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},offers=x.substitution_offers||[];return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">'+esc(x.reason||'Sin motivo indicado')+'</div></div><span class="badge '+(x.status==='accepted'?'green':x.status==='cancelled'?'blue':'amber')+'">'+esc(x.status)+'</span></div><div class="section"><strong>Ofertas</strong><div class="stack" style="margin-top:8px">'+(offers.length?offers.map(function(o){var w=o.workers||{};var st=o.accepted===true?['Aceptada','green']:o.accepted===false?['Cerrada','blue']:['Pendiente','amber'];return '<div class="candidate"><span><strong>'+esc(w.full_name||w.email||'Trabajador')+'</strong><br><span class="muted">Enviada: '+(o.offered_at?d(o.offered_at)+' '+t(o.offered_at):'—')+(o.responded_at?' · Respondida: '+d(o.responded_at)+' '+t(o.responded_at):'')+'</span></span><span class="badge '+st[1]+'" style="margin-left:auto">'+st[0]+'</span></div>'}).join(''):'<div class="muted">Todavía no se ha enviado a nadie.</div>')+'</div></div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay sustituciones.</div>';
+ shell('Sustituciones','Seguimiento de todas las ofertas y respuestas.',body,'');
+}
+function documentsPage(){
+ var opts=state.workers.filter(function(w){return w.active}).map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
+ var body='<div class="card"><form id="docForm" class="form"><div class="field"><label>Trabajador</label><select name="worker" required>'+opts+'</select></div><div class="field"><label>Tipo de documento</label><select name="type"><option>Socorrismo</option><option>DESA</option><option>Primeros auxilios</option><option>Contrato</option><option>Otro</option></select></div><div class="field"><label>Fecha de caducidad</label><input type="date" name="expires"></div><div class="field"><label>Archivo (PDF o imagen, máx. 10 MB)</label><input type="file" name="file" accept=".pdf,image/jpeg,image/png,image/webp"></div><button class="btn primary">Guardar documento</button></form></div>'+
+ '<div class="section"><h2>Documentos</h2>'+documentList(state.documents,true)+'</div>';
+ shell('Documentos','Titulaciones y documentación de la plantilla.',body,'');
+ document.getElementById('docForm').onsubmit=uploadDocument;
+ bindDocumentButtons();
+}
+function documentList(list,showWorker){
+ if(!list.length)return '<div class="card empty">No hay documentos guardados.</div>';
+ return '<div class="stack">'+list.map(function(x){var w=x.workers||{},expired=x.expires_on&&new Date(x.expires_on)<new Date();return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+(x.verified?' · Verificado':'')+'</div></div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+(expired?'red':x.expires_on?'amber':'blue')+'">'+(expired?'Caducado':x.expires_on?'Vigente':'Sin fecha')+'</span></div></div>'}).join('')+'</div>';
+}
+async function uploadDocument(e){
+ e.preventDefault();var f=new FormData(e.target),worker=f.get('worker'),file=f.get('file'),path=null;
+ if(file&&file.size){
+   if(file.size>10485760){ferr(e.target,'El archivo supera los 10 MB.');return}
+   path=state.profile.company_id+'/'+worker+'/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+   var up=await sb.storage.from('guardshift-documents').upload(path,file,{upsert:false});
+   if(up.error){ferr(e.target,up.error.message);return}
+ }
+ var r=await sb.from('worker_documents').insert({company_id:state.profile.company_id,worker_id:worker,document_type:f.get('type'),expires_on:f.get('expires')||null,storage_path:path,verified:true});
+ if(r.error){if(path)await sb.storage.from('guardshift-documents').remove([path]);ferr(e.target,r.error.message);return}
+ await load();render();
+}
+function bindDocumentButtons(){document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}})}
+function mydocuments(){shell('Documentos','Tus titulaciones y documentos.',documentList(state.documents,false),'');bindDocumentButtons()}
+async function enableNotifications(){
+ if(!('Notification' in window)){alert('Este navegador no admite notificaciones.');return}
+ var p=await Notification.requestPermission();if(p==='granted')new Notification('GuardShift',{body:'Avisos activados correctamente.'});
+}
+function setupRealtime(){
+ if(state.realtime){sb.removeChannel(state.realtime);state.realtime=null}
+ if(!state.profile)return;
+ state.realtime=sb.channel('guardshift-live-'+state.profile.id)
+  .on('postgres_changes',{event:'*',schema:'public',table:'substitution_offers'},async function(payload){
+    await load();
+    if(state.profile.role==='worker'&&payload.eventType==='INSERT'){
+      if('Notification' in window&&Notification.permission==='granted')new Notification('Nuevo turno disponible',{body:'Tienes una nueva oferta de sustitución en GuardShift.'});
+    }
+    render();
+  }).subscribe();
+}
 async function startSubstitution(shiftId){
  var sh=state.shifts.find(function(x){return x.id===shiftId}); if(!sh)return;
  var reason=prompt('Motivo de la sustitución (opcional):','');
@@ -219,7 +285,10 @@ function workerhome(){
  var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong></div></div>'+
  '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
  '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
- shell('Inicio','Tu actividad en GuardShift',body,'');
+ var soon=state.documents.filter(function(x){if(!x.expires_on)return false;var z=new Date(x.expires_on)-new Date();return z>=0&&z<=30*86400000}).length;
+ body+='<div class="section"><h2>Documentos</h2><div class="card notice">Documentos próximos a caducar: <strong>'+soon+'</strong></div></div>';
+ shell('Inicio','Tu actividad en GuardShift',body,'<button class="btn secondary" id="notifyBtn">🔔 Activar avisos</button>');
+ document.getElementById('notifyBtn').onclick=enableNotifications;
  bindOfferButtons();
 }
 function myshifts(){
@@ -245,12 +314,12 @@ function availability(){
 }
 function render(){
  var map=state.profile&&state.profile.role==='worker'
-   ? {workerhome:workerhome,myshifts:myshifts,offers:offers,availability:availability}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule};
- if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts'].indexOf(state.page)>=0)state.page='workerhome';
+   ? {workerhome:workerhome,myshifts:myshifts,offers:offers,availability:availability,mydocuments:mydocuments}
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,documents:documentsPage};
+ if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[]};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
