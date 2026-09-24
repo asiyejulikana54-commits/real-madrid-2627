@@ -325,7 +325,6 @@ function showCandidates(subId,sh,list){
  var el=modal('Buscar sustituto',body);
  var form=el.querySelector('#candidateForm');
  if(form)form.onsubmit=async function(e){e.preventDefault();var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});if(r.error){ferr(e.target,r.error.message);return}
- var sh=state.shifts.find(function(x){return x.id===shiftId})||null;
  await sb.functions.invoke('send-guardshift-push',{body:{
    worker_ids:ids,
    title:'Nuevo turno disponible',
