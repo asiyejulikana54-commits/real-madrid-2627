@@ -312,8 +312,12 @@ function workerHasOverlap(workerId,start,end,excludeId){
 function availabilityForShift(workerId,start,end){
  return (state.availability||[]).find(function(x){return x.worker_id===workerId&&new Date(x.starts_at)<end&&new Date(x.ends_at)>start&&(x.status==='unavailable'||x.status==='prefer_not')});
 }
+function localDateKey(v){
+ var x=v instanceof Date?v:new Date(v);
+ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+}
 function approvedLeaveForShift(workerId,start,end){
- var sd=start.toISOString().slice(0,10),ed=end.toISOString().slice(0,10);
+ var sd=localDateKey(start),ed=localDateKey(end);
  return (state.leaveRequests||[]).find(function(x){return x.worker_id===workerId&&x.status==='approved'&&x.starts_on<=ed&&x.ends_on>=sd});
 }
 function shiftWarning(sft){
@@ -331,19 +335,62 @@ async function duplicateDisplayedWeek(){
  var source=monday(state.scheduleOffset),sourceEnd=new Date(source);sourceEnd.setDate(sourceEnd.getDate()+7);
  var list=state.shifts.filter(function(x){return x.status!=='cancelled'&&x.status!=='completed'&&new Date(x.starts_at)>=source&&new Date(x.starts_at)<sourceEnd});
  if(!list.length){alert('No hay turnos en esta semana para copiar.');return}
- var target=new Date(source);target.setDate(target.getDate()+7);
- if(!confirm('¿Copiar '+list.length+' turno(s) a la semana siguiente? Los duplicados exactos se omitirán.'))return;
- var payload=[];
+
+ var payload=[],results=[];
  list.forEach(function(x){
    var ns=new Date(x.starts_at),ne=new Date(x.ends_at);ns.setDate(ns.getDate()+7);ne.setDate(ne.getDate()+7);
-   var exists=state.shifts.some(function(y){return y.facility_id===x.facility_id&&y.worker_id===x.worker_id&&new Date(y.starts_at).getTime()===ns.getTime()&&new Date(y.ends_at).getTime()===ne.getTime()&&y.status!=='cancelled'});
-   if(!exists)payload.push({company_id:state.profile.company_id,facility_id:x.facility_id,worker_id:x.worker_id,starts_at:ns.toISOString(),ends_at:ne.toISOString(),status:x.worker_id?'assigned':'open',notes:x.notes||null,created_by:state.profile.id});
+   var base={source:x,start:ns,end:ne};
+   var exact=state.shifts.some(function(y){
+     return y.facility_id===x.facility_id&&y.worker_id===x.worker_id&&new Date(y.starts_at).getTime()===ns.getTime()&&new Date(y.ends_at).getTime()===ne.getTime()&&y.status!=='cancelled';
+   });
+   if(exact){results.push(Object.assign(base,{status:'duplicate',label:'Ya existe'}));return}
+
+   if(x.worker_id){
+     var overlapExisting=state.shifts.some(function(y){
+       return y.worker_id===x.worker_id&&y.status==='assigned'&&new Date(y.starts_at)<ne&&new Date(y.ends_at)>ns;
+     });
+     var overlapPlanned=payload.some(function(y){
+       return y.worker_id===x.worker_id&&y.status==='assigned'&&new Date(y.starts_at)<ne&&new Date(y.ends_at)>ns;
+     });
+     if(overlapExisting||overlapPlanned){results.push(Object.assign(base,{status:'blocked',label:'Solape'}));return}
+     if(approvedLeaveForShift(x.worker_id,ns,ne)){results.push(Object.assign(base,{status:'blocked',label:'Ausencia aprobada'}));return}
+     var av=availabilityForShift(x.worker_id,ns,ne);
+     if(av&&av.status==='unavailable'){results.push(Object.assign(base,{status:'blocked',label:'No disponible'}));return}
+   }
+
+   var row={company_id:state.profile.company_id,facility_id:x.facility_id,worker_id:x.worker_id,starts_at:ns.toISOString(),ends_at:ne.toISOString(),status:x.worker_id?'assigned':'open',notes:x.notes||null,created_by:state.profile.id};
+   payload.push(row);
+   var av2=x.worker_id?availabilityForShift(x.worker_id,ns,ne):null;
+   results.push(Object.assign(base,{status:av2&&av2.status==='prefer_not'?'warning':'ok',label:av2&&av2.status==='prefer_not'?'Preferiría no':'Listo'}));
  });
- if(!payload.length){alert('La semana siguiente ya contiene todos esos turnos.');return}
- var r=await sb.from('shifts').insert(payload);if(r.error){alert(r.error.message);return}
- var affected=payload.map(function(x){return x.worker_id}).filter(Boolean);
- if(affected.length)await notifyWorkers(affected,'Cuadrante actualizado','Se han añadido nuevos turnos a tu próxima semana. Revisa tu cuadrante en GuardShift.');
- await load();state.scheduleOffset++;schedule();alert('Copiados '+payload.length+' turno(s).');
+
+ var blocked=results.filter(function(x){return x.status==='blocked'}),dups=results.filter(function(x){return x.status==='duplicate'}),warn=results.filter(function(x){return x.status==='warning'}),ok=results.filter(function(x){return x.status==='ok'});
+ function previewRows(arr,cls){
+   if(!arr.length)return '';
+   return '<div class="stack" style="margin-top:8px">'+arr.map(function(z){
+     var sh=z.source,w=state.workers.find(function(a){return a.id===sh.worker_id}),fa=state.facilities.find(function(a){return a.id===sh.facility_id});
+     return '<div class="card"><div class="doc-row"><div><strong>'+esc(w&&w.full_name||'Sin asignar')+' · '+esc(fa&&fa.name||sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(z.start)+' · '+t(z.start)+'–'+t(z.end)+'</div></div><span class="badge '+cls+'">'+esc(z.label)+'</span></div></div>';
+   }).join('')+'</div>';
+ }
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Se copiarán</span><strong>'+payload.length+'</strong></div><div class="card kpi"><span class="muted">Bloqueados</span><strong>'+blocked.length+'</strong></div><div class="card kpi"><span class="muted">Ya existentes</span><strong>'+dups.length+'</strong></div><div class="card kpi"><span class="muted">Con aviso</span><strong>'+warn.length+'</strong></div></div>'+
+   (blocked.length?'<div class="section"><h3>No se copiarán</h3>'+previewRows(blocked,'red')+'</div>':'')+
+   (dups.length?'<div class="section"><h3>Duplicados omitidos</h3>'+previewRows(dups,'blue')+'</div>':'')+
+   (warn.length?'<div class="section"><h3>Se copiarán con aviso</h3><div class="muted">El trabajador indicó que preferiría no trabajar en ese horario.</div>'+previewRows(warn,'amber')+'</div>':'')+
+   (ok.length?'<div class="section"><h3>Turnos válidos</h3>'+previewRows(ok,'green')+'</div>':'')+
+   '<div class="mini-actions" style="margin-top:14px">'+(payload.length?'<button class="btn primary" id="confirmCopyWeek">Copiar '+payload.length+' turno(s) válidos</button>':'<span class="badge red">No hay turnos válidos para copiar</span>')+'</div>';
+
+ var el=modal('Revisión antes de duplicar',body);
+ var btn=el.querySelector('#confirmCopyWeek');
+ if(!btn)return;
+ btn.onclick=async function(){
+   btn.disabled=true;btn.textContent='Copiando…';
+   var r=await sb.from('shifts').insert(payload);
+   if(r.error){alert(r.error.message);btn.disabled=false;btn.textContent='Copiar '+payload.length+' turno(s) válidos';return}
+   var affected=payload.map(function(x){return x.worker_id}).filter(Boolean);
+   if(affected.length)await notifyWorkers(affected,'Cuadrante actualizado','Se han añadido nuevos turnos a tu próxima semana. Revisa tu cuadrante en GuardShift.');
+   el.remove();await load();state.scheduleOffset++;schedule();
+   alert('Copiados '+payload.length+' turno(s).'+(blocked.length?' · Bloqueados '+blocked.length+'.':'')+(dups.length?' · Duplicados omitidos '+dups.length+'.':''));
+ };
 }
 function schedule(){
  var start=monday(state.scheduleOffset),days=[],names=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];for(var i=0;i<7;i++){var q=new Date(start);q.setDate(q.getDate()+i);days.push(q)}
