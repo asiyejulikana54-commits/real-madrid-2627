@@ -159,7 +159,7 @@ async function load(){
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*').order('full_name'),
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
-    sb.from('substitutions').select('id,status,reason,created_at,updated_at,resolved_at,marketplace_escalated_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,open_to_workers,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
+    sb.from('substitutions').select('id,status,reason,created_at,updated_at,resolved_at,marketplace_escalated_at,last_offered_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,open_to_workers,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name,latitude,longitude,attendance_radius_m))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false}),
