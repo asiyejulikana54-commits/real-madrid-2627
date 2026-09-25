@@ -880,22 +880,50 @@ async function startSubstitution(shiftId,defaultReason){
  showCandidates(cr.data,sh,ca.data||[]);
 }
 function showCandidates(subId,sh,list){
- var body='<div class="stack"><div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div></div>';
- if(!list.length){body+='<div class="msg err">No hay candidatos válidos: tienen otro turno o han marcado que no están disponibles.</div>'}
- else{
-  body+='<form id="candidateForm" class="form"><div class="stack">'+list.map(function(w){return '<label class="candidate"><input type="checkbox" name="worker" value="'+w.worker_id+'" '+(w.priority===0?'checked':'')+'><span><strong>'+esc(w.full_name)+'</strong><br><span class="muted">'+esc(w.zone||'Sin zona')+' · '+esc(w.availability_label)+'</span></span></label>'}).join('')+'</div><button class="btn primary">Ofrecer turno a seleccionados</button></form>';
+ var start=new Date(sh.starts_at),end=new Date(sh.ends_at),rules=planningRuleValues();
+ var ranked=(list||[]).map(function(w){
+   var warnings=planningWarningsForAssignment(w.worker_id,start,end,null,[]);
+   var hours=plannedHoursInWeek(w.worker_id,start,end,null,[]);
+   var rest=restGapForAssignment(w.worker_id,start,end,null,[]);
+   var score=(warnings.length?100:0)+(Number(w.priority)||0)*10+hours/100;
+   return Object.assign({},w,{_warnings:warnings,_hours:hours,_rest:rest,_score:score});
+ }).sort(function(a,b){
+   return a._score-b._score||String(a.full_name||'').localeCompare(String(b.full_name||''));
+ });
+
+ var safe=ranked.filter(function(w){return !w._warnings.length&&Number(w.priority)===0});
+ var suggestedIds=new Set(safe.map(function(w){return w.worker_id}));
+ var body='<div class="stack"><div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div class="muted" style="margin-top:6px">Candidatos ordenados por disponibilidad, descanso y carga semanal.</div></div>';
+
+ if(!ranked.length){
+   body+='<div class="msg err">No hay candidatos válidos: tienen otro turno, una ausencia aprobada o han marcado que no están disponibles.</div>';
+ }else{
+   body+='<form id="candidateForm" class="form"><div class="stack">'+ranked.map(function(w,index){
+     var cls=w._warnings.length?'amber':Number(w.priority)===0?'green':'blue';
+     var status=w._warnings.length?'Revisar':Number(w.priority)===0?'Recomendado':'Disponible';
+     var restText=w._rest==null?'Sin turno cercano':w._rest.toFixed(1)+' h de descanso';
+     var warnHtml=w._warnings.length?'<div class="mini-actions" style="margin-top:6px">'+w._warnings.map(function(x){return '<span class="badge amber">⚠️ '+esc(x)+'</span>'}).join('')+'</div>':'';
+     var availability=esc(w.availability_label||'Sin disponibilidad marcada');
+     return '<label class="candidate"><input type="checkbox" name="worker" value="'+w.worker_id+'" '+(suggestedIds.has(w.worker_id)?'checked':'')+'><span style="flex:1"><span class="doc-row"><strong>'+esc(w.full_name)+'</strong><span class="badge '+cls+'">'+status+'</span></span><span class="muted">'+esc(w.zone||'Sin zona')+' · '+availability+'</span><br><span class="muted">Semana tras asignar: '+w._hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</span>'+warnHtml+'</span></label>';
+   }).join('')+'</div><div class="muted">Los avisos de horas y descanso no impiden enviar la oferta; sirven para ayudarte a repartir mejor la carga.</div><button class="btn primary">Ofrecer turno a seleccionados</button></form>';
  }
  body+='</div>';
  var el=modal('Buscar sustituto',body);
  var form=el.querySelector('#candidateForm');
- if(form)form.onsubmit=async function(e){e.preventDefault();var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});if(r.error){ferr(e.target,r.error.message);return}
- await sb.functions.invoke('send-guardshift-push',{body:{
-   worker_ids:ids,
-   title:'Nuevo turno disponible',
-   body:(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+'Tienes una nueva oferta de sustitución en GuardShift.',
-   url:location.href
- }}).catch(function(){});
- el.remove();await load();render();alert('Turno ofrecido a '+r.data+' trabajador(es).')};
+ if(form)form.onsubmit=async function(e){
+   e.preventDefault();
+   var ids=Array.from(e.target.querySelectorAll('input[name="worker"]:checked')).map(function(x){return x.value});
+   if(!ids.length){ferr(e.target,'Selecciona al menos un trabajador.');return}
+   var r=await sb.rpc('offer_substitution',{p_substitution_id:subId,p_worker_ids:ids});
+   if(r.error){ferr(e.target,r.error.message);return}
+   await sb.functions.invoke('send-guardshift-push',{body:{
+     worker_ids:ids,
+     title:'Nuevo turno disponible',
+     body:(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+'Tienes una nueva oferta de sustitución en GuardShift.',
+     url:location.href
+   }}).catch(function(){});
+   el.remove();await load();render();alert('Turno ofrecido a '+r.data+' trabajador(es).');
+ };
 }
 function workerhome(){
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});
