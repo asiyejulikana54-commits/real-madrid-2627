@@ -453,9 +453,9 @@ function setupRealtime(){
     render();
   }).subscribe();
 }
-async function startSubstitution(shiftId){
+async function startSubstitution(shiftId,defaultReason){
  var sh=state.shifts.find(function(x){return x.id===shiftId}); if(!sh)return;
- var reason=prompt('Motivo de la sustitución (opcional):','');
+ var reason=prompt('Motivo de la sustitución (opcional):',defaultReason||'');
  if(reason===null)return;
  var cr=await sb.rpc('create_substitution',{p_shift_id:shiftId,p_reason:reason||null});
  if(cr.error){alert(cr.error.message);return}
@@ -630,6 +630,23 @@ function clocking(){
    }catch(e){alert(e.message||'No se pudo fichar salida.');co.disabled=false;co.textContent='Fichar salida'}
  };
 }
+function leaveConflictingShifts(req){
+ if(!req||!req.worker_id)return [];
+ var start=new Date(req.starts_on+'T00:00:00'),end=new Date(req.ends_on+'T23:59:59');
+ return state.shifts.filter(function(x){
+   return x.worker_id===req.worker_id&&x.status==='assigned'&&new Date(x.starts_at)<=end&&new Date(x.ends_at)>=start;
+ }).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
+}
+function showLeaveConflicts(req){
+ var conflicts=leaveConflictingShifts(req);
+ var worker=req.workers&&req.workers.full_name||'Trabajador';
+ var body=conflicts.length?'<div class="stack"><div class="msg err"><strong>'+conflicts.length+' turno(s) asignado(s)</strong> coinciden con esta ausencia. La ausencia está aprobada, pero los turnos no se modifican hasta que decidas cómo cubrirlos.</div>'+conflicts.map(function(x){
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div></div>'+badge(x.status)+'</div><div class="mini-actions" style="margin-top:10px"><button class="btn small primary" data-leave-cover="'+x.id+'">Buscar sustituto</button><button class="btn small secondary" data-leave-edit="'+x.id+'">Editar turno</button></div></div>';
+ }).join('')+'</div>':'<div class="card empty">Esta ausencia no afecta a ningún turno asignado.</div>';
+ var el=modal('Turnos afectados · '+worker,body);
+ el.querySelectorAll('[data-leave-cover]').forEach(function(b){b.onclick=function(){var id=b.getAttribute('data-leave-cover');el.remove();startSubstitution(id,'Ausencia aprobada')}});
+ el.querySelectorAll('[data-leave-edit]').forEach(function(b){b.onclick=function(){var id=b.getAttribute('data-leave-edit');el.remove();shiftModal(id)}});
+}
 function leavePage(){
  if(state.profile.role==='worker'){
    var body='<div class="card"><form id="leaveForm" class="form"><div class="field"><label>Tipo</label><select name="type"><option value="vacation">Vacaciones</option><option value="personal">Asunto personal</option><option value="sick">Baja / enfermedad</option><option value="other">Otro</option></select></div><div class="field"><label>Desde</label><input type="date" name="start" required></div><div class="field"><label>Hasta</label><input type="date" name="end" required></div><div class="field"><label>Motivo</label><input name="reason"></div><button class="btn primary">Enviar solicitud</button></form></div><div class="section">'+leaveList(state.leaveRequests||[],false)+'</div>';
@@ -638,12 +655,27 @@ function leavePage(){
    document.querySelectorAll('[data-cancel-leave]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('cancel_own_leave_request',{p_request_id:b.getAttribute('data-cancel-leave')});if(r.error){alert(r.error.message);return}await load();render()}});
  }else{
    shell('Ausencias','Revisa solicitudes de vacaciones y ausencias.',leaveList(state.leaveRequests||[],true),'');
-   document.querySelectorAll('[data-review-leave]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_leave_request',{p_request_id:b.getAttribute('data-review-leave'),p_status:b.getAttribute('data-status')});if(r.error){alert(r.error.message);return}await load();render()}});
+   document.querySelectorAll('[data-manage-leave]').forEach(function(b){b.onclick=function(){var req=(state.leaveRequests||[]).find(function(x){return x.id===b.getAttribute('data-manage-leave')});if(req)showLeaveConflicts(req)}});
+   document.querySelectorAll('[data-review-leave]').forEach(function(b){b.onclick=async function(){
+     var id=b.getAttribute('data-review-leave'),status=b.getAttribute('data-status');
+     var r=await sb.rpc('review_leave_request',{p_request_id:id,p_status:status});if(r.error){alert(r.error.message);return}
+     await load();
+     var req=(state.leaveRequests||[]).find(function(x){return x.id===id});
+     if(status==='approved'&&req&&leaveConflictingShifts(req).length){showLeaveConflicts(req);return}
+     render()
+   }});
  }
 }
 function leaveList(list,coordinator){
  if(!list.length)return '<div class="card empty">No hay solicitudes.</div>';
- return '<div class="stack">'+list.map(function(x){var w=x.workers||{};var st=x.status==='approved'?['Aprobada','green']:x.status==='rejected'?['Rechazada','red']:x.status==='cancelled'?['Cancelada','blue']:['Pendiente','amber'];return '<div class="card"><div class="doc-row"><div><strong>'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.leave_type)+'</strong><div class="muted">'+d(x.starts_on)+' → '+d(x.ends_on)+(x.reason?' · '+esc(x.reason):'')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+(x.status==='pending'?(coordinator?'<div class="mini-actions" style="margin-top:10px"><button class="btn small secondary" data-review-leave="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-leave="'+x.id+'" data-status="rejected">Rechazar</button></div>':'<button class="btn small danger" style="margin-top:10px" data-cancel-leave="'+x.id+'">Cancelar solicitud</button>'):'')+'</div>'}).join('')+'</div>';
+ return '<div class="stack">'+list.map(function(x){
+   var w=x.workers||{},st=x.status==='approved'?['Aprobada','green']:x.status==='rejected'?['Rechazada','red']:x.status==='cancelled'?['Cancelada','blue']:['Pendiente','amber'];
+   var conflicts=coordinator&&x.status==='approved'?leaveConflictingShifts(x):[];
+   return '<div class="card"><div class="doc-row"><div><strong>'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.leave_type)+'</strong><div class="muted">'+d(x.starts_on)+' → '+d(x.ends_on)+(x.reason?' · '+esc(x.reason):'')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+
+   (conflicts.length?'<div class="msg err" style="margin-top:10px">⚠️ '+conflicts.length+' turno(s) asignado(s) coinciden con esta ausencia.</div>':'')+
+   (x.status==='pending'?(coordinator?'<div class="mini-actions" style="margin-top:10px"><button class="btn small secondary" data-review-leave="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-leave="'+x.id+'" data-status="rejected">Rechazar</button></div>':'<button class="btn small danger" style="margin-top:10px" data-cancel-leave="'+x.id+'">Cancelar solicitud</button>'):(coordinator&&conflicts.length?'<button class="btn small primary" style="margin-top:10px" data-manage-leave="'+x.id+'">Gestionar turnos afectados</button>':''))+
+   '</div>';
+ }).join('')+'</div>';
 }
 function incidentsPage(){
  if(state.profile.role==='worker'){
