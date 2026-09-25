@@ -417,18 +417,25 @@ function operationAssignCandidate(shiftId,workerId){
    await load();operationsPage();return true;
  });
 }
-function operationCandidatesModal(shiftId){
+async function operationCandidatesModal(shiftId){
  var sh=state.shifts.find(function(x){return x.id===shiftId});if(!sh)return;
- var ranked=operationRankedCandidates(sh),rules=planningRuleValues();
- var body='<div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div></div>'+
+ var diag=await sb.rpc('get_open_shift_candidate_diagnostics',{p_shift_id:shiftId});
+ if(diag.error){alert(diag.error.message);return}
+ var diagnostics=diag.data||[],ranked=operationRankedCandidates(sh),rules=planningRuleValues();
+ var excluded=diagnostics.filter(function(x){return !x.eligible});
+ var body='<div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div class="muted">Requisitos: '+esc(facilityRequirementsLabel(sh.facility_id))+'</div></div>'+
+ '<div class="cards section"><div class="card kpi"><span class="muted">Plantilla activa analizada</span><strong>'+diagnostics.length+'</strong></div><div class="card kpi"><span class="muted">Elegibles</span><strong>'+ranked.length+'</strong></div><div class="card kpi"><span class="muted">No elegibles</span><strong>'+excluded.length+'</strong></div></div>'+
  '<div class="section"><h3>Candidatos elegibles</h3>'+(ranked.length?'<div class="stack">'+ranked.map(function(c,index){
    var rest=c._rest==null?'Sin turno cercano':c._rest.toFixed(1)+' h de descanso';
    var cls=index===0&&!c._warnings.length&&Number(c.priority)===0?'green':c._warnings.length?'amber':'blue';
    var label=index===0&&!c._warnings.length&&Number(c.priority)===0?'Recomendado':c._warnings.length?'Revisar':'Elegible';
    return '<div class="card"><div class="doc-row"><div><strong>'+esc(c.full_name)+'</strong><div class="muted">'+esc(c.zone||'Sin zona')+' · '+esc(c.availability_label||'Disponible')+'</div><div class="muted">Semana tras asignar: '+c._hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(rest)+'</div></div><span class="badge '+cls+'">'+label+'</span></div>'+(c._warnings.length?'<div class="mini-actions" style="margin-top:8px">'+c._warnings.map(function(x){return '<span class="badge amber">⚠️ '+esc(x)+'</span>'}).join('')+'</div>':'')+'<div class="mini-actions" style="margin-top:10px"><button class="btn small primary" data-operation-assign="'+c.worker_id+'" data-shift="'+sh.id+'">Asignar</button></div></div>';
- }).join('')+'</div>':'<div class="card empty">No hay trabajadores elegibles ahora mismo. Revisa documentación, disponibilidad, ausencias y solapes.</div>')+'</div>';
+ }).join('')+'</div>':'<div class="card empty">No hay trabajadores elegibles ahora mismo.</div>')+'</div>'+
+ '<div class="section"><div class="doc-row"><div><h3 style="margin-bottom:4px">Por qué quedan trabajadores fuera</h3><div class="muted">Diagnóstico calculado en servidor con documentación, solapes, disponibilidad y ausencias.</div></div>'+(excluded.some(function(x){return (x.reasons||[]).some(function(r){return String(r).indexOf('documentación')>=0})})?'<button class="btn small secondary" id="candidateGoCompliance">Abrir cumplimiento</button>':'')+'</div>'+
+ (excluded.length?'<div class="stack">'+excluded.map(function(x){return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.full_name)+'</strong><div class="muted">'+esc(x.zone||'Sin zona')+'</div></div><span class="badge red">No elegible</span></div><div class="mini-actions" style="margin-top:8px">'+(x.reasons||[]).map(function(r){return '<span class="badge red">'+esc(r)+'</span>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Toda la plantilla activa analizada es elegible para este turno.</div>')+'</div>';
  var el=modal('Cubrir turno',body);
  el.querySelectorAll('[data-operation-assign]').forEach(function(b){b.onclick=async function(){var ok=await operationAssignCandidate(b.getAttribute('data-shift'),b.getAttribute('data-operation-assign'));if(ok)el.remove()}});
+ var compliance=el.querySelector('#candidateGoCompliance');if(compliance)compliance.onclick=function(){el.remove();state.page='compliance';render()};
 }
 function operationsPage(){
  var now=new Date(),horizon=Math.max(7,Math.min(30,Number(state.operationsHorizon||14))),end=new Date(now);end.setDate(end.getDate()+horizon);
