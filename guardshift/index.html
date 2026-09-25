@@ -41,11 +41,12 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
 function t(v){return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit'}).format(new Date(v))}
+function ts(v){return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(v))}
 function msg(text,ok){return '<div class="msg '+(ok?'ok':'err')+'">'+esc(text)+'</div>'}
 function auth(mode,message){
  mode=mode||'login';
@@ -152,14 +153,15 @@ async function load(){
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
     sb.from('substitutions').select('id,status,reason,created_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
-    sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name,latitude,longitude))').order('clock_in',{ascending:false}),
+    sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name,latitude,longitude,attendance_radius_m))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false}),
     sb.from('leave_requests').select('*,workers(full_name)').order('starts_on',{ascending:false}),
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
-    sb.from('availability').select('*').order('starts_at',{ascending:true})
+    sb.from('availability').select('*').order('starts_at',{ascending:true}),
+    sb.from('time_entry_audit').select('*').order('created_at',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];
  }
 }
 function nav(){
@@ -619,16 +621,55 @@ function summaryPage(){
    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_resumen_'+state.summaryMode+'.csv';a.click();window.URL.revokeObjectURL(a.href);
  };
 }
+function entryForShift(shiftId){return (state.timeEntries||[]).find(function(x){return x.shift_id===shiftId})}
+function punctualityForEntry(x){
+ if(!x||!x.shifts||!x.shifts.starts_at)return null;
+ var diff=Math.round((new Date(x.clock_in)-new Date(x.shifts.starts_at))/60000);
+ return diff>0?diff:0;
+}
+function missingClockIns(){
+ var now=new Date(),grace=Number(state.company&&state.company.clock_in_grace_minutes||10);
+ return state.shifts.filter(function(sh){
+   if(sh.status!=='assigned'||!sh.worker_id)return false;
+   var start=new Date(sh.starts_at),end=new Date(sh.ends_at);
+   return now>new Date(start.getTime()+grace*60000)&&now<new Date(end.getTime()+12*3600000)&&!entryForShift(sh.id);
+ });
+}
+function correctionModal(entryId){
+ var x=(state.timeEntries||[]).find(function(z){return z.id===entryId});if(!x)return;
+ var audits=(state.timeAudit||[]).filter(function(a){return a.time_entry_id===entryId});
+ var hist=audits.length?'<div class="section"><strong>Historial de cambios</strong><div class="stack" style="margin-top:8px">'+audits.map(function(a){return '<div class="card"><div class="muted">'+d(a.created_at)+' '+ts(a.created_at)+' · '+esc(a.action)+'</div><div>'+esc(a.reason)+'</div><div class="muted">'+ts(a.new_clock_in)+(a.new_clock_out?' → '+ts(a.new_clock_out):'')+'</div></div>'}).join('')+'</div></div>':'';
+ var el=modal('Corregir fichaje','<form class="form"><div class="field"><label>Entrada</label><input type="datetime-local" name="in" value="'+toLocalInput(x.clock_in)+'" required></div><div class="field"><label>Salida</label><input type="datetime-local" name="out" value="'+toLocalInput(x.clock_out)+'"></div><div class="field"><label>Motivo de la corrección</label><input name="reason" placeholder="Ej.: olvidó fichar al salir" required></div><div class="muted">Tras corregirlo volverá a quedar pendiente de aprobación.</div><button class="btn primary">Guardar corrección</button></form>'+hist);
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),ci=new Date(f.get('in')),co=f.get('out')?new Date(f.get('out')):null;var r=await sb.rpc('correct_time_entry',{p_entry_id:entryId,p_clock_in:ci.toISOString(),p_clock_out:co?co.toISOString():null,p_reason:f.get('reason')});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();hoursPage()};
+}
+function manualTimeModal(){
+ var wo=state.workers.filter(function(w){return w.active}).map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
+ var so='<option value="">Sin turno asociado</option>'+state.shifts.filter(function(x){return x.status!=='cancelled'}).map(function(x){return '<option value="'+x.id+'" data-worker="'+(x.worker_id||'')+'">'+d(x.starts_at)+' · '+esc(x.facilities&&x.facilities.name||'Turno')+' · '+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</option>'}).join('');
+ var el=modal('Añadir fichaje manual','<form class="form"><div class="field"><label>Trabajador</label><select name="worker" required>'+wo+'</select></div><div class="field"><label>Turno (opcional)</label><select name="shift">'+so+'</select></div><div class="field"><label>Entrada</label><input type="datetime-local" name="in" required></div><div class="field"><label>Salida</label><input type="datetime-local" name="out" required></div><div class="field"><label>Notas</label><input name="notes"></div><div class="field"><label>Motivo</label><input name="reason" placeholder="Ej.: trabajador olvidó fichar" required></div><button class="btn primary">Crear fichaje</button></form>');
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),ci=new Date(f.get('in')),co=new Date(f.get('out'));var r=await sb.rpc('create_manual_time_entry',{p_worker_id:f.get('worker'),p_shift_id:f.get('shift')||null,p_clock_in:ci.toISOString(),p_clock_out:co.toISOString(),p_notes:f.get('notes')||null,p_reason:f.get('reason')});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();hoursPage()};
+}
 function hoursPage(){
- var rows=state.timeEntries||[];
+ var rows=state.timeEntries||[],grace=Number(state.company&&state.company.clock_in_grace_minutes||10),missing=missingClockIns();
  var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
- var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisar</span><strong>'+rows.filter(function(x){return x.approval_status==='pending'}).length+'</strong></div></div>'+
- '<div class="section"><div class="mini-actions"><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button></div></div>'+
- (rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];var li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out'),fa=x.shifts&&x.shifts.facilities||{};var di=li&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(li.latitude,li.longitude,fa.latitude,fa.longitude):null;var dout=lo&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(lo.latitude,lo.longitude,fa.latitude,fa.longitude):null;var radius=fa.attendance_radius_m||250;var gi=di==null?'':(di<=radius?'<span class="badge green">✅ Dentro del centro</span>':'<span class="badge red">⚠️ Fuera del radio</span>');var go=dout==null?'':(dout<=radius?'<span class="badge green">✅ Dentro del centro</span>':'<span class="badge red">⚠️ Fuera del radio</span>');return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(fa.name||'—')+'</td><td>'+d(x.clock_in)+' '+t(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+t(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="stack">'+(li?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Ver entrada</a>'+gi+'</div><div class="muted">Precisión GPS: ±'+Math.round(li.accuracy_m||0)+' m'+(di!=null?' · Distancia al centro: '+formatDistance(di)+' · Radio permitido: '+radius+' m':' · Centro sin ubicación')+'</div></div>':'—')+(lo?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Ver salida</a>'+go+'</div><div class="muted">Precisión GPS: ±'+Math.round(lo.accuracy_m||0)+' m'+(dout!=null?' · Distancia al centro: '+formatDistance(dout)+' · Radio permitido: '+radius+' m':' · Centro sin ubicación')+'</div></div>':'')+'</div></td><td><div class="mini-actions"><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
- shell('Horas trabajadas','Control de presencia y revisión de fichajes.',body,'');
+ var lateCount=rows.filter(function(x){return punctualityForEntry(x)>grace}).length;
+ var alerts=missing.length?'<div class="section"><h2>⚠️ Turnos empezados sin fichaje</h2><div class="stack">'+missing.map(function(sh){var mins=Math.max(0,Math.floor((new Date()-new Date(sh.starts_at))/60000));return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(sh.workers&&sh.workers.full_name||'Trabajador')+' · '+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">Debía entrar a las '+t(sh.starts_at)+' · '+mins+' min desde el inicio</div></div><button class="btn small secondary" data-manual-for="'+sh.id+'">Añadir fichaje</button></div></div>'}).join('')+'</div></div>':'';
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisar</span><strong>'+rows.filter(function(x){return x.approval_status==='pending'}).length+'</strong></div><div class="card kpi"><span class="muted">Retrasos > '+grace+' min</span><strong>'+lateCount+'</strong></div><div class="card kpi"><span class="muted">Sin fichar ahora</span><strong>'+missing.length+'</strong></div></div>'+
+ '<div class="section"><div class="mini-actions"><button class="btn primary" id="manualEntry">+ Fichaje manual</button><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button><label class="card" style="padding:8px 12px">Tolerancia <input id="graceMinutes" type="number" min="0" max="120" value="'+grace+'" style="width:70px;margin-left:6px"> min</label></div></div>'+alerts+
+ (rows.length?'<div class="section table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Puntualidad</th><th>Horas</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){
+   var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000,late=punctualityForEntry(x),punct=late==null?'—':late<=grace?'<span class="badge green">A tiempo</span>':'<span class="badge red">+'+late+' min</span>';
+   var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];
+   var li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out'),fa=x.shifts&&x.shifts.facilities||{},di=li&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(li.latitude,li.longitude,fa.latitude,fa.longitude):null,dout=lo&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(lo.latitude,lo.longitude,fa.latitude,fa.longitude):null,radius=fa.attendance_radius_m||250;
+   var gi=di==null?'':(di<=radius?'<span class="badge green">✅ Dentro</span>':'<span class="badge red">⚠️ Fuera</span>'),go=dout==null?'':(dout<=radius?'<span class="badge green">✅ Dentro</span>':'<span class="badge red">⚠️ Fuera</span>');
+   return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(fa.name||'—')+'</td><td>'+d(x.clock_in)+' '+ts(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+punct+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="stack">'+(li?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Entrada</a>'+gi+'</div><div class="muted">GPS ±'+Math.round(li.accuracy_m||0)+' m'+(di!=null?' · '+formatDistance(di)+' al centro':'')+'</div></div>':'—')+(lo?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Salida</a>'+go+'</div><div class="muted">GPS ±'+Math.round(lo.accuracy_m||0)+' m'+(dout!=null?' · '+formatDistance(dout)+' al centro':'')+'</div></div>':'')+'</div></td><td><div class="mini-actions"><button class="btn small secondary" data-correct-time="'+x.id+'">Corregir</button><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>';
+ }).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
+ shell('Horas trabajadas','Control de presencia, puntualidad y revisión de fichajes.',body,'');
+ document.getElementById('manualEntry').onclick=manualTimeModal;
+ document.getElementById('graceMinutes').onchange=async function(e){var v=Math.max(0,Math.min(120,Number(e.target.value)||0));var r=await sb.from('companies').update({clock_in_grace_minutes:v}).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;hoursPage()};
+ document.querySelectorAll('[data-manual-for]').forEach(function(b){b.onclick=function(){manualTimeModal();setTimeout(function(){var sel=document.querySelector('.modal select[name="shift"]');if(sel){sel.value=b.getAttribute('data-manual-for');var op=sel.options[sel.selectedIndex];var wid=op&&op.getAttribute('data-worker'),ws=document.querySelector('.modal select[name="worker"]');if(wid&&ws)ws.value=wid}},0)}});
+ document.querySelectorAll('[data-correct-time]').forEach(function(b){b.onclick=function(){correctionModal(b.getAttribute('data-correct-time'))}});
  document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Estado\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending'].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();window.URL.revokeObjectURL(a.href)};
  document.getElementById('exportPdf').onclick=function(){window.print()};
- document.querySelectorAll('[data-review-time]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_time_entry',{p_entry_id:b.getAttribute('data-review-time'),p_status:b.getAttribute('data-status'),p_clock_in:null,p_clock_out:null});if(r.error){alert(r.error.message);return}await load();render()}});
+ document.querySelectorAll('[data-review-time]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_time_entry',{p_entry_id:b.getAttribute('data-review-time'),p_status:b.getAttribute('data-status'),p_clock_in:null,p_clock_out:null});if(r.error){alert(r.error.message);return}await load();hoursPage()}});
 }
 function clocking(){
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
@@ -732,7 +773,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
