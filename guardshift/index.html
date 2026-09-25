@@ -335,6 +335,10 @@ function notificationSettingsCard(){
  var c=state.company||{};
  return '<div class="card"><h2 style="margin-top:0">Avisos automáticos</h2><div class="form"><div class="field"><label>Recordatorio antes del turno</label><select id="reminderEnabled"><option value="1" '+(c.shift_reminders_enabled!==false?'selected':'')+'>Activado</option><option value="0" '+(c.shift_reminders_enabled===false?'selected':'')+'>Desactivado</option></select></div><div class="field"><label>Minutos antes</label><input id="reminderMinutes" type="number" min="5" max="180" value="'+esc(c.shift_reminder_minutes||30)+'"></div><div class="field"><label>Aviso si no ficha tras la tolerancia</label><select id="missingEnabled"><option value="1" '+(c.missing_clock_in_alerts_enabled!==false?'selected':'')+'>Activado</option><option value="0" '+(c.missing_clock_in_alerts_enabled===false?'selected':'')+'>Desactivado</option></select></div><button class="btn secondary" id="saveNotificationSettings">Guardar avisos</button></div></div>';
 }
+function planningRulesCard(){
+ var c=state.company||{};
+ return '<div class="card"><h2 style="margin-top:0">Reglas de planificación</h2><div class="muted" style="margin-bottom:10px">Son avisos operativos configurables; no bloquean por sí solos la creación de turnos.</div><div class="form"><div class="field"><label>Máximo de horas planificadas por semana</label><input id="maxWeeklyHours" type="number" min="1" max="168" step="0.5" value="'+esc(c.max_planned_weekly_hours||40)+'"></div><div class="field"><label>Descanso mínimo entre turnos</label><input id="minRestHours" type="number" min="0" max="72" step="0.5" value="'+esc(c.min_rest_hours||12)+'"></div><button class="btn secondary" id="savePlanningRules">Guardar reglas</button></div></div>';
+}
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
  var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
@@ -363,8 +367,9 @@ function dashboard(){
  '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>'+
  '<div class="section">'+notificationSettingsCard()+'</div>'+
+ '<div class="section">'+planningRulesCard()+'</div>'+
  '<div class="section"><h2>Alertas operativas recientes</h2>'+((state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).length?'<div class="stack">'+(state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).slice(0,8).map(function(x){return '<div class="card notice"><strong>'+esc(x.workers&&x.workers.full_name||'Trabajador')+' · '+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.created_at)+' '+ts(x.created_at)+' · '+esc(x.body)+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay avisos recientes de fichaje pendiente.</div>')+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -421,6 +426,50 @@ function approvedLeaveForShift(workerId,start,end){
  var sd=localDateKey(start),ed=localDateKey(end);
  return (state.leaveRequests||[]).find(function(x){return x.worker_id===workerId&&x.status==='approved'&&x.starts_on<=ed&&x.ends_on>=sd});
 }
+function planningRuleValues(){
+ return {
+   maxWeekly:Math.max(1,Number(state.company&&state.company.max_planned_weekly_hours||40)),
+   minRest:Math.max(0,Number(state.company&&state.company.min_rest_hours||12))
+ };
+}
+function weekBoundsForDate(v){
+ var x=new Date(v),day=(x.getDay()+6)%7;
+ x.setDate(x.getDate()-day);x.setHours(0,0,0,0);
+ var end=new Date(x);end.setDate(end.getDate()+7);
+ return {start:x,end:end};
+}
+function plannedHoursInWeek(workerId,start,end,excludeId,extraRows){
+ if(!workerId)return 0;
+ var wb=weekBoundsForDate(start),rows=(state.shifts||[]).filter(function(x){
+   return x.id!==excludeId&&x.worker_id===workerId&&x.status!=='cancelled'&&new Date(x.starts_at)<wb.end&&new Date(x.ends_at)>wb.start;
+ }).map(function(x){return {starts_at:x.starts_at,ends_at:x.ends_at}});
+ (extraRows||[]).filter(function(x){return x.worker_id===workerId&&x.status!=='cancelled'&&new Date(x.starts_at)<wb.end&&new Date(x.ends_at)>wb.start}).forEach(function(x){rows.push(x)});
+ rows.push({starts_at:start,ends_at:end});
+ return rows.reduce(function(total,x){
+   var a=Math.max(wb.start.getTime(),new Date(x.starts_at).getTime()),b=Math.min(wb.end.getTime(),new Date(x.ends_at).getTime());
+   return total+Math.max(0,b-a)/3600000;
+ },0);
+}
+function restGapForAssignment(workerId,start,end,excludeId,extraRows){
+ if(!workerId)return null;
+ var candidates=(state.shifts||[]).filter(function(x){return x.id!==excludeId&&x.worker_id===workerId&&x.status!=='cancelled'}).map(function(x){return {starts_at:x.starts_at,ends_at:x.ends_at}});
+ (extraRows||[]).filter(function(x){return x.worker_id===workerId&&x.status!=='cancelled'}).forEach(function(x){candidates.push(x)});
+ var best=null;
+ candidates.forEach(function(x){
+   var xs=new Date(x.starts_at),xe=new Date(x.ends_at),gap=null;
+   if(xe<=start)gap=(start-xe)/3600000;
+   else if(xs>=end)gap=(xs-end)/3600000;
+   if(gap!=null&&(best==null||gap<best))best=gap;
+ });
+ return best;
+}
+function planningWarningsForAssignment(workerId,start,end,excludeId,extraRows){
+ if(!workerId)return [];
+ var rules=planningRuleValues(),warnings=[],rest=restGapForAssignment(workerId,start,end,excludeId,extraRows),hours=plannedHoursInWeek(workerId,start,end,excludeId,extraRows);
+ if(rest!=null&&rest<rules.minRest)warnings.push('Descanso '+rest.toFixed(1)+' h (< '+rules.minRest+' h)');
+ if(hours>rules.maxWeekly+0.001)warnings.push('Semana '+hours.toFixed(1)+' h (> '+rules.maxWeekly+' h)');
+ return warnings;
+}
 function shiftWarning(sft){
  if(!sft.worker_id)return null;
  var start=new Date(sft.starts_at),end=new Date(sft.ends_at);
@@ -429,7 +478,9 @@ function shiftWarning(sft){
  if(approvedLeaveForShift(sft.worker_id,start,end))return ['🏖 Ausencia','conflict'];
  var av=availabilityForShift(sft.worker_id,start,end);
  if(av&&av.status==='unavailable')return ['⛔ No disponible','conflict'];
- if(av&&av.status==='prefer_not')return ['🟡 Preferiría no','warning'];
+ var warnings=planningWarningsForAssignment(sft.worker_id,start,end,sft.id,[]);
+ if(av&&av.status==='prefer_not')warnings.unshift('Preferiría no');
+ if(warnings.length)return ['⚠ '+warnings.join(' · '),'warning'];
  return null;
 }
 async function duplicateDisplayedWeek(){
@@ -460,9 +511,11 @@ async function duplicateDisplayedWeek(){
    }
 
    var row={company_id:state.profile.company_id,facility_id:x.facility_id,worker_id:x.worker_id,starts_at:ns.toISOString(),ends_at:ne.toISOString(),status:x.worker_id?'assigned':'open',notes:x.notes||null,created_by:state.profile.id};
-   payload.push(row);
    var av2=x.worker_id?availabilityForShift(x.worker_id,ns,ne):null;
-   results.push(Object.assign(base,{status:av2&&av2.status==='prefer_not'?'warning':'ok',label:av2&&av2.status==='prefer_not'?'Preferiría no':'Listo'}));
+   var planWarn=x.worker_id?planningWarningsForAssignment(x.worker_id,ns,ne,null,payload):[];
+   var labels=[];if(av2&&av2.status==='prefer_not')labels.push('Preferiría no');labels=labels.concat(planWarn);
+   payload.push(row);
+   results.push(Object.assign(base,{status:labels.length?'warning':'ok',label:labels.length?labels.join(' · '):'Listo'}));
  });
 
  var blocked=results.filter(function(x){return x.status==='blocked'}),dups=results.filter(function(x){return x.status==='duplicate'}),warn=results.filter(function(x){return x.status==='warning'}),ok=results.filter(function(x){return x.status==='ok'});
@@ -476,7 +529,7 @@ async function duplicateDisplayedWeek(){
  var body='<div class="cards"><div class="card kpi"><span class="muted">Se copiarán</span><strong>'+payload.length+'</strong></div><div class="card kpi"><span class="muted">Bloqueados</span><strong>'+blocked.length+'</strong></div><div class="card kpi"><span class="muted">Ya existentes</span><strong>'+dups.length+'</strong></div><div class="card kpi"><span class="muted">Con aviso</span><strong>'+warn.length+'</strong></div></div>'+
    (blocked.length?'<div class="section"><h3>No se copiarán</h3>'+previewRows(blocked,'red')+'</div>':'')+
    (dups.length?'<div class="section"><h3>Duplicados omitidos</h3>'+previewRows(dups,'blue')+'</div>':'')+
-   (warn.length?'<div class="section"><h3>Se copiarán con aviso</h3><div class="muted">El trabajador indicó que preferiría no trabajar en ese horario.</div>'+previewRows(warn,'amber')+'</div>':'')+
+   (warn.length?'<div class="section"><h3>Se copiarán con aviso</h3><div class="muted">Revisa disponibilidad, descanso entre turnos y horas semanales antes de confirmar.</div>'+previewRows(warn,'amber')+'</div>':'')+
    (ok.length?'<div class="section"><h3>Turnos válidos</h3>'+previewRows(ok,'green')+'</div>':'')+
    '<div class="mini-actions" style="margin-top:14px">'+(payload.length?'<button class="btn primary" id="confirmCopyWeek">Copiar '+payload.length+' turno(s) válidos</button>':'<span class="badge red">No hay turnos válidos para copiar</span>')+'</div>';
 
@@ -577,7 +630,10 @@ function recurringShiftPreview(facilityId,workerId,start,end,weeks){
      if(approvedLeaveForShift(workerId,a,b)){base.status='blocked';base.label='Ausencia aprobada';out.push(base);continue}
      var av=availabilityForShift(workerId,a,b);
      if(av&&av.status==='unavailable'){base.status='blocked';base.label='No disponible';out.push(base);continue}
-     if(av&&av.status==='prefer_not'){base.status='warning';base.label='Preferiría no'}
+     var planWarn=planningWarningsForAssignment(workerId,a,b,null,planned),labels=[];
+     if(av&&av.status==='prefer_not')labels.push('Preferiría no');
+     labels=labels.concat(planWarn);
+     if(labels.length){base.status='warning';base.label=labels.join(' · ')}
    }
    base.payload={company_id:state.profile.company_id,facility_id:facilityId,worker_id:workerId,starts_at:a.toISOString(),ends_at:b.toISOString(),status:workerId?'assigned':'open',created_by:state.profile.id};
    planned.push(base.payload);out.push(base);
@@ -594,7 +650,7 @@ function recurringShiftModal(results,facilityId,workerId,onDone){
  var body='<div class="cards"><div class="card kpi"><span class="muted">Se crearán</span><strong>'+valid.length+'</strong></div><div class="card kpi"><span class="muted">Bloqueados</span><strong>'+blocked.length+'</strong></div><div class="card kpi"><span class="muted">Ya existentes</span><strong>'+dups.length+'</strong></div><div class="card kpi"><span class="muted">Con aviso</span><strong>'+warn.length+'</strong></div></div>'+
    (blocked.length?'<div class="section"><h3>No se crearán</h3>'+cards(blocked,'red')+'</div>':'')+
    (dups.length?'<div class="section"><h3>Duplicados omitidos</h3>'+cards(dups,'blue')+'</div>':'')+
-   (warn.length?'<div class="section"><h3>Se crearán con aviso</h3><div class="muted">El trabajador indicó que preferiría no trabajar en ese horario.</div>'+cards(warn,'amber')+'</div>':'')+
+   (warn.length?'<div class="section"><h3>Se crearán con aviso</h3><div class="muted">Revisa disponibilidad, descanso entre turnos y horas semanales antes de confirmar.</div>'+cards(warn,'amber')+'</div>':'')+
    (valid.length?'<div class="section"><h3>Turnos que se crearán</h3>'+cards(valid.filter(function(x){return x.status==='ok'}),'green')+'</div>':'')+
    '<div class="mini-actions" style="margin-top:14px">'+(valid.length?'<button class="btn primary" id="confirmRecurringShift">Crear '+valid.length+' turno(s)</button>':'<span class="badge red">No hay turnos válidos para crear</span>')+'</div>';
  var el=modal('Revisión de turnos recurrentes',body),btn=el.querySelector('#confirmRecurringShift');
@@ -642,6 +698,8 @@ function shiftModal(id,prefill){
      var leave=approvedLeaveForShift(w,a,b);if(leave&&!confirm('El trabajador tiene una ausencia aprobada en esas fechas. ¿Quieres asignarlo de todas formas?'))return;
      var av=availabilityForShift(w,a,b);if(av&&av.status==='unavailable'&&!confirm('El trabajador ha marcado que NO está disponible en ese horario. ¿Asignarlo de todas formas?'))return;
      if(av&&av.status==='prefer_not'&&!confirm('El trabajador ha indicado que preferiría no trabajar en ese horario. ¿Continuar?'))return;
+     var pw=planningWarningsForAssignment(w,a,b,item&&item.id,[]);
+     if(pw.length&&!confirm('GuardShift detecta estas advertencias de planificación:\n\n• '+pw.join('\n• ')+'\n\n¿Quieres continuar de todas formas?'))return;
    }
    var payload={facility_id:facilityId,worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};
    var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));
