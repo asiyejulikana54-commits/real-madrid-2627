@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -143,10 +143,11 @@ async function load(){
     sb.from('incidents').select('*').order('occurred_at',{ascending:false}),
     sb.from('leave_requests').select('*').order('starts_on',{ascending:false}),
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
-    sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false})
+    sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
+    sb.rpc('get_claimable_open_shifts')
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
@@ -185,11 +186,29 @@ function shiftTable(rows,actions){
  if(!rows.length)return '<div class="card empty">No hay turnos que mostrar.</div>';
  var act=actions&&state.profile&&state.profile.role==='coordinator';
  return '<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Horario</th><th>Trabajador</th><th>Estado</th>'+(act?'<th>Acciones</th>':'')+'</tr></thead><tbody>'+
- rows.map(function(x){var canManage=x.status!=='cancelled'&&x.status!=='completed';return '<tr><td>'+d(x.starts_at)+'</td><td>'+esc(x.facilities&&x.facilities.name||'—')+'</td><td>'+t(x.starts_at)+'–'+t(x.ends_at)+'</td><td>'+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</td><td>'+badge(x.status)+'</td>'+(act?'<td><div class="mini-actions">'+(canManage?'<button class="btn small secondary" data-edit-shift="'+x.id+'">Editar</button><button class="btn small secondary" data-cover="'+x.id+'">'+(x.status==='open'?'Buscar candidato':'Sustituir')+'</button><button class="btn small danger" data-cancel-shift="'+x.id+'">Cancelar</button>':'')+'</div></td>':'')+'</tr>'}).join('')+'</tbody></table></div>';
+ rows.map(function(x){
+   var canManage=x.status!=='cancelled'&&x.status!=='completed';
+   var market=x.status==='open'&&!x.worker_id;
+   var stateHtml=badge(x.status)+(x.open_to_workers?' <span class="badge green">📣 Publicado</span>':'');
+   return '<tr><td>'+d(x.starts_at)+'</td><td>'+esc(x.facilities&&x.facilities.name||'—')+'</td><td>'+t(x.starts_at)+'–'+t(x.ends_at)+'</td><td>'+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</td><td>'+stateHtml+'</td>'+(act?'<td><div class="mini-actions">'+(canManage?'<button class="btn small secondary" data-edit-shift="'+x.id+'">Editar</button><button class="btn small secondary" data-cover="'+x.id+'">'+(x.status==='open'?'Buscar candidato':'Sustituir')+'</button>'+(market?'<button class="btn small '+(x.open_to_workers?'secondary':'primary')+'" data-market-shift="'+x.id+'" data-enabled="'+(x.open_to_workers?'0':'1')+'">'+(x.open_to_workers?'Retirar del tablón':'📣 Publicar')+'</button>':'')+'<button class="btn small danger" data-cancel-shift="'+x.id+'">Cancelar</button>':'')+'</div></td>':'')+'</tr>';
+ }).join('')+'</tbody></table></div>';
 }
 function bindCoverButtons(){
  document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}});
  document.querySelectorAll('[data-edit-shift]').forEach(function(b){b.onclick=function(){shiftModal(b.getAttribute('data-edit-shift'))}});
+ document.querySelectorAll('[data-market-shift]').forEach(function(b){b.onclick=async function(){
+   var id=b.getAttribute('data-market-shift'),enable=b.getAttribute('data-enabled')==='1',sh=state.shifts.find(function(x){return x.id===id});
+   if(enable&&!confirm('¿Publicar este turno para que un trabajador disponible pueda cogerlo directamente?'))return;
+   var r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:enable});
+   if(r.error){alert(r.error.message);return}
+   var ids=Array.isArray(r.data)?r.data:[];
+   if(enable&&ids.length){
+     await notifyWorkers(ids,'Nuevo turno abierto',(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at)+' · Puedes cogerlo desde GuardShift.');
+   }
+   await load();render();
+   if(enable)alert(ids.length?'Turno publicado. Avisados '+ids.length+' trabajador(es) elegibles.':'Turno publicado, pero ahora mismo no hay trabajadores elegibles para avisar.');
+   else alert('Turno retirado del tablón.');
+ }});
  document.querySelectorAll('[data-cancel-shift]').forEach(function(b){b.onclick=async function(){
    if(!confirm('¿Cancelar este turno?'))return;
    var id=b.getAttribute('data-cancel-shift'),sh=state.shifts.find(function(x){return x.id===id});
@@ -929,8 +948,8 @@ function workerhome(){
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});
  var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
  var monthStart=new Date();monthStart=new Date(monthStart.getFullYear(),monthStart.getMonth(),1);var monthEnd=new Date(monthStart.getFullYear(),monthStart.getMonth()+1,1);var monthEntries=(state.timeEntries||[]).filter(function(x){return new Date(x.clock_in)>=monthStart&&new Date(x.clock_in)<monthEnd});var monthHours=monthEntries.reduce(function(a,x){var e=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,e-new Date(x.clock_in))},0)/3600000;
- var pendingRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}).length;
- var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Solicitudes pendientes: <strong>'+pendingRequests+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
+ var pendingRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}).length,openMarket=(state.claimableOpenShifts||[]).length;
+ var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Turnos abiertos: <strong>'+openMarket+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Solicitudes pendientes: <strong>'+pendingRequests+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
  '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
  '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
  var soon=state.documents.filter(function(x){if(!x.expires_on)return false;var z=new Date(x.expires_on)-new Date();return z>=0&&z<=30*86400000}).length;
@@ -1030,11 +1049,39 @@ function offerCards(list){
  if(!list.length)return '<div class="card empty">No tienes ofertas pendientes.</div>';
  return '<div class="stack">'+list.map(function(o){var su=o.substitutions||{},sh=su.shifts||{},fa=sh.facilities||{};return '<div class="card offer-card"><div class="offer-head"><div><strong>'+esc(fa.name||'Turno disponible')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">'+esc(fa.address||'')+'</div></div><span class="badge amber">Disponible</span></div>'+(su.reason?'<div>Motivo: '+esc(su.reason)+'</div>':'')+'<button class="btn primary" data-accept-offer="'+o.id+'">Aceptar turno</button></div>'}).join('')+'</div>';
 }
+function openShiftCards(list){
+ if(!list.length)return '<div class="card empty">No hay turnos abiertos compatibles contigo ahora mismo.</div>';
+ var wid=state.profile.worker_id,rules=planningRuleValues();
+ return '<div class="stack">'+list.map(function(x){
+   var a=new Date(x.starts_at),b=new Date(x.ends_at),warnings=planningWarningsForAssignment(wid,a,b,null,[]);
+   var hours=plannedHoursInWeek(wid,a,b,null,[]),rest=restGapForAssignment(wid,a,b,null,[]);
+   var prefer=x.availability_label==='Preferiría no';
+   var caution=warnings.length||prefer;
+   var restText=rest==null?'Sin turno cercano':rest.toFixed(1)+' h de descanso';
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility_name||'Turno abierto')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+(x.facility_address?' · '+esc(x.facility_address):'')+'</div></div><span class="badge '+(caution?'amber':'green')+'">'+(caution?'Revisar':'Disponible')+'</span></div><div class="muted" style="margin-top:8px">'+esc(x.availability_label||'Sin disponibilidad marcada')+' · Semana tras cogerlo: '+hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</div>'+
+     (warnings.length?'<div class="mini-actions" style="margin-top:8px">'+warnings.map(function(w){return '<span class="badge amber">⚠️ '+esc(w)+'</span>'}).join('')+'</div>':'')+
+     (prefer?'<div style="margin-top:8px"><span class="badge amber">🟡 Marcaste que preferirías no trabajar</span></div>':'')+
+     '<button class="btn primary" style="margin-top:10px" data-claim-open="'+x.shift_id+'">Coger turno</button></div>';
+ }).join('')+'</div>';
+}
 function offers(){
  var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
  var history=state.offers.filter(function(o){return o.accepted!==null||!o.substitutions||['open','offered'].indexOf(o.substitutions.status)<0});
- var body='<div class="section"><h2>Disponibles ahora</h2>'+offerCards(pending)+'</div><div class="section"><h2>Historial</h2>'+(history.length?'<div class="stack">'+history.map(function(o){var su=o.substitutions||{},sh=su.shifts||{},fa=sh.facilities||{};return '<div class="card"><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div style="margin-top:8px">'+(o.accepted===true?'<span class="badge green">Aceptado</span>':o.accepted===false?'<span class="badge blue">Cerrado</span>':'<span class="badge blue">Finalizado</span>')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay historial.</div>')+'</div>';
- shell('Turnos disponibles','Acepta sustituciones ofrecidas por tu coordinador.',body,'');bindOfferButtons();
+ var market=state.claimableOpenShifts||[];
+ var body='<div class="section"><h2>📣 Turnos abiertos de la empresa</h2>'+openShiftCards(market)+'</div><div class="section"><h2>Ofertas directas del coordinador</h2>'+offerCards(pending)+'</div><div class="section"><h2>Historial de ofertas</h2>'+(history.length?'<div class="stack">'+history.map(function(o){var su=o.substitutions||{},sh=su.shifts||{},fa=sh.facilities||{};return '<div class="card"><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div style="margin-top:8px">'+(o.accepted===true?'<span class="badge green">Aceptado</span>':o.accepted===false?'<span class="badge blue">Cerrado</span>':'<span class="badge blue">Finalizado</span>')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay historial.</div>')+'</div>';
+ shell('Turnos disponibles','Coge turnos abiertos o responde a ofertas de sustitución.',body,'<button class="btn secondary" id="refreshOffers">Actualizar</button>');
+ document.getElementById('refreshOffers').onclick=async function(){var b=this;b.disabled=true;b.textContent='Actualizando…';await load();offers()};
+ document.querySelectorAll('[data-claim-open]').forEach(function(b){b.onclick=async function(){
+   var id=b.getAttribute('data-claim-open'),x=(state.claimableOpenShifts||[]).find(function(y){return y.shift_id===id});
+   if(!x)return;
+   var warnings=planningWarningsForAssignment(state.profile.worker_id,new Date(x.starts_at),new Date(x.ends_at),null,[]);
+   var extra=(x.availability_label==='Preferiría no'?'\n• Marcaste que preferirías no trabajar en este horario':'')+(warnings.length?'\n• '+warnings.join('\n• '):'');
+   if(!confirm('¿Quieres coger este turno?'+(extra?'\n'+extra:'')))return;
+   var r=await sb.rpc('claim_open_shift',{p_shift_id:id});
+   if(r.error){alert(r.error.message);await load();offers();return}
+   await load();render();alert('Turno asignado correctamente.');
+ }});
+ bindOfferButtons();
 }
 function bindOfferButtons(){document.querySelectorAll('[data-accept-offer]').forEach(function(b){b.onclick=async function(){if(!confirm('¿Aceptar este turno?'))return;var r=await sb.rpc('accept_substitution_offer',{p_offer_id:b.getAttribute('data-accept-offer')});if(r.error){alert(r.error.message);return}await load();render();alert('Turno asignado correctamente.')}})}
 function availability(){
@@ -1324,7 +1371,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
