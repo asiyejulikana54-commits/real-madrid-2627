@@ -1645,6 +1645,22 @@ function setupRealtime(){
  var availabilityCfg={event:'*',schema:'public',table:'availability'};
  if(state.profile.role==='worker'&&state.profile.worker_id)availabilityCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',availabilityCfg,async function(){await load();render()});
+ var timeEntryCfg={event:'*',schema:'public',table:'time_entries'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)timeEntryCfg.filter='worker_id=eq.'+state.profile.worker_id;
+ channel=channel.on('postgres_changes',timeEntryCfg,async function(){await load();render()});
+ var correctionCfg={event:'*',schema:'public',table:'time_correction_requests'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)correctionCfg.filter='worker_id=eq.'+state.profile.worker_id;
+ channel=channel.on('postgres_changes',correctionCfg,async function(payload){
+   var row=payload&&payload.new||{};
+   await load();
+   if(state.profile.role==='worker'&&payload.eventType==='UPDATE'&&['approved','rejected'].indexOf(row.status)>=0){
+     await showGuardShiftNotification('Corrección de fichaje',row.status==='approved'?'Tu solicitud de corrección ha sido aprobada.':'Tu solicitud de corrección ha sido rechazada.'+(row.review_note?' · '+row.review_note:''));
+   }
+   render();
+ });
+ if(state.profile.role==='coordinator'){
+   channel=channel.on('postgres_changes',{event:'*',schema:'public',table:'timesheet_day_closures'},async function(){await load();render()});
+ }
  var subEventCfg={event:'INSERT',schema:'public',table:'substitution_events'};
  channel=channel.on('postgres_changes',subEventCfg,async function(){
    await load();render();
@@ -2155,12 +2171,13 @@ function hoursPage(){
  document.getElementById('exportPdf').onclick=function(){window.print()};
 }
 function clocking(){
+ var now=new Date(),early=Math.max(0,Number(state.company&&state.company.clock_in_early_minutes||30));
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
- var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
- var openLoc=open?locationForEntry(open.id,'clock_in'):null;
- var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+ts(open.clock_in)+'</div>'+(openLoc?'<div style="margin-top:7px"><span class="badge green">📍 Ubicación registrada · GPS ±'+Math.round(openLoc.accuracy_m||0)+' m</span></div>':'')+'<button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
- (upcoming.length?'<div class="stack">'+upcoming.slice(0,5).map(function(x){return '<div class="card"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button></div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos asignados.</div>');
- shell('Fichaje','La hora del servidor y la ubicación GPS se guardan juntas en el momento de fichar.',body,'');
+ var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'&&new Date(x.ends_at)>now}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
+ var openLoc=open?locationForEntry(open.id,'clock_in'):null,openShift=open&&open.shifts||{},overdue=open&&openShift.ends_at&&now>new Date(openShift.ends_at);
+ var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+ts(open.clock_in)+'</div>'+(openLoc?'<div style="margin-top:7px"><span class="badge green">📍 Ubicación registrada · GPS ±'+Math.round(openLoc.accuracy_m||0)+' m</span></div>':'')+(overdue?'<div class="msg err" style="margin-top:10px">El turno ya ha superado su hora prevista de finalización. Si sigues trabajando, ficha al terminar; si olvidaste la salida, puedes solicitar una corrección desde Mis horas.</div>':'')+'<button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
+ (upcoming.length?'<div class="stack">'+upcoming.slice(0,6).map(function(x){var start=new Date(x.starts_at),end=new Date(x.ends_at),availableAt=new Date(start.getTime()-early*60000),can=now>=availableAt&&now<=end,started=now>=start;return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><div class="muted">Ventana de entrada: desde '+t(availableAt)+' hasta el fin previsto del turno.</div></div><span class="badge '+(can?'green':'blue')+'">'+(can?(started?'Turno en curso':'Puedes fichar'):'Próximo')+'</span></div>'+(can?'<button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button>':'<button class="btn secondary" disabled style="margin-top:10px">Disponible desde '+t(availableAt)+'</button>')+'</div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos pendientes de fichaje.</div>');
+ shell('Fichaje','GuardShift valida en servidor la ventana temporal del turno, la hora oficial y la ubicación GPS.',body,'');
  document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){
    try{
      b.disabled=true;b.textContent='Obteniendo ubicación…';
