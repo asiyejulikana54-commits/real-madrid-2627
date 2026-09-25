@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],shiftEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -145,10 +145,11 @@ async function load(){
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
     sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
     sb.rpc('get_claimable_open_shifts'),
-    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(200)
+    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(200),
+    sb.from('worker_document_events').select('*').order('created_at',{ascending:false}).limit(200)
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];state.shiftEvents=wr[12].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];state.shiftEvents=wr[12].data||[];state.documentEvents=wr[13].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
@@ -165,10 +166,11 @@ async function load(){
     sb.from('notification_events').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('created_at',{ascending:false}).limit(100),
     sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
     sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(500),
-    sb.rpc('get_open_shift_staffing_candidates',{p_horizon_days:30})
+    sb.rpc('get_open_shift_staffing_candidates',{p_horizon_days:30}),
+    sb.from('worker_document_events').select('*').order('created_at',{ascending:false}).limit(500)
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];state.documentEvents=rs[15].data||[];
  }
 }
 function nav(){
@@ -714,6 +716,48 @@ function workerDocumentFor(workerId,type){
    return bv-av;
  })[0]||null;
 }
+function documentDaysRemaining(doc){
+ if(!doc||!doc.expires_on)return null;
+ return Math.ceil((new Date(doc.expires_on+'T23:59:59')-new Date())/86400000);
+}
+function documentReviewPresentation(doc){
+ var st=doc&&doc.review_status||(doc&&doc.verified?'approved':'pending');
+ if(st==='approved')return ['Aprobado','green'];
+ if(st==='rejected')return ['Rechazado','red'];
+ return ['Pendiente','amber'];
+}
+function documentEventPresentation(e){
+ var map={
+  submitted:['Enviado por trabajador','amber'],
+  added_by_coordinator:['Añadido por coordinador','green'],
+  approved:['Documento aprobado','green'],
+  rejected:['Documento rechazado','red'],
+  returned_to_pending:['Revisión reabierta','amber'],
+  metadata_updated:['Datos actualizados','blue'],
+  baseline:['Estado inicial','blue']
+ };
+ return map[e.event_type]||[e.event_type,'blue'];
+}
+function documentImpactShifts(doc,horizonDays){
+ if(!doc)return [];
+ var now=new Date(),end=new Date(now);end.setDate(end.getDate()+(horizonDays||90));
+ return (state.shifts||[]).filter(function(sh){
+   if(sh.worker_id!==doc.worker_id||sh.status!=='assigned'||new Date(sh.starts_at)<now||new Date(sh.starts_at)>end)return false;
+   if(facilityRequiredDocuments(sh.facility_id).indexOf(doc.document_type)<0)return false;
+   return missingFacilityRequirements(sh.worker_id,sh.facility_id,new Date(sh.starts_at)).indexOf(doc.document_type)>=0;
+ }).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
+}
+function workerDocumentActionItems(workerId){
+ var docs=(state.documents||[]).filter(function(x){return x.worker_id===workerId}),items=[];
+ docs.forEach(function(doc){
+   var days=documentDaysRemaining(doc),st=doc.review_status||(doc.verified?'approved':'pending');
+   if(st==='pending')items.push({doc:doc,kind:'pending',label:'Pendiente de revisión',severity:'amber'});
+   else if(st==='rejected')items.push({doc:doc,kind:'rejected',label:'Rechazado',severity:'red'});
+   else if(days!=null&&days<0)items.push({doc:doc,kind:'expired',label:'Caducado',severity:'red'});
+   else if(days!=null&&days<=45)items.push({doc:doc,kind:'expiring',label:'Caduca en '+Math.max(0,days)+' días',severity:days<=7?'red':'amber'});
+ });
+ return items;
+}
 function documentQualificationStatus(workerId,type,when){
  var day=localDateKey(when||new Date()),docs=(state.documents||[]).filter(function(doc){return doc.worker_id===workerId&&doc.document_type===type});
  if(!docs.length)return {code:'missing',label:'Falta',className:'red',doc:null};
@@ -725,10 +769,12 @@ function documentQualificationStatus(workerId,type,when){
    if(days!=null&&days<=30)return {code:'expiring',label:'Caduca en '+Math.max(0,days)+' d',className:days<=7?'red':'amber',doc:valid};
    return {code:'valid',label:'Vigente',className:'green',doc:valid};
  }
- var unverified=docs.find(function(doc){return doc.verified!==true});
- if(unverified)return {code:'unverified',label:'Sin verificar',className:'amber',doc:unverified};
- var expired=docs.filter(function(doc){return doc.expires_on&&doc.expires_on<day}).sort(function(a,b){return String(b.expires_on).localeCompare(String(a.expires_on))})[0];
- return {code:'expired',label:'Caducado',className:'red',doc:expired||docs[0]};
+ var pending=docs.filter(function(doc){return (doc.review_status||(!doc.verified?'pending':'approved'))==='pending'}).sort(function(a,b){return new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at)})[0];
+ if(pending)return {code:'pending',label:'Pendiente de revisión',className:'amber',doc:pending};
+ var rejected=docs.filter(function(doc){return doc.review_status==='rejected'}).sort(function(a,b){return new Date(b.reviewed_at||b.created_at)-new Date(a.reviewed_at||a.created_at)})[0];
+ if(rejected)return {code:'rejected',label:'Rechazado',className:'red',doc:rejected};
+ var expired=docs.filter(function(doc){return doc.verified===true&&doc.expires_on&&doc.expires_on<day}).sort(function(a,b){return String(b.expires_on).localeCompare(String(a.expires_on))})[0];
+ return expired?{code:'expired',label:'Caducado',className:'red',doc:expired}:{code:'missing',label:'Falta',className:'red',doc:null};
 }
 function facilityComplianceForWorker(workerId,facilityId,when){
  var req=facilityRequiredDocuments(facilityId),statuses=req.map(function(type){return {type:type,status:documentQualificationStatus(workerId,type,when)}});
@@ -1157,19 +1203,64 @@ function substitutionsPage(){
  document.getElementById('subFilter').onchange=draw;draw();bindShiftChangeReview();
 }
 function documentsPage(){
- var opts=state.workers.filter(function(w){return w.active}).map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
- var body='<div class="card"><form id="docForm" class="form"><div class="field"><label>Trabajador</label><select name="worker" required>'+opts+'</select></div><div class="field"><label>Tipo de documento</label><select name="type"><option>Socorrismo</option><option>DESA</option><option>Primeros auxilios</option><option>Contrato</option><option>Otro</option></select></div><div class="field"><label>Fecha de caducidad</label><input type="date" name="expires"></div><div class="field"><label>Archivo (PDF o imagen, máx. 10 MB)</label><input type="file" name="file" accept=".pdf,image/jpeg,image/png,image/webp"></div><button class="btn primary">Guardar documento</button></form></div>'+
- '<div class="section"><h2>Documentos</h2>'+documentList(state.documents,true)+'</div>';
- shell('Documentos','Titulaciones y documentación de la plantilla.',body,'');
+ var activeWorkers=state.workers.filter(function(w){return w.active});
+ var opts=activeWorkers.map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
+ var pending=(state.documents||[]).filter(function(x){return x.review_status==='pending'});
+ var rejected=(state.documents||[]).filter(function(x){return x.review_status==='rejected'});
+ var expired=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&dleft!=null&&dleft<0});
+ var expiring=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&dleft!=null&&dleft>=0&&dleft<=30});
+ var attentionWorkers=Array.from(new Set(pending.concat(rejected,expired,expiring).map(function(x){return x.worker_id})));
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Documentos</span><strong>'+state.documents.length+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisión</span><strong>'+pending.length+'</strong></div><div class="card kpi"><span class="muted">Rechazados</span><strong>'+rejected.length+'</strong></div><div class="card kpi"><span class="muted">Caducados</span><strong>'+expired.length+'</strong></div><div class="card kpi"><span class="muted">Caducan ≤30 días</span><strong>'+expiring.length+'</strong></div></div>'+
+ '<div class="section"><h2>Revisión pendiente</h2><div id="pendingDocumentReviews">'+documentReviewQueue(pending)+'</div></div>'+
+ '<div class="section"><h2>Añadir documento como coordinador</h2><div class="card"><form id="docForm" class="form"><div class="field"><label>Trabajador</label><select name="worker" required>'+opts+'</select></div><div class="field"><label>Tipo de documento</label><select name="type"><option>Socorrismo</option><option>DESA</option><option>Primeros auxilios</option><option>Contrato</option><option>Otro</option></select></div><div class="field"><label>Fecha de caducidad</label><input type="date" name="expires"></div><div class="field"><label>Archivo (PDF o imagen, máx. 10 MB)</label><input type="file" name="file" accept=".pdf,image/jpeg,image/png,image/webp"></div><button class="btn primary">Guardar como verificado</button></form></div></div>'+
+ '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Archivo documental</h2><div class="muted">Filtra, revisa vigencias y consulta el impacto operativo.</div></div><div class="mini-actions">'+(attentionWorkers.length?'<button class="btn secondary" id="notifyDocAttention">Avisar a trabajadores</button>':'')+'<button class="btn secondary" id="documentsCsv">Exportar CSV</button></div></div>'+
+ '<div class="filters"><input id="docSearch" placeholder="Buscar trabajador o tipo"><select id="docWorker"><option value="">Todos los trabajadores</option>'+activeWorkers.map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('')+'</select><select id="docType"><option value="">Todos los tipos</option><option>Socorrismo</option><option>DESA</option><option>Primeros auxilios</option><option>Contrato</option><option>Otro</option></select><select id="docStatus"><option value="">Todos los estados</option><option value="pending">Pendientes</option><option value="approved">Aprobados</option><option value="rejected">Rechazados</option><option value="expired">Caducados</option><option value="expiring">Caducan ≤30 días</option></select><select id="docSource"><option value="">Cualquier origen</option><option value="worker">Subidos por trabajador</option><option value="coordinator">Añadidos por coordinador</option></select></div><div id="documentArchive"></div></div>'+
+ '<div class="section"><h2>Actividad documental reciente</h2>'+documentEventTimeline((state.documentEvents||[]).slice(0,10))+'</div>';
+ shell('Documentos','Revisión, renovaciones y trazabilidad documental de la plantilla.',body,'');
  document.getElementById('docForm').onsubmit=uploadDocument;
- bindDocumentButtons();
+
+ var current=[];
+ function drawArchive(){
+   var q=(document.getElementById('docSearch').value||'').toLowerCase(),wid=document.getElementById('docWorker').value,type=document.getElementById('docType').value,st=document.getElementById('docStatus').value,source=document.getElementById('docSource').value;
+   current=(state.documents||[]).filter(function(x){
+     var w=state.workers.find(function(z){return z.id===x.worker_id}),left=documentDaysRemaining(x),status=x.review_status||(x.verified?'approved':'pending');
+     var statusOk=!st||(st==='expired'?status==='approved'&&left!=null&&left<0:st==='expiring'?status==='approved'&&left!=null&&left>=0&&left<=30:status===st);
+     return (!q||String(x.document_type||'').toLowerCase().includes(q)||String(w&&w.full_name||'').toLowerCase().includes(q))&&(!wid||x.worker_id===wid)&&(!type||x.document_type===type)&&statusOk&&(!source||x.source===source);
+   });
+   document.getElementById('documentArchive').innerHTML=documentList(current,true,true);bindDocumentButtons();
+ }
+ ['docSearch','docWorker','docType','docStatus','docSource'].forEach(function(id){document.getElementById(id).oninput=drawArchive;document.getElementById(id).onchange=drawArchive});
+ drawArchive();
+ bindDocumentReviewButtons();
+
+ var notify=document.getElementById('notifyDocAttention');if(notify)notify.onclick=async function(){
+   await notifyWorkers(attentionWorkers,'Documentación pendiente','Revisa la sección Documentos de GuardShift: tienes documentación pendiente, rechazada, caducada o próxima a caducar.');
+   alert('Aviso enviado a '+attentionWorkers.length+' trabajador(es).');
+ };
+ document.getElementById('documentsCsv').onclick=function(){
+   var rows=current.length?current:state.documents;
+   var csv='Trabajador,Tipo,Estado,Origen,Caducidad,Nota,Turnos en riesgo\n'+rows.map(function(x){var w=state.workers.find(function(z){return z.id===x.worker_id}),st=documentReviewPresentation(x),impact=documentImpactShifts(x,90).length;return [w&&w.full_name||'',x.document_type,st[0],x.source||'',x.expires_on||'',x.review_note||'',impact].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_documentos.csv';a.click();window.URL.revokeObjectURL(a.href);
+ };
 }
-function documentList(list,showWorker){
- if(!list.length)return '<div class="card empty">No hay documentos guardados.</div>';
- return '<div class="stack">'+list.map(function(x){
-   var w=x.workers||{},expired=x.expires_on&&new Date(x.expires_on+'T23:59:59')<new Date(),days=x.expires_on?Math.ceil((new Date(x.expires_on+'T23:59:59')-new Date())/86400000):null;
-   var st=!x.verified?['Sin verificar','amber']:expired?['Caducado','red']:days!=null&&days<=30?['Caduca en '+Math.max(days,0)+' d',days<=7?'red':'amber']:['Vigente','green'];
-   return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+(x.verified?' · Verificado':' · Pendiente de verificación')+'</div></div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+st[1]+'">'+st[0]+'</span></div></div>';
+function documentReviewQueue(list){
+ if(!list.length)return '<div class="card empty">No hay documentos pendientes de revisión.</div>';
+ return '<div class="stack">'+list.slice().sort(function(a,b){return new Date(a.submitted_at||a.created_at)-new Date(b.submitted_at||b.created_at)}).map(function(x){
+   var w=state.workers.find(function(z){return z.id===x.worker_id}),impact=documentImpactShifts(x,90);
+   return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(w&&w.full_name||'Trabajador')+' · '+esc(x.document_type)+'</strong><div class="muted">Enviado: '+d(x.submitted_at||x.created_at)+(x.expires_on?' · Caduca: '+d(x.expires_on):' · Sin caducidad')+'</div><div class="muted">'+(impact.length?impact.length+' turno(s) futuro(s) bloqueados hasta aprobarlo':'Sin turnos futuros bloqueados por este documento')+'</div></div><span class="badge amber">Pendiente</span></div><div class="mini-actions" style="margin-top:10px">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver archivo</button>':'')+'<button class="btn small primary" data-review-doc="'+x.id+'" data-review-status="approved">Aprobar</button><button class="btn small danger" data-review-doc="'+x.id+'" data-review-status="rejected">Rechazar</button></div></div>';
+ }).join('')+'</div>';
+}
+function documentEventTimeline(list){
+ if(!list.length)return '<div class="card empty">Todavía no hay actividad documental registrada.</div>';
+ return '<div class="stack">'+list.map(function(e){var p=documentEventPresentation(e),w=state.workers.find(function(x){return x.id===e.worker_id});return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+(w?' · '+esc(w.full_name):'')+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div>'+(e.note?'<div class="muted">Nota: '+esc(e.note)+'</div>':'')+'</div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>';
+}
+function documentList(list,showWorker,reviewActions){
+ if(!list.length)return '<div class="card empty">No hay documentos que mostrar.</div>';
+ return '<div class="stack">'+list.slice().sort(function(a,b){return new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at)}).map(function(x){
+   var w=state.workers.find(function(z){return z.id===x.worker_id})||x.workers||{},left=documentDaysRemaining(x),review=documentReviewPresentation(x);
+   var life=left==null?['Sin caducidad','blue']:left<0?['Caducado','red']:left<=30?['Caduca en '+left+' d',left<=7?'red':'amber']:['Vigente','green'];
+   var impact=documentImpactShifts(x,90).length;
+   return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+' · '+(x.source==='worker'?'Subido por trabajador':'Añadido por coordinador')+'</div>'+(x.review_note?'<div class="muted">Nota de revisión: '+esc(x.review_note)+'</div>':'')+(impact?'<div style="margin-top:5px"><span class="badge red">⚠ '+impact+' turno(s) futuro(s) en riesgo</span></div>':'')+'</div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+review[1]+'">'+review[0]+'</span>'+(x.review_status==='approved'?'<span class="badge '+life[1]+'">'+life[0]+'</span>':'')+(reviewActions&&x.review_status==='pending'?'<button class="btn small primary" data-review-doc="'+x.id+'" data-review-status="approved">Aprobar</button><button class="btn small danger" data-review-doc="'+x.id+'" data-review-status="rejected">Rechazar</button>':'')+(reviewActions&&x.review_status==='rejected'?'<button class="btn small secondary" data-review-doc="'+x.id+'" data-review-status="pending">Reabrir</button>':'')+(reviewActions?'<button class="btn small secondary" data-edit-doc-expiry="'+x.id+'">Caducidad</button>':'')+'</div></div>';
  }).join('')+'</div>';
 }
 async function uploadDocument(e){
@@ -1180,20 +1271,65 @@ async function uploadDocument(e){
    var up=await sb.storage.from('guardshift-documents').upload(path,file,{upsert:false});
    if(up.error){ferr(e.target,up.error.message);return}
  }
- var r=await sb.from('worker_documents').insert({company_id:state.profile.company_id,worker_id:worker,document_type:f.get('type'),expires_on:f.get('expires')||null,storage_path:path,verified:true});
+ var now=new Date().toISOString();
+ var r=await sb.from('worker_documents').insert({company_id:state.profile.company_id,worker_id:worker,document_type:f.get('type'),expires_on:f.get('expires')||null,storage_path:path,verified:true,review_status:'approved',source:'coordinator',submitted_by:state.profile.id,submitted_at:now,reviewed_by:state.profile.id,reviewed_at:now});
  if(r.error){if(path)await sb.storage.from('guardshift-documents').remove([path]);ferr(e.target,r.error.message);return}
+ await notifyWorkers([worker],'Documento actualizado','Tu coordinador ha añadido o actualizado '+f.get('type')+' en GuardShift.');
  await load();render();
 }
-function bindDocumentButtons(){document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}})}
-function mydocuments(){
- var wid=state.profile.worker_id,required=complianceRequiredFacilities();
- var eligibility=required.map(function(f){return {facility:f,compliance:facilityComplianceForWorker(wid,f.id,new Date())}});
- var ok=eligibility.filter(function(x){return x.compliance.ok}).length;
- var body='<div class="cards"><div class="card kpi"><span class="muted">Centros con requisitos</span><strong>'+required.length+'</strong></div><div class="card kpi"><span class="muted">Apto actualmente</span><strong>'+ok+'/'+required.length+'</strong></div><div class="card kpi"><span class="muted">Centros con carencias</span><strong>'+(required.length-ok)+'</strong></div></div>'+
-   '<div class="section"><h2>Mi aptitud por instalación</h2>'+(eligibility.length?'<div class="stack">'+eligibility.map(function(x){return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility.name)+'</strong><div class="muted">Requisitos: '+esc(x.compliance.required.join(', '))+'</div></div><span class="badge '+(x.compliance.ok?'green':'red')+'">'+(x.compliance.ok?'Apto':'No apto')+'</span></div><div class="mini-actions" style="margin-top:8px">'+x.compliance.statuses.map(function(st){return '<span class="badge '+st.status.className+'">'+esc(st.type)+' · '+esc(st.status.label)+'</span>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Tu empresa no ha configurado titulaciones obligatorias por instalación.</div>')+'</div>'+
-   '<div class="section"><h2>Mis documentos</h2>'+documentList(state.documents,false)+'</div>';
- shell('Documentos','Tus titulaciones, vigencia y aptitud para cada instalación.',body,'');
+async function uploadOwnDocument(e){
+ e.preventDefault();var f=new FormData(e.target),file=f.get('file'),worker=state.profile.worker_id,path=null;
+ if(!file||!file.size){ferr(e.target,'Selecciona un archivo.');return}
+ if(file.size>10485760){ferr(e.target,'El archivo supera los 10 MB.');return}
+ path=state.profile.company_id+'/'+worker+'/'+Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+ var up=await sb.storage.from('guardshift-documents').upload(path,file,{upsert:false});
+ if(up.error){ferr(e.target,up.error.message);return}
+ var r=await sb.rpc('submit_own_worker_document',{p_document_type:f.get('type'),p_expires_on:f.get('expires')||null,p_storage_path:path});
+ if(r.error){
+   await sb.storage.from('guardshift-documents').remove([path]).catch(function(){});
+   ferr(e.target,r.error.message);return;
+ }
+ await load();mydocuments();alert('Documento enviado. Queda pendiente de revisión por el coordinador.');
+}
+function bindDocumentButtons(){
+ document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}});
+ document.querySelectorAll('[data-edit-doc-expiry]').forEach(function(b){b.onclick=async function(){
+   var doc=state.documents.find(function(x){return x.id===b.getAttribute('data-edit-doc-expiry')});if(!doc)return;
+   var value=prompt('Nueva fecha de caducidad (AAAA-MM-DD). Deja vacío para quitarla.',doc.expires_on||'');if(value===null)return;
+   if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert('Formato de fecha no válido.');return}
+   var r=await sb.from('worker_documents').update({expires_on:value||null}).eq('id',doc.id);if(r.error){alert(r.error.message);return}
+   await load();render();
+ }});
+}
+function bindDocumentReviewButtons(){
  bindDocumentButtons();
+ document.querySelectorAll('[data-review-doc]').forEach(function(b){b.onclick=async function(){
+   var id=b.getAttribute('data-review-doc'),status=b.getAttribute('data-review-status'),doc=state.documents.find(function(x){return x.id===id});if(!doc)return;
+   var note=null;if(status==='rejected'){note=prompt('Motivo del rechazo (se mostrará al trabajador):','');if(note===null)return;if(!note.trim()){alert('Indica el motivo del rechazo.');return}}
+   if(status==='approved'&&!confirm('¿Aprobar '+doc.document_type+'? Desde ese momento podrá habilitar al trabajador para instalaciones que lo exijan.'))return;
+   var r=await sb.rpc('review_worker_document',{p_document_id:id,p_status:status,p_note:note,p_expires_on:null});
+   if(r.error){alert(r.error.message);return}
+   if(status==='approved')await notifyWorkers([doc.worker_id],'Documento aprobado','Tu documento '+doc.document_type+' ha sido aprobado en GuardShift.');
+   if(status==='rejected')await notifyWorkers([doc.worker_id],'Documento rechazado','Tu documento '+doc.document_type+' necesita cambios. Motivo: '+note);
+   if(status==='pending')await notifyWorkers([doc.worker_id],'Documento en revisión','Tu documento '+doc.document_type+' ha vuelto a revisión.');
+   await load();render();
+ }});
+}
+function mydocuments(){
+ var wid=state.profile.worker_id,required=complianceRequiredFacilities(),mine=(state.documents||[]).filter(function(x){return x.worker_id===wid});
+ var eligibility=required.map(function(f){return {facility:f,compliance:facilityComplianceForWorker(wid,f.id,new Date())}});
+ var ok=eligibility.filter(function(x){return x.compliance.ok}).length,pending=mine.filter(function(x){return x.review_status==='pending'}).length,rejected=mine.filter(function(x){return x.review_status==='rejected'}).length;
+ var actionItems=workerDocumentActionItems(wid),risks=futureComplianceRisks(90).filter(function(r){return r.shift.worker_id===wid});
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Centros con requisitos</span><strong>'+required.length+'</strong></div><div class="card kpi"><span class="muted">Apto actualmente</span><strong>'+ok+'/'+required.length+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisión</span><strong>'+pending+'</strong></div><div class="card kpi"><span class="muted">Rechazados</span><strong>'+rejected+'</strong></div><div class="card kpi"><span class="muted">Turnos en riesgo · 90 días</span><strong>'+risks.length+'</strong></div></div>'+
+   '<div class="section"><h2>Enviar o renovar documentación</h2><div class="card"><form id="ownDocForm" class="form"><div class="field"><label>Tipo de documento</label><select name="type" id="ownDocType"><option>Socorrismo</option><option>DESA</option><option>Primeros auxilios</option><option>Contrato</option><option>Otro</option></select></div><div class="field"><label>Fecha de caducidad</label><input type="date" name="expires"></div><div class="field"><label>Archivo (PDF o imagen, máx. 10 MB)</label><input type="file" name="file" accept=".pdf,image/jpeg,image/png,image/webp" required></div><button class="btn primary">Enviar para revisión</button><div class="muted">Lo que subas no habilita turnos hasta que un coordinador lo apruebe.</div></form></div></div>'+
+   (actionItems.length?'<div class="section"><h2>Necesita atención</h2><div class="stack">'+actionItems.map(function(it){return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(it.doc.document_type)+'</strong><div class="muted">'+esc(it.label)+(it.doc.review_note?' · '+esc(it.doc.review_note):'')+'</div></div><button class="btn small secondary" data-renew-type="'+esc(it.doc.document_type)+'">Renovar</button></div></div>'}).join('')+'</div></div>':'')+
+   (risks.length?'<div class="section"><h2>Turnos futuros afectados</h2><div class="stack">'+risks.slice(0,10).map(function(r){var sh=r.shift,fa=state.facilities.find(function(x){return x.id===sh.facility_id});return '<div class="card notice"><strong>'+esc(fa&&fa.name||'Instalación')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div style="margin-top:5px"><span class="badge red">Falta: '+esc(r.missing.join(', '))+'</span></div></div>'}).join('')+'</div></div>':'')+
+   '<div class="section"><h2>Mi aptitud por instalación</h2>'+(eligibility.length?'<div class="stack">'+eligibility.map(function(x){return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility.name)+'</strong><div class="muted">Requisitos: '+esc(x.compliance.required.join(', '))+'</div></div><span class="badge '+(x.compliance.ok?'green':'red')+'">'+(x.compliance.ok?'Apto':'No apto')+'</span></div><div class="mini-actions" style="margin-top:8px">'+x.compliance.statuses.map(function(st){return '<span class="badge '+st.status.className+'">'+esc(st.type)+' · '+esc(st.status.label)+'</span>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Tu empresa no ha configurado titulaciones obligatorias por instalación.</div>')+'</div>'+
+   '<div class="section"><h2>Mis documentos</h2>'+documentList(mine,false,false)+'</div>'+
+   '<div class="section"><h2>Historial de revisión</h2>'+documentEventTimeline((state.documentEvents||[]).filter(function(e){return e.worker_id===wid}).slice(0,10))+'</div>';
+ shell('Documentos','Sube, renueva y sigue el estado de tus titulaciones.',body,'');
+ document.getElementById('ownDocForm').onsubmit=uploadOwnDocument;bindDocumentButtons();
+ document.querySelectorAll('[data-renew-type]').forEach(function(b){b.onclick=function(){document.getElementById('ownDocType').value=b.getAttribute('data-renew-type');document.getElementById('ownDocForm').scrollIntoView({behavior:'smooth',block:'center'})}});
 }
 async function ensureServiceWorker(){
  if(!('serviceWorker' in navigator))return null;
@@ -1273,6 +1409,19 @@ function setupRealtime(){
        var p=shiftEventPresentation(ev);
        if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
      }
+   }
+   render();
+ });
+ var docCfg={event:'*',schema:'public',table:'worker_documents'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)docCfg.filter='worker_id=eq.'+state.profile.worker_id;
+ channel=channel.on('postgres_changes',docCfg,async function(){await load();render()});
+ var docEventCfg={event:'INSERT',schema:'public',table:'worker_document_events'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)docEventCfg.filter='worker_id=eq.'+state.profile.worker_id;
+ channel=channel.on('postgres_changes',docEventCfg,async function(payload){
+   var ev=payload&&payload.new||{};
+   await load();
+   if(state.profile.role==='worker'&&['approved','rejected','returned_to_pending'].indexOf(ev.event_type)>=0){
+     var p=documentEventPresentation(ev);await showGuardShiftNotification('Documentación',p[0]+(ev.note?' · '+ev.note:''));
    }
    render();
  });
@@ -1774,7 +1923,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','operations','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
