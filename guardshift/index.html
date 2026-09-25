@@ -397,7 +397,7 @@ function facilities(){
  function draw(){
    var q=(document.getElementById('facilitySearch').value||'').toLowerCase(),st=document.getElementById('facilityStatus').value;
    var list=state.facilities.filter(function(f){return (!q||(f.name||'').toLowerCase().includes(q)||(f.address||'').toLowerCase().includes(q))&&(st==='all'||(st==='active'&&f.active)||(st==='inactive'&&!f.active))});
-   document.getElementById('facilityList').innerHTML=list.length?'<div class="cards">'+list.map(function(f){return '<div class="card manage-card"><div><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span> '+(f.latitude!=null&&f.longitude!=null?'<span class="badge green">📍 Ubicación guardada</span>':'<span class="badge amber">📍 Sin ubicación</span>')+' <span class="badge blue">Radio '+esc(f.attendance_radius_m||250)+' m</span> '+(facilityCoverageConfigured(f)?'<span class="badge green">'+esc(coverageSummary(f))+'</span>':'<span class="badge amber">Cobertura sin configurar</span>')+'</div><div class="manage-actions"><button class="btn small secondary" data-edit-facility="'+f.id+'">Editar</button><button class="btn small '+(f.active?'danger':'secondary')+'" data-toggle-facility="'+f.id+'">'+(f.active?'Desactivar / eliminar':'Reactivar')+'</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay instalaciones con esos filtros.</div>';
+   document.getElementById('facilityList').innerHTML=list.length?'<div class="cards">'+list.map(function(f){return '<div class="card manage-card"><div><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span> '+(f.latitude!=null&&f.longitude!=null?'<span class="badge green">📍 Ubicación guardada</span>':'<span class="badge amber">📍 Sin ubicación</span>')+' <span class="badge blue">Radio '+esc(f.attendance_radius_m||250)+' m</span> '+(facilityCoverageConfigured(f)?'<span class="badge green">'+esc(coverageSummary(f))+'</span>':'<span class="badge amber">Cobertura sin configurar</span>')+' '+((f.required_document_types||[]).length?'<span class="badge blue">📄 '+esc((f.required_document_types||[]).join(' · '))+'</span>':'<span class="badge blue">📄 Sin requisitos</span>')+'</div><div class="manage-actions"><button class="btn small secondary" data-edit-facility="'+f.id+'">Editar</button><button class="btn small '+(f.active?'danger':'secondary')+'" data-toggle-facility="'+f.id+'">'+(f.active?'Desactivar / eliminar':'Reactivar')+'</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay instalaciones con esos filtros.</div>';
    document.querySelectorAll('[data-edit-facility]').forEach(function(b){b.onclick=function(){facilityModal(b.getAttribute('data-edit-facility'))}});
    document.querySelectorAll('[data-toggle-facility]').forEach(function(b){b.onclick=async function(){var f=state.facilities.find(function(x){return x.id===b.getAttribute('data-toggle-facility')});if(!f)return;if(!f.active){var u=await sb.from('facilities').update({active:true}).eq('id',f.id);if(u.error){alert(u.error.message);return}}else{if(!confirm('Si tiene historial se desactivará; si no lo tiene se eliminará definitivamente. ¿Continuar?'))return;var r=await sb.rpc('safe_delete_facility',{p_facility_id:f.id});if(r.error){alert(r.error.message);return}}await load();draw()}});
  }
@@ -444,6 +444,24 @@ function localDateKey(v){
 function approvedLeaveForShift(workerId,start,end){
  var sd=localDateKey(start),ed=localDateKey(end);
  return (state.leaveRequests||[]).find(function(x){return x.worker_id===workerId&&x.status==='approved'&&x.starts_on<=ed&&x.ends_on>=sd});
+}
+function facilityRequiredDocuments(facilityId){
+ var f=(state.facilities||[]).find(function(x){return x.id===facilityId});
+ return f&&Array.isArray(f.required_document_types)?f.required_document_types:[];
+}
+function missingFacilityRequirements(workerId,facilityId,when){
+ var req=facilityRequiredDocuments(facilityId);
+ if(!workerId||!req.length)return [];
+ var day=localDateKey(when);
+ return req.filter(function(type){
+   return !(state.documents||[]).some(function(doc){
+     return doc.worker_id===workerId&&doc.document_type===type&&doc.verified===true&&(!doc.expires_on||doc.expires_on>=day);
+   });
+ });
+}
+function facilityRequirementsLabel(facilityId){
+ var req=facilityRequiredDocuments(facilityId);
+ return req.length?req.join(' · '):'Sin titulaciones obligatorias';
 }
 function planningRuleValues(){
  return {
@@ -495,6 +513,8 @@ function shiftWarning(sft){
  var overlap=state.shifts.some(function(x){return x.id!==sft.id&&x.worker_id===sft.worker_id&&x.status==='assigned'&&shiftOverlaps(x,sft)});
  if(overlap)return ['⚠ Solape','conflict'];
  if(approvedLeaveForShift(sft.worker_id,start,end))return ['🏖 Ausencia','conflict'];
+ var missingDocs=missingFacilityRequirements(sft.worker_id,sft.facility_id,start);
+ if(missingDocs.length)return ['📄 Falta: '+missingDocs.join(', '),'conflict'];
  var av=availabilityForShift(sft.worker_id,start,end);
  if(av&&av.status==='unavailable')return ['⛔ No disponible','conflict'];
  var warnings=planningWarningsForAssignment(sft.worker_id,start,end,sft.id,[]);
@@ -525,6 +545,8 @@ async function duplicateDisplayedWeek(){
      });
      if(overlapExisting||overlapPlanned){results.push(Object.assign(base,{status:'blocked',label:'Solape'}));return}
      if(approvedLeaveForShift(x.worker_id,ns,ne)){results.push(Object.assign(base,{status:'blocked',label:'Ausencia aprobada'}));return}
+     var missingDocs=missingFacilityRequirements(x.worker_id,x.facility_id,ns);
+     if(missingDocs.length){results.push(Object.assign(base,{status:'blocked',label:'Falta '+missingDocs.join(', ')}));return}
      var av=availabilityForShift(x.worker_id,ns,ne);
      if(av&&av.status==='unavailable'){results.push(Object.assign(base,{status:'blocked',label:'No disponible'}));return}
    }
@@ -592,23 +614,26 @@ function facilityModal(id){
  var legacyStart=item&&item.coverage_start?String(item.coverage_start).slice(0,5):'10:00';
  var legacyEnd=item&&item.coverage_end?String(item.coverage_end).slice(0,5):'19:00';
  var legacyReq=item&&item.required_workers||1;
+ var qualificationTypes=['Socorrismo','DESA','Primeros auxilios'];
+ var requiredDocs=item&&Array.isArray(item.required_document_types)?item.required_document_types:[];
+ var qualificationChecks=qualificationTypes.map(function(type){return '<label class="candidate"><input type="checkbox" name="required_doc" value="'+esc(type)+'" '+(requiredDocs.indexOf(type)>=0?'checked':'')+'><span><strong>'+esc(type)+'</strong></span></label>'}).join('');
  var weeklyRows=dayDefs.map(function(day){
    var x=saved[day[0]]||{},enabled=hasSaved?x.enabled!==false:!!(item&&item.coverage_start&&item.coverage_end);
    var st=x.start||legacyStart,en=x.end||legacyEnd,req=x.required||legacyReq;
    return '<div class="card" style="padding:10px"><div class="doc-row"><label style="min-width:95px"><input type="checkbox" name="cov_enabled_'+day[0]+'" '+(enabled?'checked':'')+'> <strong>'+day[1]+'</strong></label><div class="mini-actions"><input type="time" name="cov_start_'+day[0]+'" value="'+esc(st)+'"><input type="time" name="cov_end_'+day[0]+'" value="'+esc(en)+'"><label class="muted">Necesarios <input type="number" name="cov_required_'+day[0]+'" min="1" max="50" value="'+esc(req)+'" style="width:68px"></label></div></div></div>';
  }).join('');
- var el=modal(item?'Editar instalación':'Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" value="'+esc(item&&item.name||'')+'" required></div><div class="field"><label>Dirección</label><input name="address" value="'+esc(item&&item.address||'')+'"></div><div class="field"><label>Socorristas necesarios por defecto</label><input name="required" type="number" min="1" value="'+esc(item&&item.required_workers||1)+'" required><div class="muted">Se usa como referencia general; puedes indicar una cifra distinta para cada día.</div></div><div class="field"><label>Horario semanal que debe quedar cubierto</label><div class="muted" style="margin-bottom:8px">Marca los días de apertura e indica horario y trabajadores simultáneos necesarios. Los días desmarcados se consideran cerrados. Admite horarios que crucen medianoche.</div><div class="stack">'+weeklyRows+'</div></div><div class="field"><label>Radio válido para fichar (metros)</label><input name="radius" type="number" min="25" max="5000" step="25" value="'+esc(item&&item.attendance_radius_m||250)+'" required><div class="muted">Ejemplo: 250 m. No bloquea el fichaje; solo avisa al coordinador si se hace fuera.</div></div><div class="field"><label>Ubicación del centro</label><div class="mini-actions"><input name="latitude" type="number" step="any" placeholder="Latitud" value="'+esc(item&&item.latitude!=null?item.latitude:'')+'"><input name="longitude" type="number" step="any" placeholder="Longitud" value="'+esc(item&&item.longitude!=null?item.longitude:'')+'"></div><button type="button" class="btn secondary" id="useFacilityLocation">📍 Usar mi ubicación actual</button><div class="muted">Úsalo estando físicamente en la instalación para poder calcular la distancia de los fichajes.</div></div><button class="btn primary">'+(item?'Guardar cambios':'Guardar')+'</button></form>');
+ var el=modal(item?'Editar instalación':'Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" value="'+esc(item&&item.name||'')+'" required></div><div class="field"><label>Dirección</label><input name="address" value="'+esc(item&&item.address||'')+'"></div><div class="field"><label>Socorristas necesarios por defecto</label><input name="required" type="number" min="1" value="'+esc(item&&item.required_workers||1)+'" required><div class="muted">Se usa como referencia general; puedes indicar una cifra distinta para cada día.</div></div><div class="field"><label>Titulaciones obligatorias para trabajar en este centro</label><div class="muted" style="margin-bottom:8px">Solo podrán asignarse o coger turnos quienes tengan estos documentos verificados y vigentes en la fecha del turno.</div><div class="stack">'+qualificationChecks+'</div></div><div class="field"><label>Horario semanal que debe quedar cubierto</label><div class="muted" style="margin-bottom:8px">Marca los días de apertura e indica horario y trabajadores simultáneos necesarios. Los días desmarcados se consideran cerrados. Admite horarios que crucen medianoche.</div><div class="stack">'+weeklyRows+'</div></div><div class="field"><label>Radio válido para fichar (metros)</label><input name="radius" type="number" min="25" max="5000" step="25" value="'+esc(item&&item.attendance_radius_m||250)+'" required><div class="muted">Ejemplo: 250 m. No bloquea el fichaje; solo avisa al coordinador si se hace fuera.</div></div><div class="field"><label>Ubicación del centro</label><div class="mini-actions"><input name="latitude" type="number" step="any" placeholder="Latitud" value="'+esc(item&&item.latitude!=null?item.latitude:'')+'"><input name="longitude" type="number" step="any" placeholder="Longitud" value="'+esc(item&&item.longitude!=null?item.longitude:'')+'"></div><button type="button" class="btn secondary" id="useFacilityLocation">📍 Usar mi ubicación actual</button><div class="muted">Úsalo estando físicamente en la instalación para poder calcular la distancia de los fichajes.</div></div><button class="btn primary">'+(item?'Guardar cambios':'Guardar')+'</button></form>');
  document.getElementById('useFacilityLocation').onclick=async function(){try{var p=await getGeoPosition();el.querySelector('[name="latitude"]').value=p.latitude;el.querySelector('[name="longitude"]').value=p.longitude;alert('Ubicación capturada con precisión aproximada de ±'+Math.round(p.accuracy)+' m.')}catch(e){alert(e.message)}};
  el.querySelector('form').onsubmit=async function(e){
    e.preventDefault();
-   var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),address=f.get('address')||null,schedule={},bad=null;
+   var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),address=f.get('address')||null,schedule={},bad=null,requiredDocumentTypes=Array.from(e.target.querySelectorAll('input[name="required_doc"]:checked')).map(function(x){return x.value});
    dayDefs.forEach(function(day){
      var enabled=f.get('cov_enabled_'+day[0])==='on',st=f.get('cov_start_'+day[0])||'',en=f.get('cov_end_'+day[0])||'',req=Math.max(1,Number(f.get('cov_required_'+day[0]))||Number(f.get('required'))||1);
      if(enabled&&(!st||!en||st===en))bad=day[1];
      schedule[day[0]]={enabled:enabled,start:st||null,end:en||null,required:req};
    });
    if(bad){ferr(e.target,'Revisa el horario de '+bad+': inicio y fin deben estar indicados y ser distintos.');return}
-   var payload={name:f.get('name'),address:address,required_workers:Number(f.get('required')),coverage_start:null,coverage_end:null,coverage_schedule:schedule,attendance_radius_m:Number(f.get('radius')||250),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};
+   var payload={name:f.get('name'),address:address,required_workers:Number(f.get('required')),coverage_start:null,coverage_end:null,coverage_schedule:schedule,required_document_types:requiredDocumentTypes,attendance_radius_m:Number(f.get('radius')||250),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};
    if((payload.latitude==null||payload.longitude==null)&&address){
      try{
        var g=await sb.functions.invoke('geocode-facility',{body:{address:address}});
@@ -647,6 +672,8 @@ function recurringShiftPreview(facilityId,workerId,start,end,weeks){
      });
      if(overlapExisting||overlapPlanned){base.status='blocked';base.label='Solape';out.push(base);continue}
      if(approvedLeaveForShift(workerId,a,b)){base.status='blocked';base.label='Ausencia aprobada';out.push(base);continue}
+     var missingDocs=missingFacilityRequirements(workerId,facilityId,a);
+     if(missingDocs.length){base.status='blocked';base.label='Falta '+missingDocs.join(', ');out.push(base);continue}
      var av=availabilityForShift(workerId,a,b);
      if(av&&av.status==='unavailable'){base.status='blocked';base.label='No disponible';out.push(base);continue}
      var planWarn=planningWarningsForAssignment(workerId,a,b,null,planned),labels=[];
@@ -714,6 +741,8 @@ function shiftModal(id,prefill){
 
    if(w){
      if(workerHasOverlap(w,a,b,item&&item.id)){ferr(e.target,'Ese trabajador ya tiene otro turno que se solapa con este horario.');return}
+     var missingDocs=missingFacilityRequirements(w,facilityId,a);
+     if(missingDocs.length){ferr(e.target,'No se puede asignar: falta documentación obligatoria vigente: '+missingDocs.join(', ')+'.');return}
      var leave=approvedLeaveForShift(w,a,b);if(leave&&!confirm('El trabajador tiene una ausencia aprobada en esas fechas. ¿Quieres asignarlo de todas formas?'))return;
      var av=availabilityForShift(w,a,b);if(av&&av.status==='unavailable'&&!confirm('El trabajador ha marcado que NO está disponible en ese horario. ¿Asignarlo de todas formas?'))return;
      if(av&&av.status==='prefer_not'&&!confirm('El trabajador ha indicado que preferiría no trabajar en ese horario. ¿Continuar?'))return;
@@ -912,7 +941,7 @@ function showCandidates(subId,sh,list){
 
  var safe=ranked.filter(function(w){return !w._warnings.length&&Number(w.priority)===0});
  var suggestedIds=new Set(safe.map(function(w){return w.worker_id}));
- var body='<div class="stack"><div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div class="muted" style="margin-top:6px">Candidatos ordenados por disponibilidad, descanso y carga semanal.</div></div>';
+ var body='<div class="stack"><div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div class="muted" style="margin-top:6px">Candidatos ordenados por disponibilidad, descanso y carga semanal.</div><div class="muted">Titulaciones del centro: '+esc(facilityRequirementsLabel(sh.facility_id))+'</div></div>';
 
  if(!ranked.length){
    body+='<div class="msg err">No hay candidatos válidos: tienen otro turno, una ausencia aprobada o han marcado que no están disponibles.</div>';
@@ -1053,12 +1082,12 @@ function openShiftCards(list){
  if(!list.length)return '<div class="card empty">No hay turnos abiertos compatibles contigo ahora mismo.</div>';
  var wid=state.profile.worker_id,rules=planningRuleValues();
  return '<div class="stack">'+list.map(function(x){
-   var a=new Date(x.starts_at),b=new Date(x.ends_at),warnings=planningWarningsForAssignment(wid,a,b,null,[]);
+   var a=new Date(x.starts_at),b=new Date(x.ends_at),warnings=planningWarningsForAssignment(wid,a,b,null,[]),reqLabel=facilityRequirementsLabel(x.facility_id);
    var hours=plannedHoursInWeek(wid,a,b,null,[]),rest=restGapForAssignment(wid,a,b,null,[]);
    var prefer=x.availability_label==='Preferiría no';
    var caution=warnings.length||prefer;
    var restText=rest==null?'Sin turno cercano':rest.toFixed(1)+' h de descanso';
-   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility_name||'Turno abierto')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+(x.facility_address?' · '+esc(x.facility_address):'')+'</div></div><span class="badge '+(caution?'amber':'green')+'">'+(caution?'Revisar':'Disponible')+'</span></div><div class="muted" style="margin-top:8px">'+esc(x.availability_label||'Sin disponibilidad marcada')+' · Semana tras cogerlo: '+hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</div>'+
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility_name||'Turno abierto')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+(x.facility_address?' · '+esc(x.facility_address):'')+'</div></div><span class="badge '+(caution?'amber':'green')+'">'+(caution?'Revisar':'Disponible')+'</span></div><div class="muted" style="margin-top:8px">'+esc(x.availability_label||'Sin disponibilidad marcada')+' · Semana tras cogerlo: '+hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</div><div class="muted" style="margin-top:4px">Requisitos: '+esc(reqLabel)+'</div>'+
      (warnings.length?'<div class="mini-actions" style="margin-top:8px">'+warnings.map(function(w){return '<span class="badge amber">⚠️ '+esc(w)+'</span>'}).join('')+'</div>':'')+
      (prefer?'<div style="margin-top:8px"><span class="badge amber">🟡 Marcaste que preferirías no trabajar</span></div>':'')+
      '<button class="btn primary" style="margin-top:10px" data-claim-open="'+x.shift_id+'">Coger turno</button></div>';
