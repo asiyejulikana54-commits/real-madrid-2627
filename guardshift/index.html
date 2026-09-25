@@ -27,7 +27,7 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 .badge{display:inline-block;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:800}.green{background:#e8f7ef;color:var(--green)}.red{background:#fdecec;color:var(--red)}.blue{background:#eaf2ff;color:#1456b8}
 .empty{text-align:center;color:var(--muted);padding:26px}.mobile{display:none;gap:7px;overflow:auto;margin-bottom:15px}.mobile button{white-space:nowrap;border:1px solid var(--border);background:#fff;padding:9px;border-radius:10px}.mobile .on{background:var(--nav);color:#fff}
 .modal-bg{position:fixed;inset:0;background:#0b1b2e88;display:grid;place-items:center;padding:16px;z-index:20}.modal{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}.modal-head{display:flex;justify-content:space-between;align-items:center}.x{border:0;background:#eef3f8;border-radius:9px;width:36px;height:36px}
-.week{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}.weekgrid{display:grid;grid-template-columns:165px repeat(7,125px);min-width:1040px}.weekgrid>div{padding:9px;border-right:1px solid #e9eef5;border-bottom:1px solid #e9eef5;min-height:64px}.wh{font-weight:800;background:#f9fbfd}.chip{background:#eaf2ff;color:#1456b8;padding:7px;border-radius:9px;font-size:12px;margin-bottom:5px}.chip.open{background:#fdecec;color:#b42318}
+.week{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px}.weekgrid{display:grid;grid-template-columns:165px repeat(7,125px);min-width:1040px}.weekgrid>div{padding:9px;border-right:1px solid #e9eef5;border-bottom:1px solid #e9eef5;min-height:64px}.wh{font-weight:800;background:#f9fbfd}.chip{background:#eaf2ff;color:#1456b8;padding:7px;border-radius:9px;font-size:12px;margin-bottom:5px}.chip.open{background:#fdecec;color:#b42318}.chip.warning{background:#fff4df;color:#8a5b00}.chip.conflict{background:#fdecec;color:#a32020}.schedule-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.schedule-title{font-weight:900;font-size:17px;align-self:center;margin-right:auto}
 .offer-card{display:grid;gap:10px}.notice{border-left:4px solid var(--primary)}.doc-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#94a3b8}.status-dot.green{background:#10b981}.status-dot.amber{background:#f59e0b}.status-dot.red{background:#ef4444}.offer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.candidate{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius:12px}.candidate input{margin-top:4px}.stack{display:grid;gap:10px}.mini-actions{display:flex;gap:7px;flex-wrap:wrap}.btn.small{padding:7px 10px;font-size:12px}.amber{background:#fff4df;color:#946200}.portal-hero{background:linear-gradient(135deg,#0b2a4d,#0f6fff);color:#fff}.portal-hero .muted{color:#dce9f8}
 .filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}.filters input,.filters select{border:1px solid #cfd9e7;border-radius:11px;padding:9px 10px;background:#fff;min-width:150px}.danger{background:#fdecec;color:#a32020}.mobile-schedule{display:none}.day-card{background:#fff;border:1px solid var(--border);border-radius:15px;padding:14px}.day-card h3{margin:0 0 10px}.shift-mobile{padding:10px;border:1px solid #e5ebf3;border-radius:11px;margin-top:8px}.manage-card{display:grid;gap:12px}.manage-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.mobile{display:flex}.cards{grid-template-columns:repeat(2,1fr)}.main{padding:16px}.desktop-schedule{display:none}.mobile-schedule{display:grid;gap:10px}}
@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -141,7 +141,8 @@ async function load(){
     sb.from('time_entries').select('*,shifts(starts_at,ends_at,facilities(name,latitude,longitude,attendance_radius_m))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*').order('occurred_at',{ascending:false}),
     sb.from('leave_requests').select('*').order('starts_on',{ascending:false}),
-    sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false})
+    sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
+    sb.from('availability').select('*').order('starts_at',{ascending:true})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
    state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];
@@ -158,7 +159,7 @@ async function load(){
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];
  }
 }
 function nav(){
@@ -246,14 +247,59 @@ function shifts(){
  ['shiftDate','shiftFacility','shiftWorker','shiftStatus'].forEach(function(id){document.getElementById(id).onchange=draw});
  document.getElementById('clearShiftFilters').onclick=function(){['shiftDate','shiftFacility','shiftWorker','shiftStatus'].forEach(function(id){document.getElementById(id).value=''});draw()};draw();
 }
-function monday(){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x}
+function monday(offset){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day+((offset||0)*7));x.setHours(0,0,0,0);return x}
+function shiftOverlaps(a,b){return new Date(a.starts_at)<new Date(b.ends_at)&&new Date(a.ends_at)>new Date(b.starts_at)}
+function workerHasOverlap(workerId,start,end,excludeId){
+ return state.shifts.some(function(x){return x.id!==excludeId&&x.worker_id===workerId&&x.status==='assigned'&&new Date(x.starts_at)<end&&new Date(x.ends_at)>start});
+}
+function availabilityForShift(workerId,start,end){
+ return (state.availability||[]).find(function(x){return x.worker_id===workerId&&new Date(x.starts_at)<end&&new Date(x.ends_at)>start&&(x.status==='unavailable'||x.status==='prefer_not')});
+}
+function approvedLeaveForShift(workerId,start,end){
+ var sd=start.toISOString().slice(0,10),ed=end.toISOString().slice(0,10);
+ return (state.leaveRequests||[]).find(function(x){return x.worker_id===workerId&&x.status==='approved'&&x.starts_on<=ed&&x.ends_on>=sd});
+}
+function shiftWarning(sft){
+ if(!sft.worker_id)return null;
+ var start=new Date(sft.starts_at),end=new Date(sft.ends_at);
+ var overlap=state.shifts.some(function(x){return x.id!==sft.id&&x.worker_id===sft.worker_id&&x.status==='assigned'&&shiftOverlaps(x,sft)});
+ if(overlap)return ['⚠ Solape','conflict'];
+ if(approvedLeaveForShift(sft.worker_id,start,end))return ['🏖 Ausencia','conflict'];
+ var av=availabilityForShift(sft.worker_id,start,end);
+ if(av&&av.status==='unavailable')return ['⛔ No disponible','conflict'];
+ if(av&&av.status==='prefer_not')return ['🟡 Preferiría no','warning'];
+ return null;
+}
+async function duplicateDisplayedWeek(){
+ var source=monday(state.scheduleOffset),sourceEnd=new Date(source);sourceEnd.setDate(sourceEnd.getDate()+7);
+ var list=state.shifts.filter(function(x){return x.status!=='cancelled'&&x.status!=='completed'&&new Date(x.starts_at)>=source&&new Date(x.starts_at)<sourceEnd});
+ if(!list.length){alert('No hay turnos en esta semana para copiar.');return}
+ var target=new Date(source);target.setDate(target.getDate()+7);
+ if(!confirm('¿Copiar '+list.length+' turno(s) a la semana siguiente? Los duplicados exactos se omitirán.'))return;
+ var payload=[];
+ list.forEach(function(x){
+   var ns=new Date(x.starts_at),ne=new Date(x.ends_at);ns.setDate(ns.getDate()+7);ne.setDate(ne.getDate()+7);
+   var exists=state.shifts.some(function(y){return y.facility_id===x.facility_id&&y.worker_id===x.worker_id&&new Date(y.starts_at).getTime()===ns.getTime()&&new Date(y.ends_at).getTime()===ne.getTime()&&y.status!=='cancelled'});
+   if(!exists)payload.push({company_id:state.profile.company_id,facility_id:x.facility_id,worker_id:x.worker_id,starts_at:ns.toISOString(),ends_at:ne.toISOString(),status:x.worker_id?'assigned':'open',notes:x.notes||null,created_by:state.profile.id});
+ });
+ if(!payload.length){alert('La semana siguiente ya contiene todos esos turnos.');return}
+ var r=await sb.from('shifts').insert(payload);if(r.error){alert(r.error.message);return}
+ await load();state.scheduleOffset++;schedule();alert('Copiados '+payload.length+' turno(s).');
+}
 function schedule(){
- var start=monday(),days=[],names=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];for(var i=0;i<7;i++){var q=new Date(start);q.setDate(q.getDate()+i);days.push(q)}
+ var start=monday(state.scheduleOffset),days=[],names=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];for(var i=0;i<7;i++){var q=new Date(start);q.setDate(q.getDate()+i);days.push(q)}
+ var last=new Date(start);last.setDate(last.getDate()+6);
+ var tools='<div class="schedule-tools"><span class="schedule-title">'+d(start)+' – '+d(last)+'</span><button class="btn secondary" id="prevWeek">← Semana</button><button class="btn secondary" id="currentWeek">Actual</button><button class="btn secondary" id="nextWeek">Semana →</button><button class="btn secondary" id="copyWeek">Duplicar a siguiente</button></div>';
  var grid='<div class="week desktop-schedule"><div class="weekgrid"><div class="wh">Trabajador</div>'+days.map(function(x,i){return '<div class="wh">'+names[i]+'<br><span class="muted">'+x.getDate()+'/'+(x.getMonth()+1)+'</span></div>'}).join('');
- state.workers.filter(function(w){return w.active}).forEach(function(w){grid+='<div class="wh">'+esc(w.full_name)+'</div>';days.forEach(function(day){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.worker_id===w.id&&s.status!=='cancelled'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});grid+='<div>'+list.map(function(s){return '<div class="chip">'+esc(s.facilities&&s.facilities.name||'Turno')+'<br>'+t(s.starts_at)+'–'+t(s.ends_at)+'</div>'}).join('')+'</div>'})});
+ state.workers.filter(function(w){return w.active}).forEach(function(w){grid+='<div class="wh">'+esc(w.full_name)+'</div>';days.forEach(function(day){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.worker_id===w.id&&s.status!=='cancelled'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});grid+='<div>'+list.map(function(s){var warn=shiftWarning(s);return '<div class="chip '+(warn?warn[1]:'')+'">'+esc(s.facilities&&s.facilities.name||'Turno')+'<br>'+t(s.starts_at)+'–'+t(s.ends_at)+(warn?'<br><strong>'+warn[0]+'</strong>':'')+'</div>'}).join('')+'</div>'})});
  grid+='<div class="wh">⚠️ Sin cubrir</div>';days.forEach(function(day){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.status==='open'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});grid+='<div>'+list.map(function(s){return '<div class="chip open">'+esc(s.facilities&&s.facilities.name||'Turno')+'<br>'+t(s.starts_at)+'–'+t(s.ends_at)+'</div>'}).join('')+'</div>'});grid+='</div></div>';
- var mobile='<div class="mobile-schedule">'+days.map(function(day,i){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.status!=='cancelled'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});return '<div class="day-card"><h3>'+names[i]+' '+day.getDate()+'/'+(day.getMonth()+1)+'</h3>'+(list.length?list.map(function(x){return '<div class="shift-mobile"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+t(x.starts_at)+'–'+t(x.ends_at)+' · '+esc(x.workers&&x.workers.full_name||'Sin cubrir')+'</div></div>'}).join(''):'<div class="muted">Sin turnos</div>')+'</div>'}).join('')+'</div>';
- shell('Cuadrante','Semana actual',grid+mobile,'<button class="btn primary" id="add">+ Turno</button>');document.getElementById('add').onclick=function(){shiftModal()};
+ var mobile='<div class="mobile-schedule">'+days.map(function(day,i){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.status!=='cancelled'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});return '<div class="day-card"><h3>'+names[i]+' '+day.getDate()+'/'+(day.getMonth()+1)+'</h3>'+(list.length?list.map(function(x){var warn=shiftWarning(x);return '<div class="shift-mobile"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+t(x.starts_at)+'–'+t(x.ends_at)+' · '+esc(x.workers&&x.workers.full_name||'Sin cubrir')+'</div>'+(warn?'<div style="margin-top:6px"><span class="badge '+(warn[1]==='conflict'?'red':'amber')+'">'+warn[0]+'</span></div>':'')+'</div>'}).join(''):'<div class="muted">Sin turnos</div>')+'</div>'}).join('')+'</div>';
+ shell('Cuadrante','Planificación semanal',tools+grid+mobile,'<button class="btn primary" id="add">+ Turno</button>');
+ document.getElementById('add').onclick=function(){shiftModal()};
+ document.getElementById('prevWeek').onclick=function(){state.scheduleOffset--;schedule()};
+ document.getElementById('nextWeek').onclick=function(){state.scheduleOffset++;schedule()};
+ document.getElementById('currentWeek').onclick=function(){state.scheduleOffset=0;schedule()};
+ document.getElementById('copyWeek').onclick=duplicateDisplayedWeek;
 }
 function modal(title,body){
  var el=document.createElement('div');el.className='modal-bg';el.innerHTML='<div class="modal"><div class="modal-head"><h3>'+esc(title)+'</h3><button class="x">✕</button></div>'+body+'</div>';document.body.appendChild(el);el.querySelector('.x').onclick=function(){el.remove()};return el;
@@ -293,7 +339,13 @@ function shiftModal(id){
  var fo=state.facilities.filter(function(f){return f.active||item&&f.id===item.facility_id}).map(function(f){return '<option value="'+f.id+'" '+(item&&item.facility_id===f.id?'selected':'')+'>'+esc(f.name)+'</option>'}).join('');
  var wo='<option value="">Sin asignar</option>'+state.workers.filter(function(w){return w.active||item&&w.id===item.worker_id}).map(function(w){return '<option value="'+w.id+'" '+(item&&item.worker_id===w.id?'selected':'')+'>'+esc(w.full_name)+'</option>'}).join('');
  var el=modal(item?'Editar turno':'Nuevo turno','<form class="form"><div class="field"><label>Instalación</label><select name="facility" required>'+fo+'</select></div><div class="field"><label>Trabajador</label><select name="worker">'+wo+'</select></div><div class="field"><label>Inicio</label><input name="start" type="datetime-local" value="'+toLocalInput(item&&item.starts_at)+'" required></div><div class="field"><label>Fin</label><input name="end" type="datetime-local" value="'+toLocalInput(item&&item.ends_at)+'" required></div><button class="btn primary">'+(item?'Guardar cambios':'Crear turno')+'</button></form>');
- el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}var payload={facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
+ el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}if(w){
+   if(workerHasOverlap(w,a,b,item&&item.id)){ferr(e.target,'Ese trabajador ya tiene otro turno que se solapa con este horario.');return}
+   var leave=approvedLeaveForShift(w,a,b);if(leave&&!confirm('El trabajador tiene una ausencia aprobada en esas fechas. ¿Quieres asignarlo de todas formas?'))return;
+   var av=availabilityForShift(w,a,b);if(av&&av.status==='unavailable'&&!confirm('El trabajador ha marcado que NO está disponible en ese horario. ¿Asignarlo de todas formas?'))return;
+   if(av&&av.status==='prefer_not'&&!confirm('El trabajador ha indicado que preferiría no trabajar en ese horario. ¿Continuar?'))return;
+ }
+ var payload={facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
 }
 
 function substitutionSummary(list){
@@ -615,7 +667,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
