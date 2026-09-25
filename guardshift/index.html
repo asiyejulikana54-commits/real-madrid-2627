@@ -765,34 +765,40 @@ function hoursPage(){
 function clocking(){
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
- var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+t(open.clock_in)+'</div><button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
+ var openLoc=open?locationForEntry(open.id,'clock_in'):null;
+ var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+ts(open.clock_in)+'</div>'+(openLoc?'<div style="margin-top:7px"><span class="badge green">📍 Ubicación registrada · GPS ±'+Math.round(openLoc.accuracy_m||0)+' m</span></div>':'')+'<button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
  (upcoming.length?'<div class="stack">'+upcoming.slice(0,5).map(function(x){return '<div class="card"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button></div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos asignados.</div>');
- shell('Fichaje','La hora se registra en el servidor. La ubicación se solicita solo al fichar.',body,'');
+ shell('Fichaje','La hora del servidor y la ubicación GPS se guardan juntas en el momento de fichar.',body,'');
  document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){
    try{
      b.disabled=true;b.textContent='Obteniendo ubicación…';
      var pos=await getGeoPosition();
-     var r=await sb.rpc('clock_in_shift',{p_shift_id:b.getAttribute('data-clock-in')});
+     b.textContent='Registrando fichaje…';
+     var r=await sb.rpc('clock_in_shift_with_location',{
+       p_shift_id:b.getAttribute('data-clock-in'),
+       p_latitude:pos.latitude,
+       p_longitude:pos.longitude,
+       p_accuracy_m:pos.accuracy
+     });
      if(r.error)throw r.error;
-     var g=await sb.from('time_entry_locations').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,time_entry_id:r.data,event_type:'clock_in',latitude:pos.latitude,longitude:pos.longitude,accuracy_m:pos.accuracy});
-     if(g.error)throw g.error;
      await load();render();
-   }catch(e){alert(e.message||'No se pudo fichar.');b.disabled=false;b.textContent='Fichar entrada'}
+   }catch(e){alert(e.message||'No se pudo fichar. No se ha guardado un fichaje parcial.');b.disabled=false;b.textContent='Fichar entrada'}
  }});
  var co=document.getElementById('clockOut');if(co)co.onclick=async function(){
    var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;
    try{
      co.disabled=true;co.textContent='Obteniendo ubicación…';
      var pos=await getGeoPosition();
-     var current=(state.timeEntries||[]).find(function(x){return !x.clock_out});
-     var r=await sb.rpc('clock_out_current',{p_notes:notes||null});
+     co.textContent='Registrando salida…';
+     var r=await sb.rpc('clock_out_current_with_location',{
+       p_notes:notes||null,
+       p_latitude:pos.latitude,
+       p_longitude:pos.longitude,
+       p_accuracy_m:pos.accuracy
+     });
      if(r.error)throw r.error;
-     if(current){
-       var g=await sb.from('time_entry_locations').insert({company_id:state.profile.company_id,worker_id:state.profile.worker_id,time_entry_id:current.id,event_type:'clock_out',latitude:pos.latitude,longitude:pos.longitude,accuracy_m:pos.accuracy});
-       if(g.error)throw g.error;
-     }
      await load();render();
-   }catch(e){alert(e.message||'No se pudo fichar salida.');co.disabled=false;co.textContent='Fichar salida'}
+   }catch(e){alert(e.message||'No se pudo fichar salida. No se ha guardado una salida parcial.');co.disabled=false;co.textContent='Fichar salida'}
  };
 }
 function leaveConflictingShifts(req){
