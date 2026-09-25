@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -164,7 +164,7 @@ async function load(){
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
    ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -485,6 +485,55 @@ function formatDistance(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(m<1
 function locationForEntry(entryId,type){
  return (state.timeLocations||[]).find(function(x){return x.time_entry_id===entryId&&x.event_type===type});
 }
+
+function periodBounds(){
+ var now=new Date(),start,end,label;
+ if(state.summaryMode==='month'){
+   start=new Date(now.getFullYear(),now.getMonth()+state.summaryOffset,1);
+   end=new Date(start.getFullYear(),start.getMonth()+1,1);
+   label=start.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+ }else{
+   start=monday();start.setDate(start.getDate()+state.summaryOffset*7);
+   end=new Date(start);end.setDate(end.getDate()+7);
+   var last=new Date(end);last.setDate(last.getDate()-1);
+   label=d(start)+' – '+d(last);
+ }
+ return {start:start,end:end,label:label};
+}
+function overlapDays(a1,a2,b1,b2){
+ var s=new Date(Math.max(new Date(a1).setHours(0,0,0,0),new Date(b1).setHours(0,0,0,0)));
+ var e=new Date(Math.min(new Date(a2).setHours(0,0,0,0),new Date(b2).setHours(0,0,0,0)));
+ return e<s?0:Math.floor((e-s)/86400000)+1;
+}
+function summaryPage(){
+ var p=periodBounds(),start=p.start,end=p.end;
+ var rows=state.workers.filter(function(w){return w.active}).map(function(w){
+   var shifts=state.shifts.filter(function(x){return x.worker_id===w.id&&x.status!=='cancelled'&&new Date(x.starts_at)>=start&&new Date(x.starts_at)<end});
+   var scheduled=shifts.reduce(function(a,x){return a+Math.max(0,new Date(x.ends_at)-new Date(x.starts_at))},0)/3600000;
+   var entries=(state.timeEntries||[]).filter(function(x){return x.worker_id===w.id&&new Date(x.clock_in)>=start&&new Date(x.clock_in)<end});
+   var worked=entries.reduce(function(a,x){var z=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,z-new Date(x.clock_in))},0)/3600000;
+   var approved=entries.filter(function(x){return x.approval_status==='approved'}).reduce(function(a,x){var z=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,z-new Date(x.clock_in))},0)/3600000;
+   var pending=entries.filter(function(x){return x.approval_status==='pending'}).length;
+   var incidents=(state.incidents||[]).filter(function(x){return x.worker_id===w.id&&new Date(x.occurred_at)>=start&&new Date(x.occurred_at)<end}).length;
+   var leaves=(state.leaveRequests||[]).filter(function(x){return x.worker_id===w.id&&x.status==='approved'&&new Date(x.starts_on)<end&&new Date(x.ends_on)>=start});
+   var leaveDays=leaves.reduce(function(a,x){return a+overlapDays(x.starts_on,x.ends_on,start,new Date(end.getTime()-86400000))},0);
+   return {worker:w,scheduled:scheduled,worked:worked,approved:approved,pending:pending,incidents:incidents,leaveDays:leaveDays,diff:approved-scheduled};
+ });
+ var totals=rows.reduce(function(a,x){a.scheduled+=x.scheduled;a.worked+=x.worked;a.approved+=x.approved;a.incidents+=x.incidents;a.leaveDays+=x.leaveDays;return a},{scheduled:0,worked:0,approved:0,incidents:0,leaveDays:0});
+ var body='<div class="filters"><select id="summaryMode"><option value="week" '+(state.summaryMode==='week'?'selected':'')+'>Semana</option><option value="month" '+(state.summaryMode==='month'?'selected':'')+'>Mes</option></select><button class="btn secondary" id="summaryPrev">← Anterior</button><button class="btn secondary" id="summaryToday">Actual</button><button class="btn secondary" id="summaryNext">Siguiente →</button><button class="btn secondary" id="summaryCsv">Exportar CSV</button></div>'+
+ '<div class="card"><strong>'+esc(p.label)+'</strong></div>'+
+ '<div class="cards section"><div class="card kpi"><span class="muted">Horas previstas</span><strong>'+totals.scheduled.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas fichadas</span><strong>'+totals.worked.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas aprobadas</span><strong>'+totals.approved.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Incidencias</span><strong>'+totals.incidents+'</strong></div><div class="card kpi"><span class="muted">Días de ausencia aprobados</span><strong>'+totals.leaveDays+'</strong></div></div>'+
+ '<div class="section">'+(rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Previstas</th><th>Fichadas</th><th>Aprobadas</th><th>Diferencia</th><th>Fichajes pendientes</th><th>Incidencias</th><th>Ausencia</th></tr></thead><tbody>'+rows.map(function(x){var cls=x.diff>0.01?'amber':x.diff<-0.01?'red':'green';var sign=x.diff>0?'+':'';return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.scheduled.toFixed(2)+' h</td><td>'+x.worked.toFixed(2)+' h</td><td>'+x.approved.toFixed(2)+' h</td><td><span class="badge '+cls+'">'+sign+x.diff.toFixed(2)+' h</span></td><td>'+x.pending+'</td><td>'+x.incidents+'</td><td>'+x.leaveDays+' días</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores activos.</div>')+'</div>';
+ shell('Resumen','Horas previstas vs. trabajadas, ausencias e incidencias.',body,'');
+ document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;summaryPage()};
+ document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;summaryPage()};
+ document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;summaryPage()};
+ document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;summaryPage()};
+ document.getElementById('summaryCsv').onclick=function(){
+   var csv='Periodo,Trabajador,Horas previstas,Horas fichadas,Horas aprobadas,Diferencia,Fichajes pendientes,Incidencias,Dias ausencia\n'+rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_resumen_'+state.summaryMode+'.csv';a.click();URL.revokeObjectURL(a.href);
+ };
+}
 function hoursPage(){
  var rows=state.timeEntries||[];
  var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
@@ -562,11 +611,11 @@ function incidentList(list,coordinator){
 function render(){
  var map=state.profile&&state.profile.role==='worker'
    ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],summaryMode:'week',summaryOffset:0,realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
