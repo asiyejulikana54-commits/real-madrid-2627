@@ -570,7 +570,7 @@ function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
  var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
  var today=new Date();today.setHours(0,0,0,0);var limit=new Date(today);limit.setDate(limit.getDate()+30);
- var expiring=state.documents.filter(function(x){return x.review_status==='approved'&&x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
+ var expiring=state.documents.filter(function(x){return x.review_status==='approved'&&!documentIsSuperseded(x)&&x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
  var tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
  var coverageConfigured=state.facilities.filter(function(f){return f.active&&facilityCoverageConfigured(f)});
  var coverageUnconfigured=state.facilities.filter(function(f){return f.active&&!facilityCoverageConfigured(f)});
@@ -747,6 +747,19 @@ function documentDaysRemaining(doc){
  if(!doc||!doc.expires_on)return null;
  return Math.ceil((new Date(doc.expires_on+'T23:59:59')-new Date())/86400000);
 }
+function documentIsSuperseded(doc){
+ if(!doc||!doc.verified||doc.review_status!=='approved')return false;
+ var submitted=new Date(doc.submitted_at||doc.created_at||0).getTime();
+ return (state.documents||[]).some(function(other){
+   if(other.id===doc.id||other.worker_id!==doc.worker_id||other.document_type!==doc.document_type||!other.verified||other.review_status!=='approved')return false;
+   if(!other.expires_on&&doc.expires_on)return true;
+   if(other.expires_on&&doc.expires_on&&other.expires_on>doc.expires_on)return true;
+   if(String(other.expires_on||'')===String(doc.expires_on||'')){
+     return new Date(other.submitted_at||other.created_at||0).getTime()>submitted;
+   }
+   return false;
+ });
+}
 function documentReviewPresentation(doc){
  var st=doc&&doc.review_status||(doc&&doc.verified?'approved':'pending');
  if(st==='approved')return ['Aprobado','green'];
@@ -780,8 +793,8 @@ function workerDocumentActionItems(workerId){
    var days=documentDaysRemaining(doc),st=doc.review_status||(doc.verified?'approved':'pending');
    if(st==='pending')items.push({doc:doc,kind:'pending',label:'Pendiente de revisión',severity:'amber'});
    else if(st==='rejected')items.push({doc:doc,kind:'rejected',label:'Rechazado',severity:'red'});
-   else if(days!=null&&days<0)items.push({doc:doc,kind:'expired',label:'Caducado',severity:'red'});
-   else if(days!=null&&days<=45)items.push({doc:doc,kind:'expiring',label:'Caduca en '+Math.max(0,days)+' días',severity:days<=7?'red':'amber'});
+   else if(!documentIsSuperseded(doc)&&days!=null&&days<0)items.push({doc:doc,kind:'expired',label:'Caducado',severity:'red'});
+   else if(!documentIsSuperseded(doc)&&days!=null&&days<=Math.max(1,Number(state.company&&state.company.document_expiry_alert_days||30)))items.push({doc:doc,kind:'expiring',label:'Caduca en '+Math.max(0,days)+' días',severity:days<=Math.max(1,Number(state.company&&state.company.document_expiry_urgent_days||7))?'red':'amber'});
  });
  var requiredTypes=Array.from(new Set(complianceRequiredFacilities().reduce(function(a,f){return a.concat(f.required_document_types||[])},[])));
  requiredTypes.forEach(function(type){
@@ -833,7 +846,7 @@ function compliancePage(){
  var reqFacilities=complianceRequiredFacilities();
  var risks=futureComplianceRisks(60);
  var today=new Date(),thirty=new Date(today);thirty.setDate(thirty.getDate()+30);
- var expiring=(state.documents||[]).filter(function(doc){return doc.review_status==='approved'&&doc.expires_on&&new Date(doc.expires_on+'T23:59:59')>=today&&new Date(doc.expires_on+'T23:59:59')<=thirty});
+ var expiring=(state.documents||[]).filter(function(doc){return doc.review_status==='approved'&&!documentIsSuperseded(doc)&&doc.expires_on&&new Date(doc.expires_on+'T23:59:59')>=today&&new Date(doc.expires_on+'T23:59:59')<=thirty});
  var pendingDocs=(state.documents||[]).filter(function(doc){return doc.review_status==='pending'}),rejectedDocs=(state.documents||[]).filter(function(doc){return doc.review_status==='rejected'});
  var workerFacilityPairs=0,blockedPairs=0;
  activeWorkers.forEach(function(w){reqFacilities.forEach(function(f){workerFacilityPairs++;if(!facilityComplianceForWorker(w.id,f.id,new Date()).ok)blockedPairs++})});
@@ -1240,8 +1253,8 @@ function documentsPage(){
  var opts=activeWorkers.map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('');
  var pending=(state.documents||[]).filter(function(x){return x.review_status==='pending'});
  var rejected=(state.documents||[]).filter(function(x){return x.review_status==='rejected'});
- var expired=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&dleft!=null&&dleft<0});
- var expiring=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&dleft!=null&&dleft>=0&&dleft<=30});
+ var expired=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&!documentIsSuperseded(x)&&dleft!=null&&dleft<0});
+ var expiring=(state.documents||[]).filter(function(x){var dleft=documentDaysRemaining(x);return x.review_status==='approved'&&!documentIsSuperseded(x)&&dleft!=null&&dleft>=0&&dleft<=Math.max(1,Number(state.company&&state.company.document_expiry_alert_days||30))});
  var attentionWorkers=Array.from(new Set(pending.concat(rejected,expired,expiring).map(function(x){return x.worker_id})));
  var body='<div class="cards"><div class="card kpi"><span class="muted">Documentos</span><strong>'+state.documents.length+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisión</span><strong>'+pending.length+'</strong></div><div class="card kpi"><span class="muted">Rechazados</span><strong>'+rejected.length+'</strong></div><div class="card kpi"><span class="muted">Caducados</span><strong>'+expired.length+'</strong></div><div class="card kpi"><span class="muted">Caducan ≤30 días</span><strong>'+expiring.length+'</strong></div></div>'+
  '<div class="section"><h2>Revisión pendiente</h2><div id="pendingDocumentReviews">'+documentReviewQueue(pending)+'</div></div>'+
@@ -1258,7 +1271,7 @@ function documentsPage(){
    var q=(document.getElementById('docSearch').value||'').toLowerCase(),wid=document.getElementById('docWorker').value,type=document.getElementById('docType').value,st=document.getElementById('docStatus').value,source=document.getElementById('docSource').value;
    current=(state.documents||[]).filter(function(x){
      var w=state.workers.find(function(z){return z.id===x.worker_id}),left=documentDaysRemaining(x),status=x.review_status||(x.verified?'approved':'pending');
-     var statusOk=!st||(st==='expired'?status==='approved'&&left!=null&&left<0:st==='expiring'?status==='approved'&&left!=null&&left>=0&&left<=30:status===st);
+     var statusOk=!st||(st==='expired'?status==='approved'&&!documentIsSuperseded(x)&&left!=null&&left<0:st==='expiring'?status==='approved'&&!documentIsSuperseded(x)&&left!=null&&left>=0&&left<=Math.max(1,Number(state.company&&state.company.document_expiry_alert_days||30)):status===st);
      return (!q||String(x.document_type||'').toLowerCase().includes(q)||String(w&&w.full_name||'').toLowerCase().includes(q))&&(!wid||x.worker_id===wid)&&(!type||x.document_type===type)&&statusOk&&(!source||x.source===source);
    });
    document.getElementById('documentArchive').innerHTML=documentList(current,true,true);bindDocumentButtons();
@@ -1296,7 +1309,7 @@ function documentList(list,showWorker,reviewActions){
  if(!list.length)return '<div class="card empty">No hay documentos que mostrar.</div>';
  return '<div class="stack">'+list.slice().sort(function(a,b){return new Date(b.submitted_at||b.created_at)-new Date(a.submitted_at||a.created_at)}).map(function(x){
    var w=state.workers.find(function(z){return z.id===x.worker_id})||x.workers||{},left=documentDaysRemaining(x),review=documentReviewPresentation(x);
-   var life=left==null?['Sin caducidad','blue']:left<0?['Caducado','red']:left<=30?['Caduca en '+left+' d',left<=7?'red':'amber']:['Vigente','green'];
+   var life=documentIsSuperseded(x)?['Sustituido','blue']:left==null?['Sin caducidad','blue']:left<0?['Caducado','red']:left<=Math.max(1,Number(state.company&&state.company.document_expiry_alert_days||30))?['Caduca en '+left+' d',left<=Math.max(1,Number(state.company&&state.company.document_expiry_urgent_days||7))?'red':'amber']:['Vigente','green'];
    var impact=documentImpactShifts(x,90).length;
    return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+' · '+(x.source==='worker'?'Subido por trabajador':'Añadido por coordinador')+'</div>'+(x.review_note?'<div class="muted">Nota de revisión: '+esc(x.review_note)+'</div>':'')+(impact?'<div style="margin-top:5px"><span class="badge red">⚠ '+impact+' turno(s) futuro(s) en riesgo</span></div>':'')+'</div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+review[1]+'">'+review[0]+'</span>'+(x.review_status==='approved'?'<span class="badge '+life[1]+'">'+life[0]+'</span>':'')+(reviewActions&&x.review_status==='pending'?'<button class="btn small primary" data-review-doc="'+x.id+'" data-review-status="approved">Aprobar</button><button class="btn small danger" data-review-doc="'+x.id+'" data-review-status="rejected">Rechazar</button>':'')+(reviewActions&&x.review_status==='rejected'?'<button class="btn small secondary" data-review-doc="'+x.id+'" data-review-status="pending">Reabrir</button>':'')+(reviewActions?'<button class="btn small secondary" data-edit-doc-expiry="'+x.id+'">Caducidad</button>':'')+'</div></div>';
  }).join('')+'</div>';
@@ -1546,7 +1559,7 @@ function workerhome(){
  var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Turnos abiertos: <strong>'+openMarket+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Solicitudes pendientes: <strong>'+pendingRequests+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
  '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
  '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
- var soon=mineDocs.filter(function(x){var left=documentDaysRemaining(x);return x.review_status==='approved'&&left!=null&&left>=0&&left<=30}).length;
+ var soon=mineDocs.filter(function(x){var left=documentDaysRemaining(x);return x.review_status==='approved'&&!documentIsSuperseded(x)&&left!=null&&left>=0&&left<=Math.max(1,Number(state.company&&state.company.document_expiry_alert_days||30))}).length;
  body+='<div class="section"><div class="doc-row"><h2>Documentación</h2><button class="btn small secondary" id="workerDocsButton">Abrir documentos</button></div><div class="cards"><div class="card kpi"><span class="muted">Pendientes</span><strong>'+docPending+'</strong></div><div class="card kpi"><span class="muted">Rechazados</span><strong>'+docRejected+'</strong></div><div class="card kpi"><span class="muted">Caducan ≤30 días</span><strong>'+soon+'</strong></div><div class="card kpi"><span class="muted">Turnos en riesgo</span><strong>'+docRisks+'</strong></div></div>'+(docRejected||docRisks?'<div class="card notice"><strong>Requiere atención</strong><div class="muted">Revisa o renueva tu documentación para evitar perder aptitud en próximos turnos.</div></div>':'')+'</div>';
  shell('Inicio','Tu actividad en GuardShift',body,'<button class="btn secondary" id="notifyBtn">🔔 Activar avisos</button>');
  document.getElementById('notifyBtn').onclick=enableNotifications;
