@@ -677,7 +677,7 @@ function planningWarningsForAssignment(workerId,start,end,excludeId,extraRows){
  return warnings;
 }
 function shiftWarning(sft){
- if(!sft.worker_id)return null;
+ if(!sft.worker_id||sft.status==='cancelled'||sft.status==='completed')return null;
  var start=new Date(sft.starts_at),end=new Date(sft.ends_at);
  var overlap=state.shifts.some(function(x){return x.id!==sft.id&&x.worker_id===sft.worker_id&&x.status==='assigned'&&shiftOverlaps(x,sft)});
  if(overlap)return ['⚠ Solape','conflict'];
@@ -1090,7 +1090,18 @@ function setupRealtime(){
  if(state.profile.role==='worker'&&state.profile.worker_id)shiftCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',shiftCfg,async function(){await load();render()});
  var eventCfg={event:'INSERT',schema:'public',table:'shift_events'};
- channel=channel.on('postgres_changes',eventCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',eventCfg,async function(payload){
+   var ev=payload&&payload.new||{};
+   await load();
+   if(state.profile.role==='worker'&&state.profile.worker_id){
+     var mine=ev.from_worker_id===state.profile.worker_id||ev.to_worker_id===state.profile.worker_id;
+     if(mine){
+       var p=shiftEventPresentation(ev);
+       if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
+     }
+   }
+   render();
+ });
  var subCfg={event:'*',schema:'public',table:'substitutions'};
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
  state.realtime=channel.on('postgres_changes',subCfg,async function(){
@@ -1589,7 +1600,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
