@@ -195,26 +195,66 @@ function bindCoverButtons(){
    await load();render()
  }});
 }
+function timeOnDay(day,timeText){
+ var p=String(timeText||'').split(':'),x=new Date(day);
+ x.setHours(Number(p[0]||0),Number(p[1]||0),Number(p[2]||0),0);
+ return x;
+}
+function coverageGapsForFacility(f,day){
+ if(!f.coverage_start||!f.coverage_end)return null;
+ var start=timeOnDay(day,f.coverage_start),end=timeOnDay(day,f.coverage_end);
+ if(end<=start)end.setDate(end.getDate()+1);
+ var relevant=state.shifts.filter(function(sh){
+   if(sh.facility_id!==f.id||sh.status!=='assigned'||!sh.worker_id)return false;
+   var ss=new Date(sh.starts_at),se=new Date(sh.ends_at);
+   if(!(ss<end&&se>start))return false;
+   if(approvedLeaveForShift(sh.worker_id,ss,se))return false;
+   return true;
+ });
+ var points=[start.getTime(),end.getTime()];
+ relevant.forEach(function(sh){
+   var a=Math.max(start.getTime(),new Date(sh.starts_at).getTime()),b=Math.min(end.getTime(),new Date(sh.ends_at).getTime());
+   if(a<b){points.push(a,b)}
+ });
+ points=Array.from(new Set(points)).sort(function(a,b){return a-b});
+ var need=Number(f.required_workers||1),gaps=[];
+ for(var i=0;i<points.length-1;i++){
+   var a=points[i],b=points[i+1];if(b<=a)continue;
+   var mid=(a+b)/2,count=relevant.filter(function(sh){return new Date(sh.starts_at).getTime()<=mid&&new Date(sh.ends_at).getTime()>mid}).length;
+   if(count<need){
+     var prev=gaps[gaps.length-1];
+     if(prev&&prev.end===a&&prev.assigned===count){prev.end=b}
+     else gaps.push({start:a,end:b,assigned:count,need:need});
+   }
+ }
+ return gaps;
+}
+function formatCoverageGap(g){
+ return t(new Date(g.start))+'–'+t(new Date(g.end))+' · '+g.assigned+'/'+g.need+' cubiertos · faltan '+(g.need-g.assigned);
+}
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
  var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
  var today=new Date();today.setHours(0,0,0,0);var limit=new Date(today);limit.setDate(limit.getDate()+30);
  var expiring=state.documents.filter(function(x){return x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
- var tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);var tomorrowEnd=new Date(tomorrow);tomorrowEnd.setHours(23,59,59,999);
- var coverageIssues=state.facilities.filter(function(f){if(!f.active)return false;var count=state.shifts.filter(function(s){return s.facility_id===f.id&&s.status==='assigned'&&new Date(s.starts_at)>=tomorrow&&new Date(s.starts_at)<=tomorrowEnd}).length;return count<(f.required_workers||1)});
+ var tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+ var coverageConfigured=state.facilities.filter(function(f){return f.active&&f.coverage_start&&f.coverage_end});
+ var coverageUnconfigured=state.facilities.filter(function(f){return f.active&&(!f.coverage_start||!f.coverage_end)});
+ var coverageIssues=coverageConfigured.map(function(f){return {facility:f,gaps:coverageGapsForFacility(f,tomorrow)||[]}}).filter(function(x){return x.gaps.length});
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Sustituciones pendientes</span><strong>'+pendingSubs.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Cobertura insuficiente mañana</span><strong>'+coverageIssues.length+'</strong></div></div>'+
+ '<div class="card kpi"><span class="muted">Centros con huecos mañana</span><strong>'+coverageIssues.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Cobertura sin configurar</span><strong>'+coverageUnconfigured.length+'</strong></div></div>'+
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
- '<div class="section"><h2>Alertas de cobertura</h2>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(f){var count=state.shifts.filter(function(s){return s.facility_id===f.id&&s.status==='assigned'&&new Date(s.starts_at)>=tomorrow&&new Date(s.starts_at)<=tomorrowEnd}).length;return '<div class="card notice"><strong>'+esc(f.name)+'</strong><div class="muted">Asignados mañana: '+count+' · Necesarios: '+(f.required_workers||1)+'</div></div>'}).join('')+'</div>':'<div class="card empty">Cobertura completa para mañana.</div>')+'</div>'+
+ '<div class="section"><h2>Alertas de cobertura de mañana</h2>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de cobertura: '+esc(String(f.coverage_start).slice(0,5))+'–'+esc(String(f.coverage_end).slice(0,5))+' · Necesarios: '+(f.required_workers||1)+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="card section"><strong>Falta configurar horario de cobertura</strong><div class="muted" style="margin-top:6px">'+coverageUnconfigured.map(function(f){return esc(f.name)}).join(' · ')+'</div></div>':'')+'</div>'+
  '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=shiftModal;document.querySelectorAll('[data-coverage-facility]').forEach(function(b){b.onclick=function(){facilityModal(b.getAttribute('data-coverage-facility'))}});bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -223,7 +263,7 @@ function facilities(){
  function draw(){
    var q=(document.getElementById('facilitySearch').value||'').toLowerCase(),st=document.getElementById('facilityStatus').value;
    var list=state.facilities.filter(function(f){return (!q||(f.name||'').toLowerCase().includes(q)||(f.address||'').toLowerCase().includes(q))&&(st==='all'||(st==='active'&&f.active)||(st==='inactive'&&!f.active))});
-   document.getElementById('facilityList').innerHTML=list.length?'<div class="cards">'+list.map(function(f){return '<div class="card manage-card"><div><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span> '+(f.latitude!=null&&f.longitude!=null?'<span class="badge green">📍 Ubicación guardada</span>':'<span class="badge amber">📍 Sin ubicación</span>')+' <span class="badge blue">Radio '+esc(f.attendance_radius_m||250)+' m</span></div><div class="manage-actions"><button class="btn small secondary" data-edit-facility="'+f.id+'">Editar</button><button class="btn small '+(f.active?'danger':'secondary')+'" data-toggle-facility="'+f.id+'">'+(f.active?'Desactivar / eliminar':'Reactivar')+'</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay instalaciones con esos filtros.</div>';
+   document.getElementById('facilityList').innerHTML=list.length?'<div class="cards">'+list.map(function(f){return '<div class="card manage-card"><div><strong>'+esc(f.name)+'</strong><p class="muted">'+esc(f.address||'Sin dirección')+'</p><span class="badge '+(f.active?'green':'blue')+'">'+(f.active?'Activa':'Inactiva')+'</span> '+(f.latitude!=null&&f.longitude!=null?'<span class="badge green">📍 Ubicación guardada</span>':'<span class="badge amber">📍 Sin ubicación</span>')+' <span class="badge blue">Radio '+esc(f.attendance_radius_m||250)+' m</span> '+(f.coverage_start&&f.coverage_end?'<span class="badge green">Cobertura '+esc(String(f.coverage_start).slice(0,5))+'–'+esc(String(f.coverage_end).slice(0,5))+'</span>':'<span class="badge amber">Cobertura sin configurar</span>')+'</div><div class="manage-actions"><button class="btn small secondary" data-edit-facility="'+f.id+'">Editar</button><button class="btn small '+(f.active?'danger':'secondary')+'" data-toggle-facility="'+f.id+'">'+(f.active?'Desactivar / eliminar':'Reactivar')+'</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay instalaciones con esos filtros.</div>';
    document.querySelectorAll('[data-edit-facility]').forEach(function(b){b.onclick=function(){facilityModal(b.getAttribute('data-edit-facility'))}});
    document.querySelectorAll('[data-toggle-facility]').forEach(function(b){b.onclick=async function(){var f=state.facilities.find(function(x){return x.id===b.getAttribute('data-toggle-facility')});if(!f)return;if(!f.active){var u=await sb.from('facilities').update({active:true}).eq('id',f.id);if(u.error){alert(u.error.message);return}}else{if(!confirm('Si tiene historial se desactivará; si no lo tiene se eliminará definitivamente. ¿Continuar?'))return;var r=await sb.rpc('safe_delete_facility',{p_facility_id:f.id});if(r.error){alert(r.error.message);return}}await load();draw()}});
  }
@@ -317,12 +357,14 @@ function modal(title,body){
 function ferr(form,text){var x=form.querySelector('.formerr');if(!x){x=document.createElement('div');x.className='msg err formerr';form.prepend(x)}x.textContent=text}
 function facilityModal(id){
  var item=id?state.facilities.find(function(x){return x.id===id}):null;
- var el=modal(item?'Editar instalación':'Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" value="'+esc(item&&item.name||'')+'" required></div><div class="field"><label>Dirección</label><input name="address" value="'+esc(item&&item.address||'')+'"></div><div class="field"><label>Socorristas necesarios</label><input name="required" type="number" min="1" value="'+esc(item&&item.required_workers||1)+'" required></div><div class="field"><label>Radio válido para fichar (metros)</label><input name="radius" type="number" min="25" max="5000" step="25" value="'+esc(item&&item.attendance_radius_m||250)+'" required><div class="muted">Ejemplo: 250 m. No bloquea el fichaje; solo avisa al coordinador si se hace fuera.</div></div><div class="field"><label>Ubicación del centro</label><div class="mini-actions"><input name="latitude" type="number" step="any" placeholder="Latitud" value="'+esc(item&&item.latitude!=null?item.latitude:'')+'"><input name="longitude" type="number" step="any" placeholder="Longitud" value="'+esc(item&&item.longitude!=null?item.longitude:'')+'"></div><button type="button" class="btn secondary" id="useFacilityLocation">📍 Usar mi ubicación actual</button><div class="muted">Úsalo estando físicamente en la instalación para poder calcular la distancia de los fichajes.</div></div><button class="btn primary">'+(item?'Guardar cambios':'Guardar')+'</button></form>');
+ var el=modal(item?'Editar instalación':'Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" value="'+esc(item&&item.name||'')+'" required></div><div class="field"><label>Dirección</label><input name="address" value="'+esc(item&&item.address||'')+'"></div><div class="field"><label>Socorristas necesarios simultáneos</label><input name="required" type="number" min="1" value="'+esc(item&&item.required_workers||1)+'" required></div><div class="field"><label>Horario que debe quedar cubierto</label><div class="mini-actions"><input name="coverage_start" type="time" value="'+esc(item&&item.coverage_start?String(item.coverage_start).slice(0,5):'')+'"><input name="coverage_end" type="time" value="'+esc(item&&item.coverage_end?String(item.coverage_end).slice(0,5):'')+'"></div><div class="muted">GuardShift comprobará que haya el número necesario de trabajadores durante todo este horario. Admite horarios que crucen medianoche.</div></div><div class="field"><label>Radio válido para fichar (metros)</label><input name="radius" type="number" min="25" max="5000" step="25" value="'+esc(item&&item.attendance_radius_m||250)+'" required><div class="muted">Ejemplo: 250 m. No bloquea el fichaje; solo avisa al coordinador si se hace fuera.</div></div><div class="field"><label>Ubicación del centro</label><div class="mini-actions"><input name="latitude" type="number" step="any" placeholder="Latitud" value="'+esc(item&&item.latitude!=null?item.latitude:'')+'"><input name="longitude" type="number" step="any" placeholder="Longitud" value="'+esc(item&&item.longitude!=null?item.longitude:'')+'"></div><button type="button" class="btn secondary" id="useFacilityLocation">📍 Usar mi ubicación actual</button><div class="muted">Úsalo estando físicamente en la instalación para poder calcular la distancia de los fichajes.</div></div><button class="btn primary">'+(item?'Guardar cambios':'Guardar')+'</button></form>');
  document.getElementById('useFacilityLocation').onclick=async function(){try{var p=await getGeoPosition();el.querySelector('[name="latitude"]').value=p.latitude;el.querySelector('[name="longitude"]').value=p.longitude;alert('Ubicación capturada con precisión aproximada de ±'+Math.round(p.accuracy)+' m.')}catch(e){alert(e.message)}};
  el.querySelector('form').onsubmit=async function(e){
    e.preventDefault();
-   var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),address=f.get('address')||null;
-   var payload={name:f.get('name'),address:address,required_workers:Number(f.get('required')),attendance_radius_m:Number(f.get('radius')||250),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};
+   var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),address=f.get('address')||null,cs=f.get('coverage_start')||null,ce=f.get('coverage_end')||null;
+   if((cs&&!ce)||(!cs&&ce)){ferr(e.target,'Indica tanto la hora de inicio como la de fin de cobertura.');return}
+   if(cs&&ce&&cs===ce){ferr(e.target,'El inicio y el fin de cobertura no pueden ser iguales.');return}
+   var payload={name:f.get('name'),address:address,required_workers:Number(f.get('required')),coverage_start:cs,coverage_end:ce,attendance_radius_m:Number(f.get('radius')||250),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};
    if((payload.latitude==null||payload.longitude==null)&&address){
      try{
        var g=await sb.functions.invoke('geocode-facility',{body:{address:address}});
