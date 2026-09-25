@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -166,7 +166,7 @@ async function load(){
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
-   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
+   ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['workerhours','Mis horas'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
    : [['dashboard','Inicio'],['schedule','Cuadrante'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
@@ -561,7 +561,8 @@ function showCandidates(subId,sh,list){
 function workerhome(){
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});
  var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
- var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong></div></div>'+
+ var monthStart=new Date();monthStart=new Date(monthStart.getFullYear(),monthStart.getMonth(),1);var monthEnd=new Date(monthStart.getFullYear(),monthStart.getMonth()+1,1);var monthEntries=(state.timeEntries||[]).filter(function(x){return new Date(x.clock_in)>=monthStart&&new Date(x.clock_in)<monthEnd});var monthHours=monthEntries.reduce(function(a,x){var e=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,e-new Date(x.clock_in))},0)/3600000;
+ var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
  '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
  '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
  var soon=state.documents.filter(function(x){if(!x.expires_on)return false;var z=new Date(x.expires_on)-new Date();return z>=0&&z<=30*86400000}).length;
@@ -573,6 +574,47 @@ function workerhome(){
 function myshifts(){
  var mine=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id});
  shell('Mis turnos','Tus turnos asignados.',shiftTable(mine),'');
+}
+function workerHoursBounds(){
+ var now=new Date(),start,end,label;
+ if(state.workerHoursMode==='week'){
+   start=new Date(now),day=(start.getDay()+6)%7;start.setDate(start.getDate()-day+(state.workerHoursOffset*7));start.setHours(0,0,0,0);
+   end=new Date(start);end.setDate(end.getDate()+7);
+   var last=new Date(end);last.setDate(last.getDate()-1);
+   label=d(start)+' – '+d(last);
+ }else{
+   start=new Date(now.getFullYear(),now.getMonth()+state.workerHoursOffset,1);
+   end=new Date(start.getFullYear(),start.getMonth()+1,1);
+   label=start.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+ }
+ return {start:start,end:end,label:label};
+}
+function workerHoursPage(){
+ var p=workerHoursBounds(),wid=state.profile.worker_id,grace=Number(state.company&&state.company.clock_in_grace_minutes||10),now=new Date();
+ var shifts=state.shifts.filter(function(x){return x.worker_id===wid&&x.status!=='cancelled'&&new Date(x.starts_at)>=p.start&&new Date(x.starts_at)<p.end});
+ var entries=(state.timeEntries||[]).filter(function(x){return new Date(x.clock_in)>=p.start&&new Date(x.clock_in)<p.end});
+ var scheduled=shifts.reduce(function(a,x){return a+Math.max(0,new Date(x.ends_at)-new Date(x.starts_at))},0)/3600000;
+ var worked=entries.reduce(function(a,x){var e=x.clock_out?new Date(x.clock_out):now;return a+Math.max(0,e-new Date(x.clock_in))},0)/3600000;
+ var approved=entries.filter(function(x){return x.approval_status==='approved'}).reduce(function(a,x){var e=x.clock_out?new Date(x.clock_out):now;return a+Math.max(0,e-new Date(x.clock_in))},0)/3600000;
+ var pending=entries.filter(function(x){return x.approval_status==='pending'}).length;
+ var late=entries.filter(function(x){return punctualityForEntry(x)>grace}).length;
+ var missed=shifts.filter(function(sh){return new Date(sh.ends_at)<now&&!entries.some(function(e){return e.shift_id===sh.id})});
+ var diff=approved-scheduled;
+ var rows=entries.slice().sort(function(a,b){return new Date(b.clock_in)-new Date(a.clock_in)});
+ var body='<div class="filters"><select id="workerHoursMode"><option value="month" '+(state.workerHoursMode==='month'?'selected':'')+'>Mes</option><option value="week" '+(state.workerHoursMode==='week'?'selected':'')+'>Semana</option></select><button class="btn secondary" id="workerHoursPrev">← Anterior</button><button class="btn secondary" id="workerHoursNow">Actual</button><button class="btn secondary" id="workerHoursNext">Siguiente →</button><button class="btn secondary" id="workerHoursCsv">Exportar CSV</button></div>'+
+ '<div class="card"><strong>'+esc(p.label)+'</strong></div>'+
+ '<div class="cards section"><div class="card kpi"><span class="muted">Horas previstas</span><strong>'+scheduled.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas fichadas</span><strong>'+worked.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas aprobadas</span><strong>'+approved.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Diferencia aprobada</span><strong>'+(diff>0?'+':'')+diff.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes</span><strong>'+pending+'</strong></div><div class="card kpi"><span class="muted">Retrasos > '+grace+' min</span><strong>'+late+'</strong></div><div class="card kpi"><span class="muted">Turnos sin fichaje</span><strong>'+missed.length+'</strong></div></div>'+
+ (missed.length?'<div class="section"><h2>⚠️ Turnos terminados sin fichaje</h2><div class="stack">'+missed.map(function(sh){return '<div class="card notice"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div></div>'}).join('')+'</div></div>':'')+
+ '<div class="section"><h2>Historial de fichajes</h2>'+(rows.length?'<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Puntualidad</th><th>Estado</th></tr></thead><tbody>'+rows.map(function(x){var e=x.clock_out?new Date(x.clock_out):now,h=Math.max(0,e-new Date(x.clock_in))/3600000,lateMin=punctualityForEntry(x),punct=lateMin==null?'—':lateMin<=grace?'<span class="badge green">A tiempo</span>':'<span class="badge red">+'+lateMin+' min</span>',st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];return '<tr><td>'+d(x.clock_in)+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+ts(x.clock_in)+'</td><td>'+(x.clock_out?ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+' h</td><td>'+punct+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No tienes fichajes en este periodo.</div>')+'</div>';
+ shell('Mis horas','Consulta tus horas, puntualidad y estado de los fichajes.',body,'');
+ document.getElementById('workerHoursMode').onchange=function(e){state.workerHoursMode=e.target.value;state.workerHoursOffset=0;workerHoursPage()};
+ document.getElementById('workerHoursPrev').onclick=function(){state.workerHoursOffset--;workerHoursPage()};
+ document.getElementById('workerHoursNext').onclick=function(){state.workerHoursOffset++;workerHoursPage()};
+ document.getElementById('workerHoursNow').onclick=function(){state.workerHoursOffset=0;workerHoursPage()};
+ document.getElementById('workerHoursCsv').onclick=function(){
+   var csv='Periodo,Fecha,Instalacion,Entrada,Salida,Horas,Estado\n'+rows.map(function(x){var e=x.clock_out?new Date(x.clock_out):now,h=Math.max(0,e-new Date(x.clock_in))/3600000;return [p.label,d(x.clock_in),x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending'].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_mis_horas_'+state.workerHoursMode+'.csv';a.click();window.URL.revokeObjectURL(a.href);
+ };
 }
 function offerCards(list){
  if(!list.length)return '<div class="card empty">No tienes ofertas pendientes.</div>';
@@ -810,12 +852,12 @@ function incidentList(list,coordinator){
 }
 function render(){
  var map=state.profile&&state.profile.role==='worker'
-   ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
+   ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,workerhours:workerHoursPage,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
    : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
