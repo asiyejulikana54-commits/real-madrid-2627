@@ -1255,15 +1255,100 @@ function bindShiftChangeReview(){
    await load();substitutionsPage();
  }});
 }
+function substitutionStatusPresentation(status){
+ return status==='accepted'?['Cubierta','green']:status==='cancelled'?['Cancelada','blue']:status==='offered'?['Ofertas enviadas','amber']:['Buscando','amber'];
+}
+function substitutionAgeHours(sub){
+ var end=sub&&sub.resolved_at?new Date(sub.resolved_at):new Date();
+ return Math.max(0,(end-new Date(sub.created_at))/3600000);
+}
+function humanHours(hours){
+ if(hours<1)return Math.max(1,Math.round(hours*60))+' min';
+ if(hours<24)return hours.toFixed(hours<10?1:0)+' h';
+ return (hours/24).toFixed(hours<72?1:0)+' d';
+}
+function substitutionEventPresentation(e){
+ var map={
+   created:['Búsqueda iniciada','blue'],
+   offer_sent:['Oferta enviada','amber'],
+   offer_accepted:['Oferta aceptada','green'],
+   offer_declined:['Oferta cerrada','blue'],
+   status_changed:['Estado actualizado','blue'],
+   marketplace_published:['Publicado en Turnos disponibles','amber'],
+   marketplace_unpublished:['Retirado de Turnos disponibles','blue'],
+   accepted:['Sustitución cubierta','green'],
+   cancelled:['Sustitución cancelada','blue'],
+   baseline:['Estado inicial','blue']
+ };
+ return map[e.event_type]||[e.event_type,'blue'];
+}
+function substitutionTimelineModal(subId){
+ var sub=(state.substitutions||[]).find(function(x){return x.id===subId});if(!sub)return;
+ var events=(state.substitutionEvents||[]).filter(function(x){return x.substitution_id===subId}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)});
+ var notices=(state.substitutionNotifications||[]).filter(function(x){return x.substitution_id===subId});
+ var sh=sub.shifts||{},fa=sh.facilities||{},original=state.workers.find(function(w){return w.id===sub.original_worker_id}),accepted=state.workers.find(function(w){return w.id===sub.accepted_worker_id});
+ var body='<div class="card"><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">Original: '+esc(original&&original.full_name||'—')+(accepted?' · Cubre: '+esc(accepted.full_name):'')+'</div></div>'+
+ '<div class="section"><h3>Cronología</h3>'+(events.length?'<div class="stack">'+events.map(function(e){var p=substitutionEventPresentation(e),w=e.worker_id&&state.workers.find(function(x){return x.id===e.worker_id});return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+(w?' · '+esc(w.full_name):'')+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div></div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">No hay eventos registrados.</div>')+'</div>'+
+ '<div class="section"><h3>Avisos al trabajador original</h3>'+(notices.length?'<div class="stack">'+notices.map(function(n){return '<div class="card doc-row"><div><strong>'+esc(n.title)+'</strong><div class="muted">'+d(n.created_at)+' · '+ts(n.created_at)+' · '+esc(n.body)+'</div></div><span class="badge '+(n.processed_at?'green':'amber')+'">'+(n.processed_at?'Procesado · '+n.sent_count+' envío'+(n.sent_count===1?'':'s'):'Pendiente de envío')+'</span></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay avisos de cierre para esta sustitución.</div>')+'</div>';
+ modal('Historial de sustitución',body);
+}
+async function toggleSubstitutionMarketplace(subId,enabled){
+ var sub=(state.substitutions||[]).find(function(x){return x.id===subId});if(!sub)return;
+ var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:subId,p_enabled:!!enabled});
+ if(r.error){alert(r.error.message);return}
+ var workers=Array.isArray(r.data)?r.data:[];
+ if(enabled&&workers.length)await notifyWorkers(workers,'Turno de sustitución disponible','Hay un turno compatible que puedes cubrir directamente desde Turnos disponibles.');
+ await load();substitutionsPage();
+ alert(enabled?'Sustitución publicada para '+workers.length+' trabajador(es) compatibles.':'Sustitución retirada de Turnos disponibles.');
+}
+async function openSubstitutionCandidates(subId){
+ var sub=(state.substitutions||[]).find(function(x){return x.id===subId});if(!sub)return;
+ var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:subId});
+ if(ca.error){alert(ca.error.message);return}
+ var sh=state.shifts.find(function(x){return x.id===sub.shift_id})||sub.shifts;
+ showCandidates(subId,sh,ca.data||[]);
+}
 function substitutionsPage(){
- var body='<div class="section"><h2>Solicitudes de trabajadores</h2><div id="changeRequests">'+shiftChangeRequestCards()+'</div></div><div class="section"><h2>Sustituciones</h2><div class="filters"><select id="subFilter"><option value="">Todas</option><option value="open">Abiertas</option><option value="offered">Ofrecidas</option><option value="accepted">Aceptadas</option><option value="cancelled">Canceladas</option></select></div><div id="subList"></div></div>';
- shell('Sustituciones','Solicitudes, ofertas y respuestas.',body,'');
+ var now=new Date(),active=(state.substitutions||[]).filter(function(x){return x.status==='open'||x.status==='offered'}),staleHours=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6)),urgentHours=Math.max(1,Number(state.company&&state.company.substitution_urgent_hours_before_shift||24));
+ var stale=active.filter(function(x){return substitutionAgeHours(x)>=staleHours}),urgent=active.filter(function(x){return x.shifts&&new Date(x.shifts.starts_at)>now&&(new Date(x.shifts.starts_at)-now)<=urgentHours*3600000}),published=active.filter(function(x){return x.shifts&&x.shifts.open_to_workers});
+ var resolved30=(state.substitutions||[]).filter(function(x){return x.status==='accepted'&&x.resolved_at&&new Date(x.resolved_at)>=new Date(Date.now()-30*86400000)}),avg=resolved30.length?resolved30.reduce(function(a,x){return a+substitutionAgeHours(x)},0)/resolved30.length:0;
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Activas</span><strong>'+active.length+'</strong></div><div class="card kpi"><span class="muted">Sin resolver ≥'+staleHours+' h</span><strong>'+stale.length+'</strong></div><div class="card kpi"><span class="muted">Turno en ≤'+urgentHours+' h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Publicadas al equipo</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Cubiertas · 30 días</span><strong>'+resolved30.length+'</strong></div><div class="card kpi"><span class="muted">Tiempo medio cobertura</span><strong>'+(resolved30.length?humanHours(avg):'—')+'</strong></div></div>'+
+ '<div class="section"><h2>Solicitudes de trabajadores</h2><div id="changeRequests">'+shiftChangeRequestCards()+'</div></div>'+
+ '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Control de sustituciones</h2><div class="muted">Prioriza por urgencia, tiempo abierto y respuesta de candidatos.</div></div><button class="btn secondary" id="subCsv">Exportar CSV</button></div>'+
+ '<div class="filters"><input id="subSearch" placeholder="Buscar centro o trabajador"><select id="subFilter"><option value="">Todos los estados</option><option value="open">Buscando</option><option value="offered">Ofertas enviadas</option><option value="accepted">Cubiertas</option><option value="cancelled">Canceladas</option></select><select id="subRisk"><option value="">Cualquier prioridad</option><option value="urgent">Turno urgente</option><option value="stale">Sin resolver ≥ '+staleHours+' h</option><option value="published">Publicadas</option></select></div><div id="subList"></div></div>'+
+ '<div class="section"><div class="card"><h2 style="margin-top:0">Reglas de sustitución</h2><div class="form"><div class="field"><label>Considerar búsqueda estancada tras</label><div class="input-suffix"><input id="subStaleHours" type="number" min="1" max="72" value="'+staleHours+'"><span>h</span></div></div><div class="field"><label>Marcar como urgente cuando falten</label><div class="input-suffix"><input id="subUrgentHours" type="number" min="1" max="168" value="'+urgentHours+'"><span>h</span></div></div><div class="muted">Son umbrales operativos para priorizar trabajo; no modifican automáticamente el cuadrante.</div><button class="btn secondary" id="saveSubRules">Guardar reglas</button></div></div></div>';
+ shell('Sustituciones','Solicitudes, búsqueda, escalado y trazabilidad de cada cobertura.',body,'');
+ var current=[];
  function draw(){
-  var st=document.getElementById('subFilter').value,list=state.substitutions.filter(function(x){return !st||x.status===st});
-  document.getElementById('subList').innerHTML=list.length?'<div class="stack">'+list.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},offers=x.substitution_offers||[];return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">'+esc(x.reason||'Sin motivo indicado')+'</div></div><div class="mini-actions"><span class="badge '+(x.status==='accepted'?'green':x.status==='cancelled'?'blue':'amber')+'">'+esc(x.status)+'</span>'+((x.status==='open'||x.status==='offered')?'<button class="btn small danger" data-cancel-sub="'+x.id+'">Cancelar</button>':'')+'</div></div><div class="section"><strong>Ofertas</strong><div class="stack" style="margin-top:8px">'+(offers.length?offers.map(function(o){var w=o.workers||{};var ss=o.accepted===true?['Aceptada','green']:o.accepted===false?['Cerrada','blue']:['Pendiente','amber'];return '<div class="candidate"><span><strong>'+esc(w.full_name||w.email||'Trabajador')+'</strong><br><span class="muted">Enviada: '+(o.offered_at?d(o.offered_at)+' '+t(o.offered_at):'—')+(o.responded_at?' · Respondida: '+d(o.responded_at)+' '+t(o.responded_at):'')+'</span></span><span class="badge '+ss[1]+'" style="margin-left:auto">'+ss[0]+'</span></div>'}).join(''):'<div class="muted">Todavía no se ha enviado a nadie.</div>')+'</div></div></div>'}).join('')+'</div>':'<div class="card empty">No hay sustituciones con ese filtro.</div>';
-  document.querySelectorAll('[data-cancel-sub]').forEach(function(b){b.onclick=async function(){if(!confirm('¿Cancelar esta sustitución? El turno volverá al trabajador original si sigue activo.'))return;var r=await sb.rpc('cancel_substitution',{p_substitution_id:b.getAttribute('data-cancel-sub')});if(r.error){alert(r.error.message);return}await load();substitutionsPage()}});
+  var st=document.getElementById('subFilter').value,risk=document.getElementById('subRisk').value,q=(document.getElementById('subSearch').value||'').toLowerCase();
+  current=(state.substitutions||[]).filter(function(x){
+    var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),isActive=x.status==='open'||x.status==='offered',hoursTo=sh.starts_at?(new Date(sh.starts_at)-now)/3600000:999999;
+    var riskOk=!risk||(risk==='urgent'&&isActive&&hoursTo>=0&&hoursTo<=urgentHours)||(risk==='stale'&&isActive&&substitutionAgeHours(x)>=staleHours)||(risk==='published'&&isActive&&sh.open_to_workers);
+    var hay=(fa.name||'')+' '+(ow&&ow.full_name||'')+' '+(aw&&aw.full_name||'')+' '+(x.reason||'');
+    return (!st||x.status===st)&&riskOk&&(!q||hay.toLowerCase().includes(q));
+  }).sort(function(a,b){
+    var aa=(a.status==='open'||a.status==='offered')?0:1,bb=(b.status==='open'||b.status==='offered')?0:1;
+    if(aa!==bb)return aa-bb;
+    var au=a.shifts&&a.shifts.starts_at?new Date(a.shifts.starts_at):new Date(8640000000000000),bu=b.shifts&&b.shifts.starts_at?new Date(b.shifts.starts_at):new Date(8640000000000000);
+    return au-bu||new Date(a.created_at)-new Date(b.created_at);
+  });
+  document.getElementById('subList').innerHTML=current.length?'<div class="stack">'+current.map(function(x){
+    var sh=x.shifts||{},fa=sh.facilities||{},offers=x.substitution_offers||[],status=substitutionStatusPresentation(x.status),isActive=x.status==='open'||x.status==='offered',age=substitutionAgeHours(x),hoursTo=sh.starts_at?(new Date(sh.starts_at)-now)/3600000:null,ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id});
+    var pending=offers.filter(function(o){return o.accepted===null}).length,declined=offers.filter(function(o){return o.accepted===false}).length,accepted=offers.filter(function(o){return o.accepted===true}).length;
+    var flags=(isActive&&age>=staleHours?'<span class="badge red">⏱ '+humanHours(age)+' abierta</span>':'<span class="badge blue">⏱ '+humanHours(age)+'</span>')+(isActive&&hoursTo!=null&&hoursTo>=0&&hoursTo<=urgentHours?' <span class="badge red">⚠ Turno en '+humanHours(hoursTo)+'</span>':'')+(sh.open_to_workers?' <span class="badge green">📣 Publicada</span>':'');
+    return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div><div class="muted">Original: '+esc(ow&&ow.full_name||'Sin trabajador original')+(aw?' · Cubre: '+esc(aw.full_name):'')+'</div><div class="muted">'+esc(x.reason||'Sin motivo indicado')+'</div><div class="mini-actions" style="margin-top:7px">'+flags+'</div></div><span class="badge '+status[1]+'">'+status[0]+'</span></div>'+
+    '<div class="cards section"><div class="card kpi"><span class="muted">Ofertas</span><strong>'+offers.length+'</strong></div><div class="card kpi"><span class="muted">Pendientes</span><strong>'+pending+'</strong></div><div class="card kpi"><span class="muted">Cerradas</span><strong>'+declined+'</strong></div><div class="card kpi"><span class="muted">Aceptadas</span><strong>'+accepted+'</strong></div></div>'+
+    '<div class="mini-actions"><button class="btn small secondary" data-sub-history="'+x.id+'">Historial</button>'+(isActive?'<button class="btn small primary" data-sub-candidates="'+x.id+'">Buscar candidatos</button><button class="btn small '+(sh.open_to_workers?'secondary':'primary')+'" data-sub-market="'+x.id+'" data-enabled="'+(sh.open_to_workers?'0':'1')+'">'+(sh.open_to_workers?'Retirar del tablón':'📣 Escalar al tablón')+'</button><button class="btn small danger" data-cancel-sub="'+x.id+'">Cancelar</button>':'')+'</div>'+
+    (offers.length?'<div class="section"><strong>Ofertas enviadas</strong><div class="stack" style="margin-top:8px">'+offers.map(function(o){var w=o.workers||{},ss=o.accepted===true?['Aceptada','green']:o.accepted===false?['Cerrada','blue']:['Pendiente','amber'];return '<div class="candidate"><span><strong>'+esc(w.full_name||w.email||'Trabajador')+'</strong><br><span class="muted">Enviada: '+(o.offered_at?d(o.offered_at)+' '+t(o.offered_at):'—')+(o.responded_at?' · Respondida: '+d(o.responded_at)+' '+t(o.responded_at):'')+'</span></span><span class="badge '+ss[1]+'" style="margin-left:auto">'+ss[0]+'</span></div>'}).join('')+'</div></div>':'')+'</div>';
+  }).join('')+'</div>':'<div class="card empty">No hay sustituciones con esos filtros.</div>';
+  document.querySelectorAll('[data-sub-history]').forEach(function(b){b.onclick=function(){substitutionTimelineModal(b.getAttribute('data-sub-history'))}});
+  document.querySelectorAll('[data-sub-candidates]').forEach(function(b){b.onclick=function(){openSubstitutionCandidates(b.getAttribute('data-sub-candidates'))}});
+  document.querySelectorAll('[data-sub-market]').forEach(function(b){b.onclick=function(){toggleSubstitutionMarketplace(b.getAttribute('data-sub-market'),b.getAttribute('data-enabled')==='1')}});
+  document.querySelectorAll('[data-cancel-sub]').forEach(function(b){b.onclick=async function(){if(!confirm('¿Cancelar esta sustitución? GuardShift solo devolverá el turno al trabajador original si sigue siendo apto, está disponible y no tiene otra ausencia o turno incompatible.'))return;var r=await sb.rpc('cancel_substitution',{p_substitution_id:b.getAttribute('data-cancel-sub')});if(r.error){alert(r.error.message);return}await load();substitutionsPage()}});
  }
- document.getElementById('subFilter').onchange=draw;draw();bindShiftChangeReview();
+ ['subSearch','subFilter','subRisk'].forEach(function(id){document.getElementById(id).oninput=draw;document.getElementById(id).onchange=draw});draw();bindShiftChangeReview();
+ document.getElementById('saveSubRules').onclick=async function(){var staleVal=Math.max(1,Math.min(72,Number(document.getElementById('subStaleHours').value)||6)),urgentVal=Math.max(1,Math.min(168,Number(document.getElementById('subUrgentHours').value)||24));var r=await sb.from('companies').update({substitution_stale_hours:staleVal,substitution_urgent_hours_before_shift:urgentVal}).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;substitutionsPage();alert('Reglas de sustitución actualizadas.')};
+ document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}var csv='Centro,Fecha,Original,Cubre,Estado,Horas abierta,Ofertas,Pendientes,Publicada,Motivo\n'+rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[];return [fa.name||'',sh.starts_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===null}).length,sh.open_to_workers?'sí':'no',x.reason||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_sustituciones.csv';a.click();URL.revokeObjectURL(a.href)};
 }
 function documentsPage(){
  var activeWorkers=state.workers.filter(function(w){return w.active});
