@@ -143,7 +143,7 @@ async function load(){
     sb.from('incidents').select('*').order('occurred_at',{ascending:false}),
     sb.from('leave_requests').select('*').order('starts_on',{ascending:false}),
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
-    sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name))').order('created_at',{ascending:false})
+    sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false})
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
    state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];
@@ -161,7 +161,7 @@ async function load(){
     sb.from('availability').select('*').order('starts_at',{ascending:true}),
     sb.from('time_entry_audit').select('*').order('created_at',{ascending:false}),
     sb.from('notification_events').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('created_at',{ascending:false}).limit(100),
-    sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name))').order('created_at',{ascending:false})
+    sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
    state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];
@@ -563,6 +563,7 @@ function bindShiftChangeReview(){
    var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'approved'});
    if(r.error){alert(r.error.message);return}
    var subId=r.data,shiftId=req.shift_id;
+   await notifyWorkers([req.worker_id],'Solicitud de sustitución aprobada','El coordinador ha aprobado tu solicitud. GuardShift ya está buscando a otra persona para cubrir el turno.');
    await load();
    var sh=state.shifts.find(function(x){return x.id===shiftId});
    var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:subId});
@@ -572,8 +573,10 @@ function bindShiftChangeReview(){
  }});
  document.querySelectorAll('[data-reject-change]').forEach(function(b){b.onclick=async function(){
    if(!confirm('¿Rechazar esta solicitud?'))return;
-   var r=await sb.rpc('review_shift_change_request',{p_request_id:b.getAttribute('data-reject-change'),p_status:'rejected'});
+   var id=b.getAttribute('data-reject-change'),req=(state.shiftChangeRequests||[]).find(function(x){return x.id===id});
+   var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'rejected'});
    if(r.error){alert(r.error.message);return}
+   if(req)await notifyWorkers([req.worker_id],'Solicitud de sustitución rechazada','El coordinador ha rechazado tu solicitud. El turno continúa asignado a ti.');
    await load();substitutionsPage();
  }});
 }
@@ -675,7 +678,12 @@ function setupRealtime(){
   });
  var requestCfg={event:'*',schema:'public',table:'shift_change_requests'};
  if(state.profile.role==='worker'&&state.profile.worker_id)requestCfg.filter='worker_id=eq.'+state.profile.worker_id;
- state.realtime=channel.on('postgres_changes',requestCfg,async function(){
+ channel=channel.on('postgres_changes',requestCfg,async function(){
+    await load();render();
+  });
+ var subCfg={event:'*',schema:'public',table:'substitutions'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
+ state.realtime=channel.on('postgres_changes',subCfg,async function(){
     await load();render();
   }).subscribe();
 }
@@ -718,7 +726,8 @@ function workerhome(){
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&new Date(x.starts_at)>=new Date()});
  var pending=state.offers.filter(function(o){return o.accepted===null&&o.substitutions&&['open','offered'].indexOf(o.substitutions.status)>=0});
  var monthStart=new Date();monthStart=new Date(monthStart.getFullYear(),monthStart.getMonth(),1);var monthEnd=new Date(monthStart.getFullYear(),monthStart.getMonth()+1,1);var monthEntries=(state.timeEntries||[]).filter(function(x){return new Date(x.clock_in)>=monthStart&&new Date(x.clock_in)<monthEnd});var monthHours=monthEntries.reduce(function(a,x){var e=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,e-new Date(x.clock_in))},0)/3600000;
- var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
+ var pendingRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}).length;
+ var body='<div class="card portal-hero"><div class="muted">Portal trabajador</div><h2 style="margin:6px 0">Hola, '+esc(state.profile.full_name)+'</h2><div>Próximos turnos: <strong>'+upcoming.length+'</strong> · Ofertas pendientes: <strong>'+pending.length+'</strong> · Solicitudes pendientes: <strong>'+pendingRequests+'</strong> · Horas este mes: <strong>'+monthHours.toFixed(1)+'</strong></div></div>'+
  '<div class="section"><h2>Próximo turno</h2>'+(upcoming.length?shiftTable(upcoming.slice(0,1)):'<div class="card empty">No tienes próximos turnos.</div>')+'</div>'+
  '<div class="section"><h2>Ofertas pendientes</h2>'+offerCards(pending.slice(0,3))+'</div>';
  var soon=state.documents.filter(function(x){if(!x.expires_on)return false;var z=new Date(x.expires_on)-new Date();return z>=0&&z<=30*86400000}).length;
@@ -727,19 +736,39 @@ function workerhome(){
  document.getElementById('notifyBtn').onclick=enableNotifications;
  bindOfferButtons();
 }
+function shiftRequestStatus(req){
+ var sub=req&&req.substitutions;
+ if(req.status==='approved'&&sub&&sub.status==='accepted')return ['Cubierta','green'];
+ if(req.status==='approved'&&sub&&sub.status==='offered')return ['Buscando sustituto','amber'];
+ if(req.status==='approved'&&sub&&sub.status==='open')return ['Aprobada · buscando candidato','amber'];
+ if(req.status==='approved')return ['Aprobada','green'];
+ if(req.status==='rejected')return ['Rechazada','red'];
+ if(req.status==='cancelled')return ['Cancelada','blue'];
+ return ['Pendiente','amber'];
+}
+function workerRequestHistory(){
+ var reqs=(state.shiftChangeRequests||[]).slice().sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)});
+ if(!reqs.length)return '<div class="card empty">Todavía no has solicitado ninguna sustitución.</div>';
+ return '<div class="stack">'+reqs.map(function(r){
+   var sh=r.shifts||{},fa=sh.facilities||{},st=shiftRequestStatus(r);
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'Turno original')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+
+     (r.reason?'<div class="muted" style="margin-top:8px">Motivo: '+esc(r.reason)+'</div>':'')+
+     (r.status==='approved'&&r.substitutions&&r.substitutions.status==='accepted'?'<div class="msg ok" style="margin-top:10px">✅ Ya se ha encontrado una persona para cubrir este turno.</div>':'')+
+     (r.status==='pending'?'<button class="btn small danger" style="margin-top:10px" data-cancel-change="'+r.id+'">Cancelar solicitud</button>':'')+
+   '</div>';
+ }).join('')+'</div>';
+}
 function myshifts(){
  var now=new Date(),mine=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
  var reqs=state.shiftChangeRequests||[];
- var body=mine.length?'<div class="stack">'+mine.map(function(x){
+ var assigned=mine.length?'<div class="stack">'+mine.map(function(x){
    var req=reqs.find(function(r){return r.shift_id===x.id&&r.status==='pending'});
-   var last=reqs.find(function(r){return r.shift_id===x.id});
    var canRequest=x.status==='assigned'&&new Date(x.ends_at)>now&&!req;
-   var status=last?(last.status==='pending'?'<span class="badge amber">Solicitud pendiente</span>':last.status==='approved'?'<span class="badge green">Sustitución aprobada</span>':last.status==='rejected'?'<span class="badge red">Solicitud rechazada</span>':'<span class="badge blue">Solicitud cancelada</span>'):'';
-   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div></div>'+badge(x.status)+'</div>'+(status?'<div style="margin-top:10px">'+status+'</div>':'')+
-   (last&&last.reason?'<div class="muted" style="margin-top:6px">Motivo: '+esc(last.reason)+'</div>':'')+
-   '<div class="mini-actions" style="margin-top:10px">'+(canRequest?'<button class="btn small secondary" data-request-change="'+x.id+'">Solicitar sustitución</button>':'')+(req?'<button class="btn small danger" data-cancel-change="'+req.id+'">Cancelar solicitud</button>':'')+'</div></div>';
- }).join('')+'</div>':'<div class="card empty">No tienes turnos asignados.</div>';
- shell('Mis turnos','Tus turnos asignados y solicitudes de sustitución.',body,'');
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div></div>'+badge(x.status)+'</div>'+
+   '<div class="mini-actions" style="margin-top:10px">'+(canRequest?'<button class="btn small secondary" data-request-change="'+x.id+'">Solicitar sustitución</button>':'')+(req?'<span class="badge amber">Solicitud pendiente</span>':'')+'</div></div>';
+ }).join('')+'</div>':'<div class="card empty">No tienes turnos asignados actualmente.</div>';
+ var body='<div class="section"><h2>Turnos asignados</h2>'+assigned+'</div><div class="section"><h2>Mis solicitudes de sustitución</h2>'+workerRequestHistory()+'</div>';
+ shell('Mis turnos','Tus turnos y el seguimiento de tus solicitudes.',body,'');
  document.querySelectorAll('[data-request-change]').forEach(function(b){b.onclick=async function(){
    var reason=prompt('¿Por qué necesitas que te cubran este turno?','');if(reason===null)return;
    var r=await sb.rpc('request_shift_change',{p_shift_id:b.getAttribute('data-request-change'),p_reason:reason||null});
