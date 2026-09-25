@@ -39,9 +39,9 @@ table{border-collapse:collapse;width:100%;min-width:680px}th,td{padding:12px 13p
 (function(){
 var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
-var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
+var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfYDZetMp5SgVL7eeaNNC0jGJOMc';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -113,7 +113,7 @@ async function boot(){
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
  if(c.error){fatal(c.error.message);return}
- state.company=c.data;await ensureServiceWorker();await load();setupRealtime();render();
+ state.company=c.data;await ensureServiceWorker();await load();setupRealtime();render();if(state.profile.role==='worker'&&'Notification' in window&&Notification.permission==='granted')registerPushSubscription().catch(function(){});
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
@@ -148,16 +148,18 @@ async function load(){
     sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(200),
     sb.from('worker_document_events').select('*').order('created_at',{ascending:false}).limit(200),
     sb.from('document_notification_events').select('*').order('created_at',{ascending:false}).limit(100),
-    sb.from('leave_request_events').select('*').order('created_at',{ascending:false}).limit(200)
+    sb.from('leave_request_events').select('*').order('created_at',{ascending:false}).limit(200),
+    sb.from('substitution_events').select('*').order('created_at',{ascending:false}).limit(200),
+    sb.from('substitution_notification_events').select('*').order('created_at',{ascending:false}).limit(100)
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];state.shiftEvents=wr[12].data||[];state.documentEvents=wr[13].data||[];state.documentNotifications=wr[14].data||[];state.leaveEvents=wr[15].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];state.shiftEvents=wr[12].data||[];state.documentEvents=wr[13].data||[];state.documentNotifications=wr[14].data||[];state.leaveEvents=wr[15].data||[];state.substitutionEvents=wr[16].data||[];state.substitutionNotifications=wr[17].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*').order('full_name'),
     sb.from('shifts').select('*,facilities(name),workers(full_name)').order('starts_at'),
-    sb.from('substitutions').select('id,status,reason,created_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
+    sb.from('substitutions').select('id,status,reason,created_at,updated_at,resolved_at,marketplace_escalated_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,open_to_workers,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name,latitude,longitude,attendance_radius_m))').order('clock_in',{ascending:false}),
     sb.from('incidents').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('occurred_at',{ascending:false}),
@@ -171,10 +173,12 @@ async function load(){
     sb.rpc('get_open_shift_staffing_candidates',{p_horizon_days:30}),
     sb.from('worker_document_events').select('*').order('created_at',{ascending:false}).limit(500),
     sb.from('document_notification_events').select('*').order('created_at',{ascending:false}).limit(200),
-    sb.from('leave_request_events').select('*').order('created_at',{ascending:false}).limit(500)
+    sb.from('leave_request_events').select('*').order('created_at',{ascending:false}).limit(500),
+    sb.from('substitution_events').select('*').order('created_at',{ascending:false}).limit(1000),
+    sb.from('substitution_notification_events').select('*').order('created_at',{ascending:false}).limit(300)
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];state.documentEvents=rs[15].data||[];state.documentNotifications=rs[16].data||[];state.leaveEvents=rs[17].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];state.documentEvents=rs[15].data||[];state.documentNotifications=rs[16].data||[];state.leaveEvents=rs[17].data||[];state.substitutionEvents=rs[18].data||[];state.substitutionNotifications=rs[19].data||[];
  }
 }
 function nav(){
@@ -1414,9 +1418,24 @@ function urlBase64ToUint8Array(base64String){
  for(var i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);
  return outputArray;
 }
+function pushKeyMatches(sub){
+ try{
+   var current=sub&&sub.options&&sub.options.applicationServerKey;
+   if(!current)return false;
+   var a=new Uint8Array(current),b=urlBase64ToUint8Array(VAPID_PUBLIC);
+   if(a.length!==b.length)return false;
+   for(var i=0;i<a.length;i++)if(a[i]!==b[i])return false;
+   return true;
+ }catch(_){return false}
+}
 async function registerPushSubscription(){
  var reg=await navigator.serviceWorker.ready;
  var sub=await reg.pushManager.getSubscription();
+ if(sub&&!pushKeyMatches(sub)){
+   try{await sb.from('push_subscriptions').delete().eq('endpoint',sub.endpoint)}catch(_){}
+   try{await sub.unsubscribe()}catch(_){}
+   sub=null;
+ }
  if(!sub){
    sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)});
  }
@@ -1511,6 +1530,19 @@ function setupRealtime(){
  var availabilityCfg={event:'*',schema:'public',table:'availability'};
  if(state.profile.role==='worker'&&state.profile.worker_id)availabilityCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',availabilityCfg,async function(){await load();render()});
+ var subEventCfg={event:'INSERT',schema:'public',table:'substitution_events'};
+ channel=channel.on('postgres_changes',subEventCfg,async function(payload){
+   var ev=payload&&payload.new||{};
+   await load();
+   if(state.profile.role==='worker'&&state.profile.worker_id){
+     if(ev.event_type==='accepted'){
+       await showGuardShiftNotification('Sustitución cubierta','Ya hay otra persona asignada a tu turno. Revisa Mis turnos.');
+     }else if(ev.event_type==='cancelled'){
+       await showGuardShiftNotification('Sustitución cancelada','La búsqueda de sustituto se ha cancelado. Revisa tu cuadrante.');
+     }
+   }
+   render();
+ });
  var subCfg={event:'*',schema:'public',table:'substitutions'};
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
  state.realtime=channel.on('postgres_changes',subCfg,async function(){
@@ -2120,7 +2152,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','operations','workforce','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
