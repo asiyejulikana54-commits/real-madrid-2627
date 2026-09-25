@@ -527,7 +527,7 @@ function operationsPage(){
  actionItems.sort(function(a,b){return a.severity-b.severity||String(a.title).localeCompare(String(b.title))});
  var criticalActions=actionItems.filter(function(x){return x.severity===0}).length;
 var body='<div class="filters"><select id="operationsHorizon"><option value="7" '+(horizon===7?'selected':'')+'>7 días</option><option value="14" '+(horizon===14?'selected':'')+'>14 días</option><option value="30" '+(horizon===30?'selected':'')+'>30 días</option></select><button class="btn secondary" id="operationsRefresh">Actualizar</button><button class="btn secondary" id="operationsCsv">Exportar riesgos CSV</button></div>'+
- '<div class="cards section"><div class="card kpi"><span class="muted">Turnos próximos</span><strong>'+upcoming.length+'</strong></div><div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div><div class="card kpi"><span class="muted">Urgentes ≤48 h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Sin candidatos</span><strong>'+zeroCandidates.length+'</strong></div><div class="card kpi"><span class="muted">Horas sin cubrir</span><strong>'+uncoveredHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Publicados</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Sustituciones activas</span><strong>'+(state.substitutions||[]).filter(function(x){return x.status==='open'||x.status==='offered'}).length+'</strong></div><div class="card kpi"><span class="muted">Sustituciones estancadas</span><strong>'+(state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionAgeHours(x)>=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6))}).length+'</strong></div><div class="card kpi"><span class="muted">Huecos de cobertura</span><strong>'+coverageGapRows.length+'</strong></div><div class="card kpi"><span class="muted">Horas-persona cobertura</span><strong>'+coverageMissingHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Docs. por revisar</span><strong>'+(state.documents||[]).filter(function(x){return x.review_status==='pending'}).length+'</strong></div><div class="card kpi"><span class="muted">Docs. rechazados</span><strong>'+(state.documents||[]).filter(function(x){return x.review_status==='rejected'}).length+'</strong></div><div class="card kpi"><span class="muted">Ausencias con turnos</span><strong>'+(state.leaveRequests||[]).filter(function(x){return x.status==='approved'&&leaveConflictingShifts(x).length}).length+'</strong></div><div class="card kpi"><span class="muted">Conflictos disponibilidad</span><strong>'+(state.availability||[]).filter(function(x){return x.status!=='available'&&new Date(x.ends_at)>now&&availabilityConflictingShifts(x).length}).length+'</strong></div><div class="card kpi"><span class="muted">Acciones críticas</span><strong>'+criticalActions+'</strong></div><div class="card kpi"><span class="muted">Acciones pendientes</span><strong>'+actionItems.length+'</strong></div></div>'+
+ '<div class="cards section"><div class="card kpi"><span class="muted">Turnos próximos</span><strong>'+upcoming.length+'</strong></div><div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div><div class="card kpi"><span class="muted">Urgentes ≤48 h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Sin candidatos</span><strong>'+zeroCandidates.length+'</strong></div><div class="card kpi"><span class="muted">Horas sin cubrir</span><strong>'+uncoveredHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Publicados</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Sustituciones activas</span><strong>'+(state.substitutions||[]).filter(function(x){return x.status==='open'||x.status==='offered'}).length+'</strong></div><div class="card kpi"><span class="muted">Sustituciones estancadas</span><strong>'+(state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionIdleHours(x)>=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6))}).length+'</strong></div><div class="card kpi"><span class="muted">Huecos de cobertura</span><strong>'+coverageGapRows.length+'</strong></div><div class="card kpi"><span class="muted">Horas-persona cobertura</span><strong>'+coverageMissingHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Docs. por revisar</span><strong>'+(state.documents||[]).filter(function(x){return x.review_status==='pending'}).length+'</strong></div><div class="card kpi"><span class="muted">Docs. rechazados</span><strong>'+(state.documents||[]).filter(function(x){return x.review_status==='rejected'}).length+'</strong></div><div class="card kpi"><span class="muted">Ausencias con turnos</span><strong>'+(state.leaveRequests||[]).filter(function(x){return x.status==='approved'&&leaveConflictingShifts(x).length}).length+'</strong></div><div class="card kpi"><span class="muted">Conflictos disponibilidad</span><strong>'+(state.availability||[]).filter(function(x){return x.status!=='available'&&new Date(x.ends_at)>now&&availabilityConflictingShifts(x).length}).length+'</strong></div><div class="card kpi"><span class="muted">Acciones críticas</span><strong>'+criticalActions+'</strong></div><div class="card kpi"><span class="muted">Acciones pendientes</span><strong>'+actionItems.length+'</strong></div></div>'+
  '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Prioridades operativas</h2><div class="muted">Turnos, cobertura, documentación, fichajes y solicitudes ordenados por urgencia.</div></div><span class="badge '+(criticalActions?'red':'green')+'">'+criticalActions+' críticas</span></div>'+
  (actionItems.length?'<div class="stack">'+actionItems.slice(0,25).map(function(x){
    var meta=x.severity===0?['Crítica','red']:x.severity===1?['Alta','amber']:['Revisar','blue'];
@@ -576,7 +576,7 @@ var body='<div class="filters"><select id="operationsHorizon"><option value="7" 
 }
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
- var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'}),subStaleHours=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6)),subUrgentHours=Math.max(1,Number(state.company&&state.company.substitution_urgent_hours_before_shift||24)),staleSubs=pendingSubs.filter(function(x){return substitutionAgeHours(x)>=subStaleHours}),urgentSubs=pendingSubs.filter(function(x){return x.shifts&&new Date(x.shifts.starts_at)>new Date()&&(new Date(x.shifts.starts_at)-new Date())<=subUrgentHours*3600000});
+ var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'}),subStaleHours=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6)),subUrgentHours=Math.max(1,Number(state.company&&state.company.substitution_urgent_hours_before_shift||24)),staleSubs=pendingSubs.filter(function(x){return substitutionIdleHours(x)>=subStaleHours}),urgentSubs=pendingSubs.filter(function(x){return x.shifts&&new Date(x.shifts.starts_at)>new Date()&&(new Date(x.shifts.starts_at)-new Date())<=subUrgentHours*3600000});
  var today=new Date();today.setHours(0,0,0,0);var limit=new Date(today);limit.setDate(limit.getDate()+30);
  var expiring=state.documents.filter(function(x){return x.review_status==='approved'&&!documentIsSuperseded(x)&&x.expires_on&&new Date(x.expires_on)>=today&&new Date(x.expires_on)<=limit});
  var tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
@@ -1264,6 +1264,10 @@ function substitutionAgeHours(sub){
  var end=sub&&sub.resolved_at?new Date(sub.resolved_at):new Date();
  return Math.max(0,(end-new Date(sub.created_at))/3600000);
 }
+function substitutionIdleHours(sub){
+ var base=sub&&sub.last_offered_at?new Date(sub.last_offered_at):new Date(sub&&sub.created_at);
+ return Math.max(0,(new Date()-base)/3600000);
+}
 function humanHours(hours){
  if(hours<1)return Math.max(1,Math.round(hours*60))+' min';
  if(hours<24)return hours.toFixed(hours<10?1:0)+' h';
@@ -1312,7 +1316,7 @@ async function openSubstitutionCandidates(subId){
 }
 function substitutionsPage(){
  var now=new Date(),active=(state.substitutions||[]).filter(function(x){return x.status==='open'||x.status==='offered'}),staleHours=Math.max(1,Number(state.company&&state.company.substitution_stale_hours||6)),urgentHours=Math.max(1,Number(state.company&&state.company.substitution_urgent_hours_before_shift||24)),autoEscalate=!!(state.company&&state.company.substitution_auto_escalate_enabled),autoEscalateHours=Math.max(1,Number(state.company&&state.company.substitution_auto_escalate_after_hours||6));
- var stale=active.filter(function(x){return substitutionAgeHours(x)>=staleHours}),urgent=active.filter(function(x){return x.shifts&&new Date(x.shifts.starts_at)>now&&(new Date(x.shifts.starts_at)-now)<=urgentHours*3600000}),published=active.filter(function(x){return x.shifts&&x.shifts.open_to_workers});
+ var stale=active.filter(function(x){return substitutionIdleHours(x)>=staleHours}),urgent=active.filter(function(x){return x.shifts&&new Date(x.shifts.starts_at)>now&&(new Date(x.shifts.starts_at)-now)<=urgentHours*3600000}),published=active.filter(function(x){return x.shifts&&x.shifts.open_to_workers});
  var resolved30=(state.substitutions||[]).filter(function(x){return x.status==='accepted'&&x.resolved_at&&new Date(x.resolved_at)>=new Date(Date.now()-30*86400000)}),avg=resolved30.length?resolved30.reduce(function(a,x){return a+substitutionAgeHours(x)},0)/resolved30.length:0;
  var body='<div class="cards"><div class="card kpi"><span class="muted">Activas</span><strong>'+active.length+'</strong></div><div class="card kpi"><span class="muted">Sin resolver ≥'+staleHours+' h</span><strong>'+stale.length+'</strong></div><div class="card kpi"><span class="muted">Turno en ≤'+urgentHours+' h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Publicadas al equipo</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Cubiertas · 30 días</span><strong>'+resolved30.length+'</strong></div><div class="card kpi"><span class="muted">Tiempo medio cobertura</span><strong>'+(resolved30.length?humanHours(avg):'—')+'</strong></div></div>'+
  '<div class="section"><h2>Solicitudes de trabajadores</h2><div id="changeRequests">'+shiftChangeRequestCards()+'</div></div>'+
@@ -1325,7 +1329,7 @@ function substitutionsPage(){
   var st=document.getElementById('subFilter').value,risk=document.getElementById('subRisk').value,q=(document.getElementById('subSearch').value||'').toLowerCase();
   current=(state.substitutions||[]).filter(function(x){
     var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),isActive=x.status==='open'||x.status==='offered',hoursTo=sh.starts_at?(new Date(sh.starts_at)-now)/3600000:999999;
-    var riskOk=!risk||(risk==='urgent'&&isActive&&hoursTo>=0&&hoursTo<=urgentHours)||(risk==='stale'&&isActive&&substitutionAgeHours(x)>=staleHours)||(risk==='published'&&isActive&&sh.open_to_workers);
+    var riskOk=!risk||(risk==='urgent'&&isActive&&hoursTo>=0&&hoursTo<=urgentHours)||(risk==='stale'&&isActive&&substitutionIdleHours(x)>=staleHours)||(risk==='published'&&isActive&&sh.open_to_workers);
     var hay=(fa.name||'')+' '+(ow&&ow.full_name||'')+' '+(aw&&aw.full_name||'')+' '+(x.reason||'');
     return (!st||x.status===st)&&riskOk&&(!q||hay.toLowerCase().includes(q));
   }).sort(function(a,b){
@@ -1351,7 +1355,7 @@ function substitutionsPage(){
  ['subSearch','subFilter','subRisk'].forEach(function(id){document.getElementById(id).oninput=draw;document.getElementById(id).onchange=draw});draw();bindShiftChangeReview();
  document.getElementById('saveSubRules').onclick=async function(){var staleVal=Math.max(1,Math.min(72,Number(document.getElementById('subStaleHours').value)||6)),urgentVal=Math.max(1,Math.min(168,Number(document.getElementById('subUrgentHours').value)||24)),autoHours=Math.max(1,Math.min(72,Number(document.getElementById('subAutoEscalateHours').value)||6)),autoEnabled=document.getElementById('subAutoEscalate').value==='1';var r=await sb.from('companies').update({substitution_stale_hours:staleVal,substitution_urgent_hours_before_shift:urgentVal,substitution_auto_escalate_enabled:autoEnabled,substitution_auto_escalate_after_hours:autoHours}).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;substitutionsPage();alert('Reglas de sustitución actualizadas.')};
  document.getElementById('bulkEscalateSubs').onclick=async function(){
-   var targets=(state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionAgeHours(x)>=staleHours&&x.shifts&&!x.shifts.open_to_workers&&new Date(x.shifts.ends_at)>new Date()});
+   var targets=(state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionIdleHours(x)>=staleHours&&x.shifts&&!x.shifts.open_to_workers&&new Date(x.shifts.ends_at)>new Date()});
    if(!targets.length){alert('No hay sustituciones estancadas pendientes de escalar.');return}
    if(!confirm('¿Publicar '+targets.length+' sustitución(es) estancada(s) para toda la plantilla compatible?'))return;
    var workers=new Set(),ok=0,failed=0;
@@ -1365,7 +1369,7 @@ function substitutionsPage(){
  };
  document.getElementById('bulkRemindOffers').onclick=async function(){
    var workerIds=new Set(),count=0;
-   (state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionAgeHours(x)>=staleHours}).forEach(function(x){(x.substitution_offers||[]).filter(function(o){return o.accepted===null}).forEach(function(o){workerIds.add(o.worker_id);count++})});
+   (state.substitutions||[]).filter(function(x){return (x.status==='open'||x.status==='offered')&&substitutionIdleHours(x)>=staleHours}).forEach(function(x){(x.substitution_offers||[]).filter(function(o){return o.accepted===null}).forEach(function(o){workerIds.add(o.worker_id);count++})});
    if(!workerIds.size){alert('No hay ofertas pendientes en sustituciones estancadas.');return}
    if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) pendiente(s)?'))return;
    await notifyWorkers(Array.from(workerIds),'Oferta de sustitución pendiente','Tienes una oferta de sustitución pendiente. Revísala en GuardShift.');
@@ -1639,17 +1643,8 @@ function setupRealtime(){
  if(state.profile.role==='worker'&&state.profile.worker_id)availabilityCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',availabilityCfg,async function(){await load();render()});
  var subEventCfg={event:'INSERT',schema:'public',table:'substitution_events'};
- channel=channel.on('postgres_changes',subEventCfg,async function(payload){
-   var ev=payload&&payload.new||{};
-   await load();
-   if(state.profile.role==='worker'&&state.profile.worker_id){
-     if(ev.event_type==='accepted'){
-       await showGuardShiftNotification('Sustitución cubierta','Ya hay otra persona asignada a tu turno. Revisa Mis turnos.');
-     }else if(ev.event_type==='cancelled'){
-       await showGuardShiftNotification('Sustitución cancelada','La búsqueda de sustituto se ha cancelado. Revisa tu cuadrante.');
-     }
-   }
-   render();
+ channel=channel.on('postgres_changes',subEventCfg,async function(){
+   await load();render();
  });
  var subCfg={event:'*',schema:'public',table:'substitutions'};
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
