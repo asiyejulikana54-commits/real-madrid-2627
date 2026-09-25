@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -246,6 +246,7 @@ function dashboard(){
  var coverageConfigured=state.facilities.filter(function(f){return f.active&&f.coverage_start&&f.coverage_end});
  var coverageUnconfigured=state.facilities.filter(function(f){return f.active&&(!f.coverage_start||!f.coverage_end)});
  var coverageIssues=coverageConfigured.map(function(f){return {facility:f,gaps:coverageGapsForFacility(f,tomorrow)||[]}}).filter(function(x){return x.gaps.length});
+ var pendingTimeAnomalies=(state.timeEntries||[]).filter(function(x){return x.approval_status==='pending'&&timeEntryAnomalies(x,Number(state.company&&state.company.clock_in_grace_minutes||10)).attention}).length;
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
@@ -253,7 +254,8 @@ function dashboard(){
  '<div class="card kpi"><span class="muted">Sustituciones pendientes</span><strong>'+pendingSubs.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Centros con huecos mañana</span><strong>'+coverageIssues.length+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Cobertura sin configurar</span><strong>'+coverageUnconfigured.length+'</strong></div></div>'+
+ '<div class="card kpi"><span class="muted">Cobertura sin configurar</span><strong>'+coverageUnconfigured.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Fichajes con incidencias</span><strong>'+pendingTimeAnomalies+'</strong></div></div>'+
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
  '<div class="section"><h2>Alertas de cobertura de mañana</h2>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de cobertura: '+esc(String(f.coverage_start).slice(0,5))+'–'+esc(String(f.coverage_end).slice(0,5))+' · Necesarios: '+(f.required_workers||1)+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="card section"><strong>Falta configurar horario de cobertura</strong><div class="muted" style="margin-top:6px">'+coverageUnconfigured.map(function(f){return esc(f.name)}).join(' · ')+'</div></div>':'')+'</div>'+
@@ -739,26 +741,77 @@ function manualTimeModal(){
  var el=modal('Añadir fichaje manual','<form class="form"><div class="field"><label>Trabajador</label><select name="worker" required>'+wo+'</select></div><div class="field"><label>Turno (opcional)</label><select name="shift">'+so+'</select></div><div class="field"><label>Entrada</label><input type="datetime-local" name="in" required></div><div class="field"><label>Salida</label><input type="datetime-local" name="out" required></div><div class="field"><label>Notas</label><input name="notes"></div><div class="field"><label>Motivo</label><input name="reason" placeholder="Ej.: trabajador olvidó fichar" required></div><button class="btn primary">Crear fichaje</button></form>');
  el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),ci=new Date(f.get('in')),co=new Date(f.get('out'));var r=await sb.rpc('create_manual_time_entry',{p_worker_id:f.get('worker'),p_shift_id:f.get('shift')||null,p_clock_in:ci.toISOString(),p_clock_out:co.toISOString(),p_notes:f.get('notes')||null,p_reason:f.get('reason')});if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();hoursPage()};
 }
+function timeEntryAuditFlags(entryId){
+ var a=(state.timeAudit||[]).filter(function(x){return x.time_entry_id===entryId});
+ return {manual:a.some(function(x){return x.action==='manual_creation'}),corrected:a.some(function(x){return x.action==='correction'})};
+}
+function timeEntryAnomalies(x,grace){
+ var flags=timeEntryAuditFlags(x.id),items=[],attention=false,now=new Date(),sh=x.shifts||{},fa=sh.facilities||{};
+ if(sh.starts_at){
+   var late=Math.max(0,Math.round((new Date(x.clock_in)-new Date(sh.starts_at))/60000));
+   if(late>grace){items.push({label:'Entrada +'+late+' min',cls:'red'});attention=true}
+ }
+ if(sh.ends_at){
+   if(x.clock_out){
+     var early=Math.max(0,Math.round((new Date(sh.ends_at)-new Date(x.clock_out))/60000));
+     if(early>grace){items.push({label:'Salida '+early+' min antes',cls:'amber'});attention=true}
+   }else if(now>new Date(new Date(sh.ends_at).getTime()+grace*60000)){
+     items.push({label:'Fichaje abierto tras fin de turno',cls:'red'});attention=true;
+   }
+ }
+ var li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out'),radius=fa.attendance_radius_m||250;
+ if(flags.manual){
+   items.push({label:'Fichaje manual',cls:'blue'});
+ }else{
+   if(!li){items.push({label:'Entrada sin GPS',cls:'red'});attention=true}
+   else if(fa.latitude!=null&&fa.longitude!=null){
+     var di=distanceMeters(li.latitude,li.longitude,fa.latitude,fa.longitude);
+     if(di>radius){items.push({label:'Entrada fuera · '+formatDistance(di),cls:'red'});attention=true}
+   }
+   if(x.clock_out){
+     if(!lo){items.push({label:'Salida sin GPS',cls:'red'});attention=true}
+     else if(fa.latitude!=null&&fa.longitude!=null){
+       var dout=distanceMeters(lo.latitude,lo.longitude,fa.latitude,fa.longitude);
+       if(dout>radius){items.push({label:'Salida fuera · '+formatDistance(dout),cls:'red'});attention=true}
+     }
+   }
+ }
+ if(flags.corrected)items.push({label:'Corregido',cls:'blue'});
+ if(x.approval_status==='rejected'){items.push({label:'Rechazado',cls:'red'});attention=true}
+ return {items:items,attention:attention};
+}
 function hoursPage(){
- var rows=state.timeEntries||[],grace=Number(state.company&&state.company.clock_in_grace_minutes||10),missing=missingClockIns();
- var total=rows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
- var lateCount=rows.filter(function(x){return punctualityForEntry(x)>grace}).length;
+ var allRows=state.timeEntries||[],grace=Number(state.company&&state.company.clock_in_grace_minutes||10),missing=missingClockIns();
+ var enriched=allRows.map(function(x){return {row:x,an:timeEntryAnomalies(x,grace)}});
+ var attentionRows=enriched.filter(function(z){return z.an.attention});
+ var rows=enriched.filter(function(z){
+   if(state.hoursFilter==='attention')return z.an.attention;
+   if(state.hoursFilter==='ok')return !z.an.attention;
+   return true;
+ }).map(function(z){return z.row});
+ var total=allRows.reduce(function(a,x){var end=x.clock_out?new Date(x.clock_out):new Date();return a+Math.max(0,end-new Date(x.clock_in))},0);
+ var lateCount=allRows.filter(function(x){return punctualityForEntry(x)>grace}).length;
+ var outsideCount=enriched.filter(function(z){return z.an.items.some(function(i){return i.label.indexOf('fuera')>=0})}).length;
+ var gpsCount=enriched.filter(function(z){return z.an.items.some(function(i){return i.label.indexOf('sin GPS')>=0})}).length;
+ var openLateCount=enriched.filter(function(z){return z.an.items.some(function(i){return i.label.indexOf('abierto tras')>=0})}).length;
  var alerts=missing.length?'<div class="section"><h2>⚠️ Turnos empezados sin fichaje</h2><div class="stack">'+missing.map(function(sh){var mins=Math.max(0,Math.floor((new Date()-new Date(sh.starts_at))/60000));return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(sh.workers&&sh.workers.full_name||'Trabajador')+' · '+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">Debía entrar a las '+t(sh.starts_at)+' · '+mins+' min desde el inicio</div></div><button class="btn small secondary" data-manual-for="'+sh.id+'">Añadir fichaje</button></div></div>'}).join('')+'</div></div>':'';
- var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+rows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Pendientes de revisar</span><strong>'+rows.filter(function(x){return x.approval_status==='pending'}).length+'</strong></div><div class="card kpi"><span class="muted">Retrasos > '+grace+' min</span><strong>'+lateCount+'</strong></div><div class="card kpi"><span class="muted">Sin fichar ahora</span><strong>'+missing.length+'</strong></div></div>'+
- '<div class="section"><div class="mini-actions"><button class="btn primary" id="manualEntry">+ Fichaje manual</button><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button><label class="card" style="padding:8px 12px">Tolerancia <input id="graceMinutes" type="number" min="0" max="120" value="'+grace+'" style="width:70px;margin-left:6px"> min</label></div></div>'+alerts+
- (rows.length?'<div class="section table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Puntualidad</th><th>Horas</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){
-   var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000,late=punctualityForEntry(x),punct=late==null?'—':late<=grace?'<span class="badge green">A tiempo</span>':'<span class="badge red">+'+late+' min</span>';
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Registros</span><strong>'+allRows.length+'</strong></div><div class="card kpi"><span class="muted">Horas acumuladas</span><strong>'+(total/3600000).toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Requieren revisión</span><strong>'+attentionRows.length+'</strong></div><div class="card kpi"><span class="muted">Retrasos > '+grace+' min</span><strong>'+lateCount+'</strong></div><div class="card kpi"><span class="muted">Fuera del radio</span><strong>'+outsideCount+'</strong></div><div class="card kpi"><span class="muted">Sin GPS</span><strong>'+gpsCount+'</strong></div><div class="card kpi"><span class="muted">Abiertos tras fin</span><strong>'+openLateCount+'</strong></div><div class="card kpi"><span class="muted">Sin fichar ahora</span><strong>'+missing.length+'</strong></div></div>'+
+ '<div class="section"><div class="mini-actions"><button class="btn primary" id="manualEntry">+ Fichaje manual</button><select id="hoursFilter"><option value="all" '+(state.hoursFilter==='all'?'selected':'')+'>Todos los fichajes</option><option value="attention" '+(state.hoursFilter==='attention'?'selected':'')+'>Requieren revisión</option><option value="ok" '+(state.hoursFilter==='ok'?'selected':'')+'>Sin incidencias</option></select><button class="btn secondary" id="exportCsv">Exportar Excel/CSV</button><button class="btn secondary" id="exportPdf">Imprimir / PDF</button><label class="card" style="padding:8px 12px">Tolerancia <input id="graceMinutes" type="number" min="0" max="120" value="'+grace+'" style="width:70px;margin-left:6px"> min</label></div></div>'+alerts+
+ (rows.length?'<div class="section table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Alertas</th><th>Horas</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){
+   var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;
    var st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'];
    var li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out'),fa=x.shifts&&x.shifts.facilities||{},di=li&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(li.latitude,li.longitude,fa.latitude,fa.longitude):null,dout=lo&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(lo.latitude,lo.longitude,fa.latitude,fa.longitude):null,radius=fa.attendance_radius_m||250;
    var gi=di==null?'':(di<=radius?'<span class="badge green">✅ Dentro</span>':'<span class="badge red">⚠️ Fuera</span>'),go=dout==null?'':(dout<=radius?'<span class="badge green">✅ Dentro</span>':'<span class="badge red">⚠️ Fuera</span>');
-   return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(fa.name||'—')+'</td><td>'+d(x.clock_in)+' '+ts(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+punct+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="stack">'+(li?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Entrada</a>'+gi+'</div><div class="muted">GPS ±'+Math.round(li.accuracy_m||0)+' m'+(di!=null?' · '+formatDistance(di)+' al centro':'')+'</div></div>':'—')+(lo?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Salida</a>'+go+'</div><div class="muted">GPS ±'+Math.round(lo.accuracy_m||0)+' m'+(dout!=null?' · '+formatDistance(dout)+' al centro':'')+'</div></div>':'')+'</div></td><td><div class="mini-actions"><button class="btn small secondary" data-correct-time="'+x.id+'">Corregir</button><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>';
- }).join('')+'</tbody></table></div>':'<div class="card empty">Todavía no hay fichajes.</div>');
- shell('Horas trabajadas','Control de presencia, puntualidad y revisión de fichajes.',body,'');
+   var an=timeEntryAnomalies(x,grace),anhtml=an.items.length?'<div class="mini-actions">'+an.items.map(function(i){return '<span class="badge '+i.cls+'">'+esc(i.label)+'</span>'}).join('')+'</div>':'<span class="badge green">Sin incidencias</span>';
+   return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(fa.name||'—')+'</td><td>'+d(x.clock_in)+' '+ts(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+anhtml+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><div class="stack">'+(li?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Entrada</a>'+gi+'</div><div class="muted">GPS ±'+Math.round(li.accuracy_m||0)+' m'+(di!=null?' · '+formatDistance(di)+' al centro':'')+'</div></div>':'—')+(lo?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Salida</a>'+go+'</div><div class="muted">GPS ±'+Math.round(lo.accuracy_m||0)+' m'+(dout!=null?' · '+formatDistance(dout)+' al centro':'')+'</div></div>':'')+'</div></td><td><div class="mini-actions"><button class="btn small secondary" data-correct-time="'+x.id+'">Corregir</button><button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button><button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button></div></td></tr>';
+ }).join('')+'</tbody></table></div>':'<div class="card empty">No hay fichajes con este filtro.</div>');
+ shell('Horas trabajadas','Control de presencia, puntualidad y anomalías de fichaje.',body,'');
  document.getElementById('manualEntry').onclick=manualTimeModal;
+ document.getElementById('hoursFilter').onchange=function(e){state.hoursFilter=e.target.value;hoursPage()};
  document.getElementById('graceMinutes').onchange=async function(e){var v=Math.max(0,Math.min(120,Number(e.target.value)||0));var r=await sb.from('companies').update({clock_in_grace_minutes:v}).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;hoursPage()};
  document.querySelectorAll('[data-manual-for]').forEach(function(b){b.onclick=function(){manualTimeModal();setTimeout(function(){var sel=document.querySelector('.modal select[name="shift"]');if(sel){sel.value=b.getAttribute('data-manual-for');var op=sel.options[sel.selectedIndex];var wid=op&&op.getAttribute('data-worker'),ws=document.querySelector('.modal select[name="worker"]');if(wid&&ws)ws.value=wid}},0)}});
  document.querySelectorAll('[data-correct-time]').forEach(function(b){b.onclick=function(){correctionModal(b.getAttribute('data-correct-time'))}});
- document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalación,Entrada,Salida,Horas,Estado\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000;return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending'].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();window.URL.revokeObjectURL(a.href)};
+ document.getElementById('exportCsv').onclick=function(){var csv='Trabajador,Instalacion,Entrada,Salida,Horas,Estado,Alertas\n'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):new Date(),h=Math.max(0,end-new Date(x.clock_in))/3600000,alerts=timeEntryAnomalies(x,grace).items.map(function(i){return i.label}).join(' | ');return [x.workers&&x.workers.full_name||'',x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'',x.clock_in,x.clock_out||'',h.toFixed(2),x.approval_status||'pending',alerts].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_horas.csv';a.click();window.URL.revokeObjectURL(a.href)};
  document.getElementById('exportPdf').onclick=function(){window.print()};
  document.querySelectorAll('[data-review-time]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('review_time_entry',{p_entry_id:b.getAttribute('data-review-time'),p_status:b.getAttribute('data-status'),p_clock_in:null,p_clock_out:null});if(r.error){alert(r.error.message);return}await load();hoursPage()}});
 }
@@ -870,7 +923,7 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function fatal(x){app.innerHTML='<div class="auth"><div class="auth-card">'+msg(x,false)+'<button class="btn secondary" onclick="location.reload()">Recargar</button></div></div>'}
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});boot();
 })();
