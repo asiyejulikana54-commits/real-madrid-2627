@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -170,7 +170,7 @@ async function load(){
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
    ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['workerhours','Mis horas'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['coverage','Cobertura'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -263,6 +263,74 @@ function coverageGapsForFacility(f,day){
 function formatCoverageGap(g){
  return t(new Date(g.start))+'–'+t(new Date(g.end))+' · '+g.assigned+'/'+g.need+' cubiertos · faltan '+(g.need-g.assigned);
 }
+
+function bindCoverageActions(){
+ document.querySelectorAll('[data-coverage-facility]').forEach(function(b){
+   b.onclick=function(){facilityModal(b.getAttribute('data-coverage-facility'))}
+ });
+ document.querySelectorAll('[data-cover-gap]').forEach(function(b){
+   b.onclick=function(){
+     shiftModal(null,{
+       facility_id:b.getAttribute('data-facility'),
+       starts_at:new Date(Number(b.getAttribute('data-start'))).toISOString(),
+       ends_at:new Date(Number(b.getAttribute('data-end'))).toISOString(),
+       coverage_gap:true
+     });
+   }
+ });
+}
+function coveragePlannerPage(){
+ var start=new Date();start.setHours(0,0,0,0);start.setDate(start.getDate()+state.coverageOffset*7);
+ var days=[];for(var i=0;i<7;i++){var day=new Date(start);day.setDate(day.getDate()+i);days.push(day)}
+ var active=state.facilities.filter(function(f){return f.active});
+ var unconfigured=active.filter(function(f){return !facilityCoverageConfigured(f)});
+ var allIssues=[],openCentreDays=0,missingWorkerHours=0,daysWithGaps=0;
+
+ var dayCards=days.map(function(day){
+   var open=[],issues=[];
+   active.forEach(function(f){
+     var cfg=facilityCoverageConfig(f,day);
+     if(cfg===undefined)return;
+     if(cfg===null)return;
+     openCentreDays++;
+     var gaps=coverageGapsForFacility(f,day)||[];
+     open.push({facility:f,config:cfg,gaps:gaps});
+     if(gaps.length){
+       issues.push({facility:f,config:cfg,gaps:gaps});
+       allIssues.push({day:day,facility:f,config:cfg,gaps:gaps});
+       gaps.forEach(function(g){missingWorkerHours+=((g.end-g.start)/3600000)*(g.need-g.assigned)});
+     }
+   });
+   if(issues.length)daysWithGaps++;
+
+   var dayName=day.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'2-digit'});
+   var content;
+   if(!open.length){
+     content='<div class="card empty">No hay centros abiertos configurados este día.</div>';
+   }else if(!issues.length){
+     content='<div class="card"><span class="badge green">✅ Cobertura completa</span><div class="muted" style="margin-top:6px">'+open.length+' centro'+(open.length===1?'':'s')+' abierto'+(open.length===1?'':'s')+' sin huecos detectados.</div></div>';
+   }else{
+     content='<div class="stack">'+issues.map(function(x){
+       var f=x.facility,cfg=x.config;
+       return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">'+esc(cfg.start)+'–'+esc(cfg.end)+' · Necesarios: '+cfg.required+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){
+         var missing=g.need-g.assigned;
+         return '<div class="card" style="padding:10px"><div class="doc-row"><div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span><div class="muted" style="margin-top:5px">'+((g.end-g.start)/3600000).toFixed(1)+' h · '+missing+' trabajador'+(missing===1?'':'es')+' pendiente'+(missing===1?'':'s')+'</div></div><button class="btn small primary" data-cover-gap data-facility="'+f.id+'" data-start="'+g.start+'" data-end="'+g.end+'">Crear turno</button></div></div>';
+       }).join('')+'</div></div>';
+     }).join('')+'</div>';
+   }
+   return '<div class="section"><h2 style="text-transform:capitalize">'+esc(dayName)+'</h2>'+content+'</div>';
+ }).join('');
+
+ var actions='<button class="btn secondary" id="coveragePrev">← 7 días</button><button class="btn secondary" id="coverageToday">Hoy</button><button class="btn secondary" id="coverageNext">+7 días →</button>';
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Días con huecos</span><strong>'+daysWithGaps+'/7</strong></div><div class="card kpi"><span class="muted">Centros-día abiertos</span><strong>'+openCentreDays+'</strong></div><div class="card kpi"><span class="muted">Tramos con huecos</span><strong>'+allIssues.reduce(function(a,x){return a+x.gaps.length},0)+'</strong></div><div class="card kpi"><span class="muted">Horas-persona sin cubrir</span><strong>'+missingWorkerHours.toFixed(1)+'</strong></div></div>'+
+   (unconfigured.length?'<div class="section"><h2>⚠️ Centros sin horario configurado</h2><div class="stack">'+unconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No entra todavía en el cálculo de cobertura.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+
+   dayCards;
+ shell('Cobertura','Planificación de personal para los próximos 7 días.',body,actions);
+ document.getElementById('coveragePrev').onclick=function(){state.coverageOffset--;coveragePlannerPage()};
+ document.getElementById('coverageNext').onclick=function(){state.coverageOffset++;coveragePlannerPage()};
+ document.getElementById('coverageToday').onclick=function(){state.coverageOffset=0;coveragePlannerPage()};
+ bindCoverageActions();
+}
 function notificationSettingsCard(){
  var c=state.company||{};
  return '<div class="card"><h2 style="margin-top:0">Avisos automáticos</h2><div class="form"><div class="field"><label>Recordatorio antes del turno</label><select id="reminderEnabled"><option value="1" '+(c.shift_reminders_enabled!==false?'selected':'')+'>Activado</option><option value="0" '+(c.shift_reminders_enabled===false?'selected':'')+'>Desactivado</option></select></div><div class="field"><label>Minutos antes</label><input id="reminderMinutes" type="number" min="5" max="180" value="'+esc(c.shift_reminder_minutes||30)+'"></div><div class="field"><label>Aviso si no ficha tras la tolerancia</label><select id="missingEnabled"><option value="1" '+(c.missing_clock_in_alerts_enabled!==false?'selected':'')+'>Activado</option><option value="0" '+(c.missing_clock_in_alerts_enabled===false?'selected':'')+'>Desactivado</option></select></div><button class="btn secondary" id="saveNotificationSettings">Guardar avisos</button></div></div>';
@@ -291,12 +359,12 @@ function dashboard(){
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Solicitudes de sustitución</h2>'+(pendingChangeRequests.length?'<div class="stack">'+pendingChangeRequests.slice(0,5).map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},w=x.workers||{};return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(w.full_name||'Trabajador')+' · '+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div></div><button class="btn small secondary" data-open-change-requests>Revisar</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay solicitudes pendientes.</div>')+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
- '<div class="section"><h2>Alertas de cobertura de mañana</h2>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility,cfg=x.config;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de mañana: '+esc(cfg.start)+'–'+esc(cfg.end)+' · Necesarios: '+cfg.required+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div class="card" style="padding:10px"><div class="doc-row"><div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span>'+(g.need-g.assigned>1?'<div class="muted" style="margin-top:5px">Faltan '+(g.need-g.assigned)+' trabajadores simultáneos en este tramo.</div>':'')+'</div><button class="btn small primary" data-cover-gap data-facility="'+f.id+'" data-start="'+g.start+'" data-end="'+g.end+'">Crear turno</button></div></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="section"><h3>Falta configurar horario de cobertura</h3><div class="stack">'+coverageUnconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No se puede comprobar su cobertura hasta indicar el horario.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+'</div>'+
+ '<div class="section"><div class="doc-row"><h2>Alertas de cobertura de mañana</h2><button class="btn small secondary" id="openCoveragePlanner">Ver 7 días</button></div>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility,cfg=x.config;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de mañana: '+esc(cfg.start)+'–'+esc(cfg.end)+' · Necesarios: '+cfg.required+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div class="card" style="padding:10px"><div class="doc-row"><div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span>'+(g.need-g.assigned>1?'<div class="muted" style="margin-top:5px">Faltan '+(g.need-g.assigned)+' trabajadores simultáneos en este tramo.</div>':'')+'</div><button class="btn small primary" data-cover-gap data-facility="'+f.id+'" data-start="'+g.start+'" data-end="'+g.end+'">Crear turno</button></div></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="section"><h3>Falta configurar horario de cobertura</h3><div class="stack">'+coverageUnconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No se puede comprobar su cobertura hasta indicar el horario.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+'</div>'+
  '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>'+
  '<div class="section">'+notificationSettingsCard()+'</div>'+
  '<div class="section"><h2>Alertas operativas recientes</h2>'+((state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).length?'<div class="stack">'+(state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).slice(0,8).map(function(x){return '<div class="card notice"><strong>'+esc(x.workers&&x.workers.full_name||'Trabajador')+' · '+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.created_at)+' '+ts(x.created_at)+' · '+esc(x.body)+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay avisos recientes de fichaje pendiente.</div>')+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};document.querySelectorAll('[data-coverage-facility]').forEach(function(b){b.onclick=function(){facilityModal(b.getAttribute('data-coverage-facility'))}});document.querySelectorAll('[data-cover-gap]').forEach(function(b){b.onclick=function(){shiftModal(null,{facility_id:b.getAttribute('data-facility'),starts_at:new Date(Number(b.getAttribute('data-start'))).toISOString(),ends_at:new Date(Number(b.getAttribute('data-end'))).toISOString(),coverage_gap:true})}});document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -1166,11 +1234,11 @@ function incidentList(list,coordinator){
 function render(){
  var map=state.profile&&state.profile.role==='worker'
    ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,workerhours:workerHoursPage,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
- if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,coverage:coveragePlannerPage,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
+ if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
