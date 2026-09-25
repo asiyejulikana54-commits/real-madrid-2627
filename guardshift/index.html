@@ -171,7 +171,7 @@ async function load(){
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
    ? [['workerhome','Inicio'],['myshifts','Mis turnos'],['clocking','Fichaje'],['workerhours','Mis horas'],['offers','Turnos disponibles'],['availability','Disponibilidad'],['leave','Ausencias'],['incidents','Incidencias'],['mydocuments','Documentos']]
-   : [['dashboard','Inicio'],['schedule','Cuadrante'],['coverage','Cobertura'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos']];
+   : [['dashboard','Inicio'],['schedule','Cuadrante'],['coverage','Cobertura'],['summary','Resumen'],['facilities','Instalaciones'],['workers','Trabajadores'],['shifts','Turnos'],['substitutions','Sustituciones'],['hours','Horas'],['leave','Ausencias'],['incidents','Incidencias'],['documents','Documentos'],['compliance','Cumplimiento']];
  return items.map(function(x){return '<button data-page="'+x[0]+'" class="'+(state.page===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
 }
 function shell(title,sub,body,actions){
@@ -368,7 +368,7 @@ function dashboard(){
  var coverageUnconfigured=state.facilities.filter(function(f){return f.active&&!facilityCoverageConfigured(f)});
  var coverageIssues=coverageConfigured.map(function(f){return {facility:f,config:facilityCoverageConfig(f,tomorrow),gaps:coverageGapsForFacility(f,tomorrow)||[]}}).filter(function(x){return x.gaps.length});
  var pendingTimeAnomalies=(state.timeEntries||[]).filter(function(x){return x.approval_status==='pending'&&timeEntryAnomalies(x,Number(state.company&&state.company.clock_in_grace_minutes||10)).attention}).length;
- var pendingChangeRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'});
+ var pendingChangeRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}),complianceRisks=futureComplianceRisks(60);
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
@@ -378,17 +378,18 @@ function dashboard(){
  '<div class="card kpi"><span class="muted">Centros con huecos mañana</span><strong>'+coverageIssues.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Cobertura sin configurar</span><strong>'+coverageUnconfigured.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Fichajes con incidencias</span><strong>'+pendingTimeAnomalies+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Solicitudes de sustitución</span><strong>'+pendingChangeRequests.length+'</strong></div></div>'+
+ '<div class="card kpi"><span class="muted">Solicitudes de sustitución</span><strong>'+pendingChangeRequests.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Turnos con riesgo documental</span><strong>'+complianceRisks.length+'</strong></div></div>'+
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Solicitudes de sustitución</h2>'+(pendingChangeRequests.length?'<div class="stack">'+pendingChangeRequests.slice(0,5).map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},w=x.workers||{};return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(w.full_name||'Trabajador')+' · '+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div></div><button class="btn small secondary" data-open-change-requests>Revisar</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay solicitudes pendientes.</div>')+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
  '<div class="section"><div class="doc-row"><h2>Alertas de cobertura de mañana</h2><button class="btn small secondary" id="openCoveragePlanner">Ver 7 días</button></div>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility,cfg=x.config;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de mañana: '+esc(cfg.start)+'–'+esc(cfg.end)+' · Necesarios: '+cfg.required+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div class="card" style="padding:10px"><div class="doc-row"><div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span>'+(g.need-g.assigned>1?'<div class="muted" style="margin-top:5px">Faltan '+(g.need-g.assigned)+' trabajadores simultáneos en este tramo.</div>':'')+'</div><button class="btn small primary" data-cover-gap data-facility="'+f.id+'" data-start="'+g.start+'" data-end="'+g.end+'">Crear turno</button></div></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="section"><h3>Falta configurar horario de cobertura</h3><div class="stack">'+coverageUnconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No se puede comprobar su cobertura hasta indicar el horario.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+'</div>'+
- '<div class="section"><h2>Documentación próxima a caducar</h2>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
+ '<div class="section"><div class="doc-row"><h2>Documentación próxima a caducar</h2><button class="btn small secondary" id="openCompliance">Ver cumplimiento</button></div>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>'+
  '<div class="section">'+notificationSettingsCard()+'</div>'+
  '<div class="section">'+planningRulesCard()+'</div>'+
  '<div class="section"><h2>Alertas operativas recientes</h2>'+((state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).length?'<div class="stack">'+(state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).slice(0,8).map(function(x){return '<div class="card notice"><strong>'+esc(x.workers&&x.workers.full_name||'Trabajador')+' · '+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.created_at)+' '+ts(x.created_at)+' · '+esc(x.body)+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay avisos recientes de fichaje pendiente.</div>')+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var comp=document.getElementById('openCompliance');if(comp)comp.onclick=function(){state.page='compliance';render()};var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -410,7 +411,7 @@ function workers(){
  function draw(){
   var q=(document.getElementById('workerSearch').value||'').toLowerCase(),st=document.getElementById('workerStatus').value;
   var list=state.workers.filter(function(w){return (!q||(w.full_name||'').toLowerCase().includes(q)||(w.email||'').toLowerCase().includes(q)||(w.zone||'').toLowerCase().includes(q))&&(st==='all'||(st==='active'&&w.active)||(st==='inactive'&&!w.active))});
-  document.getElementById('workerList').innerHTML=list.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Cuenta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+list.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td><span class="badge '+(w.user_id?'green':'amber')+'">'+(w.user_id?'Conectada':'Pendiente')+'</span></td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-edit-worker="'+w.id+'">Editar</button><button class="btn small secondary" data-invite-worker="'+w.id+'">Invitar</button><button class="btn small '+(w.active?'danger':'secondary')+'" data-toggle-worker="'+w.id+'">'+(w.active?'Desactivar / eliminar':'Reactivar')+'</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores con esos filtros.</div>';
+  document.getElementById('workerList').innerHTML=list.length?'<div class="table"><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Zona</th><th>Aptitud centros</th><th>Cuenta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>'+list.map(function(w){return '<tr><td><strong>'+esc(w.full_name)+'</strong></td><td>'+esc(w.email||'—')+'</td><td>'+esc(w.phone||'—')+'</td><td>'+esc(w.zone||'—')+'</td><td>'+function(){var cs=workerComplianceSummary(w.id);return cs.total?'<span class="badge '+(cs.blocked?'red':'green')+'">'+cs.ok+'/'+cs.total+' apto</span>':'<span class="badge blue">Sin requisitos</span>'}()+'</td><td><span class="badge '+(w.user_id?'green':'amber')+'">'+(w.user_id?'Conectada':'Pendiente')+'</span></td><td><span class="badge '+(w.active?'green':'blue')+'">'+(w.active?'Activo':'Inactivo')+'</span></td><td><div class="mini-actions"><button class="btn small secondary" data-edit-worker="'+w.id+'">Editar</button><button class="btn small secondary" data-invite-worker="'+w.id+'">Invitar</button><button class="btn small '+(w.active?'danger':'secondary')+'" data-toggle-worker="'+w.id+'">'+(w.active?'Desactivar / eliminar':'Reactivar')+'</button></div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores con esos filtros.</div>';
   document.querySelectorAll('[data-edit-worker]').forEach(function(b){b.onclick=function(){workerModal(b.getAttribute('data-edit-worker'))}});
   document.querySelectorAll('[data-invite-worker]').forEach(function(b){b.onclick=async function(){var r=await sb.rpc('create_worker_invite',{p_worker_id:b.getAttribute('data-invite-worker')});if(r.error){alert(r.error.message);return}var link=location.origin+location.pathname+'?invite='+r.data;try{await navigator.clipboard.writeText(link);alert('Enlace de invitación copiado:\n'+link)}catch(e){prompt('Copia este enlace de invitación:',link)}}});
   document.querySelectorAll('[data-toggle-worker]').forEach(function(b){b.onclick=async function(){var w=state.workers.find(function(x){return x.id===b.getAttribute('data-toggle-worker')});if(!w)return;if(!w.active){var u=await sb.from('workers').update({active:true}).eq('id',w.id);if(u.error){alert(u.error.message);return}}else{if(!confirm('Si tiene historial se desactivará; si no lo tiene se eliminará definitivamente. ¿Continuar?'))return;var r=await sb.rpc('safe_delete_worker',{p_worker_id:w.id});if(r.error){alert(r.error.message);return}}await load();draw()}});
@@ -462,6 +463,104 @@ function missingFacilityRequirements(workerId,facilityId,when){
 function facilityRequirementsLabel(facilityId){
  var req=facilityRequiredDocuments(facilityId);
  return req.length?req.join(' · '):'Sin titulaciones obligatorias';
+}
+function workerDocumentFor(workerId,type){
+ return (state.documents||[]).filter(function(doc){return doc.worker_id===workerId&&doc.document_type===type}).sort(function(a,b){
+   var av=a.expires_on?new Date(a.expires_on).getTime():Infinity,bv=b.expires_on?new Date(b.expires_on).getTime():Infinity;
+   return bv-av;
+ })[0]||null;
+}
+function documentQualificationStatus(workerId,type,when){
+ var day=localDateKey(when||new Date()),docs=(state.documents||[]).filter(function(doc){return doc.worker_id===workerId&&doc.document_type===type});
+ if(!docs.length)return {code:'missing',label:'Falta',className:'red',doc:null};
+ var valid=docs.filter(function(doc){return doc.verified===true&&(!doc.expires_on||doc.expires_on>=day)}).sort(function(a,b){
+   var av=a.expires_on?new Date(a.expires_on).getTime():Infinity,bv=b.expires_on?new Date(b.expires_on).getTime():Infinity;return bv-av;
+ })[0];
+ if(valid){
+   var days=valid.expires_on?Math.ceil((new Date(valid.expires_on+'T23:59:59')-new Date())/86400000):null;
+   if(days!=null&&days<=30)return {code:'expiring',label:'Caduca en '+Math.max(0,days)+' d',className:days<=7?'red':'amber',doc:valid};
+   return {code:'valid',label:'Vigente',className:'green',doc:valid};
+ }
+ var unverified=docs.find(function(doc){return doc.verified!==true});
+ if(unverified)return {code:'unverified',label:'Sin verificar',className:'amber',doc:unverified};
+ var expired=docs.filter(function(doc){return doc.expires_on&&doc.expires_on<day}).sort(function(a,b){return String(b.expires_on).localeCompare(String(a.expires_on))})[0];
+ return {code:'expired',label:'Caducado',className:'red',doc:expired||docs[0]};
+}
+function facilityComplianceForWorker(workerId,facilityId,when){
+ var req=facilityRequiredDocuments(facilityId),statuses=req.map(function(type){return {type:type,status:documentQualificationStatus(workerId,type,when)}});
+ var blocking=statuses.filter(function(x){return x.status.code!=='valid'&&x.status.code!=='expiring'});
+ return {required:req,statuses:statuses,missing:blocking.map(function(x){return x.type}),ok:blocking.length===0};
+}
+function complianceRequiredFacilities(){
+ return (state.facilities||[]).filter(function(f){return f.active&&(f.required_document_types||[]).length});
+}
+function futureComplianceRisks(daysAhead){
+ var now=new Date(),end=new Date(now);end.setDate(end.getDate()+(daysAhead||60));
+ return (state.shifts||[]).filter(function(sh){
+   return sh.status==='assigned'&&sh.worker_id&&new Date(sh.starts_at)>=now&&new Date(sh.starts_at)<=end&&missingFacilityRequirements(sh.worker_id,sh.facility_id,new Date(sh.starts_at)).length;
+ }).map(function(sh){
+   return {shift:sh,missing:missingFacilityRequirements(sh.worker_id,sh.facility_id,new Date(sh.starts_at))};
+ }).sort(function(a,b){return new Date(a.shift.starts_at)-new Date(b.shift.starts_at)});
+}
+function workerComplianceSummary(workerId){
+ var facilities=complianceRequiredFacilities(),ok=0;
+ facilities.forEach(function(f){if(facilityComplianceForWorker(workerId,f.id,new Date()).ok)ok++});
+ return {ok:ok,total:facilities.length,blocked:facilities.length-ok};
+}
+function compliancePage(){
+ var activeWorkers=(state.workers||[]).filter(function(w){return w.active});
+ var reqFacilities=complianceRequiredFacilities();
+ var risks=futureComplianceRisks(60);
+ var today=new Date(),thirty=new Date(today);thirty.setDate(thirty.getDate()+30);
+ var expiring=(state.documents||[]).filter(function(doc){return doc.verified===true&&doc.expires_on&&new Date(doc.expires_on+'T23:59:59')>=today&&new Date(doc.expires_on+'T23:59:59')<=thirty});
+ var unverified=(state.documents||[]).filter(function(doc){return doc.verified!==true});
+ var workerFacilityPairs=0,blockedPairs=0;
+ activeWorkers.forEach(function(w){reqFacilities.forEach(function(f){workerFacilityPairs++;if(!facilityComplianceForWorker(w.id,f.id,new Date()).ok)blockedPairs++})});
+ var affectedWorkers=Array.from(new Set(risks.map(function(x){return x.shift.worker_id})));
+
+ var filter='<div class="filters"><input id="complianceSearch" placeholder="Buscar trabajador"><select id="complianceFacility"><option value="">Todas las instalaciones</option>'+reqFacilities.map(function(f){return '<option value="'+f.id+'">'+esc(f.name)+'</option>'}).join('')+'</select><select id="complianceStatus"><option value="">Todos</option><option value="ok">Aptos</option><option value="blocked">Con carencias</option></select></div>';
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+activeWorkers.length+'</strong></div><div class="card kpi"><span class="muted">Centros con requisitos</span><strong>'+reqFacilities.length+'</strong></div><div class="card kpi"><span class="muted">Combinaciones no aptas</span><strong>'+blockedPairs+'/'+workerFacilityPairs+'</strong></div><div class="card kpi"><span class="muted">Turnos en riesgo · 60 días</span><strong>'+risks.length+'</strong></div><div class="card kpi"><span class="muted">Docs. caducan ≤30 días</span><strong>'+expiring.length+'</strong></div><div class="card kpi"><span class="muted">Docs. sin verificar</span><strong>'+unverified.length+'</strong></div></div>'+
+   '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Aptitud por instalación</h2><div class="muted">Se calcula con documentos verificados y vigentes hoy.</div></div><button class="btn secondary" id="goDocuments">Gestionar documentos</button></div>'+filter+'<div id="complianceMatrix"></div></div>'+
+   '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Turnos futuros en riesgo</h2><div class="muted">Asignaciones existentes que no cumplirían los requisitos documentales en la fecha del turno.</div></div>'+(affectedWorkers.length?'<button class="btn secondary" id="notifyComplianceRisks">Avisar a afectados</button>':'')+'</div><div id="riskList">'+(risks.length?'<div class="stack">'+risks.map(function(r){var sh=r.shift,w=state.workers.find(function(x){return x.id===sh.worker_id}),fa=state.facilities.find(function(x){return x.id===sh.facility_id});return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(w&&w.full_name||'Trabajador')+' · '+esc(fa&&fa.name||'Instalación')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div><div style="margin-top:6px"><span class="badge red">📄 Falta: '+esc(r.missing.join(', '))+'</span></div></div><div class="mini-actions"><button class="btn small secondary" data-risk-worker="'+sh.worker_id+'">Avisar</button><button class="btn small primary" data-edit-risk-shift="'+sh.id+'">Revisar turno</button></div></div></div>'}).join('')+'</div>':'<div class="card empty">No hay turnos futuros con carencias documentales en los próximos 60 días.</div>')+'</div></div>'+
+   '<div class="section"><h2>Documentos que requieren atención</h2>'+((expiring.length||unverified.length)?'<div class="stack">'+unverified.map(function(doc){var w=state.workers.find(function(x){return x.id===doc.worker_id});return '<div class="card doc-row"><div><strong>'+esc(w&&w.full_name||'Trabajador')+' · '+esc(doc.document_type)+'</strong><div class="muted">Documento pendiente de verificación</div></div><span class="badge amber">Sin verificar</span></div>'}).join('')+expiring.map(function(doc){var w=state.workers.find(function(x){return x.id===doc.worker_id}),days=Math.max(0,Math.ceil((new Date(doc.expires_on+'T23:59:59')-new Date())/86400000));return '<div class="card doc-row"><div><strong>'+esc(w&&w.full_name||'Trabajador')+' · '+esc(doc.document_type)+'</strong><div class="muted">Caduca: '+d(doc.expires_on)+'</div></div><span class="badge '+(days<=7?'red':'amber')+'">'+days+' días</span></div>'}).join('')+'</div>':'<div class="card empty">No hay documentos próximos a caducar ni pendientes de verificar.</div>')+'</div>';
+
+ shell('Cumplimiento','Control de titulaciones, aptitud por centro y riesgos documentales.',body,'<button class="btn primary" id="complianceDocuments">+ Documento</button>');
+
+ function drawMatrix(){
+   var q=(document.getElementById('complianceSearch').value||'').toLowerCase(),fid=document.getElementById('complianceFacility').value,st=document.getElementById('complianceStatus').value;
+   var workers=activeWorkers.filter(function(w){return !q||(w.full_name||'').toLowerCase().includes(q)||(w.email||'').toLowerCase().includes(q)});
+   var facilities=reqFacilities.filter(function(f){return !fid||f.id===fid});
+   var rows=[];
+   workers.forEach(function(w){facilities.forEach(function(f){
+     var c=facilityComplianceForWorker(w.id,f.id,new Date());
+     if(st==='ok'&&!c.ok)return;if(st==='blocked'&&c.ok)return;
+     rows.push({worker:w,facility:f,compliance:c});
+   })});
+   document.getElementById('complianceMatrix').innerHTML=rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Requisitos</th><th>Estado</th><th>Detalle</th><th>Acción</th></tr></thead><tbody>'+rows.map(function(r){
+     var detail=r.compliance.statuses.map(function(x){return '<span class="badge '+x.status.className+'">'+esc(x.type)+' · '+esc(x.status.label)+'</span>'}).join(' ');
+     return '<tr><td><strong>'+esc(r.worker.full_name)+'</strong></td><td>'+esc(r.facility.name)+'</td><td>'+esc(r.compliance.required.join(', '))+'</td><td><span class="badge '+(r.compliance.ok?'green':'red')+'">'+(r.compliance.ok?'Apto':'No apto')+'</span></td><td>'+detail+'</td><td>'+(r.compliance.ok?'—':'<button class="btn small secondary" data-remind-worker="'+r.worker.id+'" data-remind-facility="'+r.facility.id+'">Avisar</button>')+'</td></tr>';
+   }).join('')+'</tbody></table></div>':'<div class="card empty">No hay resultados con estos filtros.</div>';
+   document.querySelectorAll('[data-remind-worker]').forEach(function(b){b.onclick=async function(){
+     var wid=b.getAttribute('data-remind-worker'),fid=b.getAttribute('data-remind-facility'),w=state.workers.find(function(x){return x.id===wid}),fa=state.facilities.find(function(x){return x.id===fid}),miss=facilityComplianceForWorker(wid,fid,new Date()).missing;
+     await notifyWorkers([wid],'Documentación pendiente',(fa&&fa.name?fa.name+': ':'')+'Necesitas documentación vigente: '+miss.join(', ')+'.');
+     alert('Aviso enviado a '+(w&&w.full_name||'trabajador')+'.');
+   }});
+ }
+ ['complianceSearch','complianceFacility','complianceStatus'].forEach(function(id){document.getElementById(id).oninput=drawMatrix;document.getElementById(id).onchange=drawMatrix});
+ drawMatrix();
+
+ document.getElementById('goDocuments').onclick=function(){state.page='documents';render()};
+ document.getElementById('complianceDocuments').onclick=function(){state.page='documents';render()};
+ document.querySelectorAll('[data-edit-risk-shift]').forEach(function(b){b.onclick=function(){shiftModal(b.getAttribute('data-edit-risk-shift'))}});
+ document.querySelectorAll('[data-risk-worker]').forEach(function(b){b.onclick=async function(){
+   var wid=b.getAttribute('data-risk-worker'),rows=risks.filter(function(r){return r.shift.worker_id===wid}),missing=Array.from(new Set(rows.reduce(function(a,r){return a.concat(r.missing)},[])));
+   await notifyWorkers([wid],'Documentación necesaria','Tienes próximos turnos que requieren documentación vigente: '+missing.join(', ')+'. Revisa tus documentos en GuardShift.');
+   alert('Aviso enviado.');
+ }});
+ var notifyAll=document.getElementById('notifyComplianceRisks');if(notifyAll)notifyAll.onclick=async function(){
+   await notifyWorkers(affectedWorkers,'Documentación necesaria','Revisa tus titulaciones en GuardShift: hay próximos turnos que requieren documentación vigente.');
+   alert('Aviso enviado a '+affectedWorkers.length+' trabajador(es) afectados.');
+ };
 }
 function planningRuleValues(){
  return {
@@ -823,7 +922,11 @@ function documentsPage(){
 }
 function documentList(list,showWorker){
  if(!list.length)return '<div class="card empty">No hay documentos guardados.</div>';
- return '<div class="stack">'+list.map(function(x){var w=x.workers||{},expired=x.expires_on&&new Date(x.expires_on)<new Date();return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+(x.verified?' · Verificado':'')+'</div></div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+(expired?'red':x.expires_on?'amber':'blue')+'">'+(expired?'Caducado':x.expires_on?'Vigente':'Sin fecha')+'</span></div></div>'}).join('')+'</div>';
+ return '<div class="stack">'+list.map(function(x){
+   var w=x.workers||{},expired=x.expires_on&&new Date(x.expires_on+'T23:59:59')<new Date(),days=x.expires_on?Math.ceil((new Date(x.expires_on+'T23:59:59')-new Date())/86400000):null;
+   var st=!x.verified?['Sin verificar','amber']:expired?['Caducado','red']:days!=null&&days<=30?['Caduca en '+Math.max(days,0)+' d',days<=7?'red':'amber']:['Vigente','green'];
+   return '<div class="card doc-row"><div><strong>'+(showWorker?esc(w.full_name||'Trabajador')+' · ':'')+esc(x.document_type)+'</strong><div class="muted">'+(x.expires_on?'Caduca: '+d(x.expires_on):'Sin caducidad')+(x.verified?' · Verificado':' · Pendiente de verificación')+'</div></div><div class="mini-actions">'+(x.storage_path?'<button class="btn small secondary" data-open-doc="'+esc(x.storage_path)+'">Ver</button>':'')+'<span class="badge '+st[1]+'">'+st[0]+'</span></div></div>';
+ }).join('')+'</div>';
 }
 async function uploadDocument(e){
  e.preventDefault();var f=new FormData(e.target),worker=f.get('worker'),file=f.get('file'),path=null;
@@ -838,7 +941,16 @@ async function uploadDocument(e){
  await load();render();
 }
 function bindDocumentButtons(){document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}})}
-function mydocuments(){shell('Documentos','Tus titulaciones y documentos.',documentList(state.documents,false),'');bindDocumentButtons()}
+function mydocuments(){
+ var wid=state.profile.worker_id,required=complianceRequiredFacilities();
+ var eligibility=required.map(function(f){return {facility:f,compliance:facilityComplianceForWorker(wid,f.id,new Date())}});
+ var ok=eligibility.filter(function(x){return x.compliance.ok}).length;
+ var body='<div class="cards"><div class="card kpi"><span class="muted">Centros con requisitos</span><strong>'+required.length+'</strong></div><div class="card kpi"><span class="muted">Apto actualmente</span><strong>'+ok+'/'+required.length+'</strong></div><div class="card kpi"><span class="muted">Centros con carencias</span><strong>'+(required.length-ok)+'</strong></div></div>'+
+   '<div class="section"><h2>Mi aptitud por instalación</h2>'+(eligibility.length?'<div class="stack">'+eligibility.map(function(x){return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility.name)+'</strong><div class="muted">Requisitos: '+esc(x.compliance.required.join(', '))+'</div></div><span class="badge '+(x.compliance.ok?'green':'red')+'">'+(x.compliance.ok?'Apto':'No apto')+'</span></div><div class="mini-actions" style="margin-top:8px">'+x.compliance.statuses.map(function(st){return '<span class="badge '+st.status.className+'">'+esc(st.type)+' · '+esc(st.status.label)+'</span>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">Tu empresa no ha configurado titulaciones obligatorias por instalación.</div>')+'</div>'+
+   '<div class="section"><h2>Mis documentos</h2>'+documentList(state.documents,false)+'</div>';
+ shell('Documentos','Tus titulaciones, vigencia y aptitud para cada instalación.',body,'');
+ bindDocumentButtons();
+}
 async function ensureServiceWorker(){
  if(!('serviceWorker' in navigator))return null;
  try{return await navigator.serviceWorker.register('./sw.js',{scope:'./'})}catch(e){return null}
@@ -1396,8 +1508,8 @@ function incidentList(list,coordinator){
 function render(){
  var map=state.profile&&state.profile.role==='worker'
    ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,workerhours:workerHoursPage,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
-   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,coverage:coveragePlannerPage,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage};
- if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents'].indexOf(state.page)>=0)state.page='workerhome';
+   : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,coverage:coveragePlannerPage,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage,compliance:compliancePage};
+ if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
 async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
