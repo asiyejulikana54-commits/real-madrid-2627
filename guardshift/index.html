@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],shiftEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],shiftEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -164,10 +164,11 @@ async function load(){
     sb.from('time_entry_audit').select('*').order('created_at',{ascending:false}),
     sb.from('notification_events').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('created_at',{ascending:false}).limit(100),
     sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
-    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(500)
+    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(500),
+    sb.rpc('get_open_shift_staffing_candidates',{p_horizon_days:30})
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];
  }
 }
 function nav(){
@@ -388,6 +389,122 @@ function planningRulesCard(){
  var c=state.company||{};
  return '<div class="card"><h2 style="margin-top:0">Reglas de planificación</h2><div class="muted" style="margin-bottom:10px">Son avisos operativos configurables; no bloquean por sí solos la creación de turnos.</div><div class="form"><div class="field"><label>Máximo de horas planificadas por semana</label><input id="maxWeeklyHours" type="number" min="1" max="168" step="0.5" value="'+esc(c.max_planned_weekly_hours||40)+'"></div><div class="field"><label>Descanso mínimo entre turnos</label><input id="minRestHours" type="number" min="0" max="72" step="0.5" value="'+esc(c.min_rest_hours||12)+'"></div><button class="btn secondary" id="savePlanningRules">Guardar reglas</button></div></div>';
 }
+
+function operationShiftCandidates(shiftId){
+ return (state.staffingCandidates||[]).filter(function(x){return x.shift_id===shiftId});
+}
+function operationRankedCandidates(sh){
+ var rules=planningRuleValues(),start=new Date(sh.starts_at),end=new Date(sh.ends_at);
+ return operationShiftCandidates(sh.id).map(function(c){
+   var warnings=planningWarningsForAssignment(c.worker_id,start,end,sh.id,[]);
+   var hours=plannedHoursInWeek(c.worker_id,start,end,sh.id,[]);
+   var rest=restGapForAssignment(c.worker_id,start,end,sh.id,[]);
+   var score=(Number(c.priority)||0)*100+warnings.length*50+hours+(rest!=null&&rest<rules.minRest?25:0);
+   return Object.assign({},c,{_warnings:warnings,_hours:hours,_rest:rest,_score:score});
+ }).sort(function(a,b){return a._score-b._score||String(a.full_name||'').localeCompare(String(b.full_name||''))});
+}
+function operationAssignCandidate(shiftId,workerId){
+ var sh=state.shifts.find(function(x){return x.id===shiftId}),w=state.workers.find(function(x){return x.id===workerId});
+ if(!sh||!w)return Promise.resolve(false);
+ var ranked=operationRankedCandidates(sh),candidate=ranked.find(function(x){return x.worker_id===workerId});
+ var msg='¿Asignar '+w.full_name+' al turno de '+(sh.facilities&&sh.facilities.name||'la instalación')+' del '+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at)+'?';
+ if(candidate&&candidate._warnings.length)msg+='\n\nAdvertencias:\n• '+candidate._warnings.join('\n• ');
+ if(!confirm(msg))return Promise.resolve(false);
+ return sb.rpc('assign_open_shift_to_worker',{p_shift_id:shiftId,p_worker_id:workerId}).then(async function(r){
+   if(r.error){alert(r.error.message);return false}
+   await notifyWorkers([workerId],'Nuevo turno asignado',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));
+   await load();operationsPage();return true;
+ });
+}
+function operationCandidatesModal(shiftId){
+ var sh=state.shifts.find(function(x){return x.id===shiftId});if(!sh)return;
+ var ranked=operationRankedCandidates(sh),rules=planningRuleValues();
+ var body='<div class="card"><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+'</div></div>'+
+ '<div class="section"><h3>Candidatos elegibles</h3>'+(ranked.length?'<div class="stack">'+ranked.map(function(c,index){
+   var rest=c._rest==null?'Sin turno cercano':c._rest.toFixed(1)+' h de descanso';
+   var cls=index===0&&!c._warnings.length&&Number(c.priority)===0?'green':c._warnings.length?'amber':'blue';
+   var label=index===0&&!c._warnings.length&&Number(c.priority)===0?'Recomendado':c._warnings.length?'Revisar':'Elegible';
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(c.full_name)+'</strong><div class="muted">'+esc(c.zone||'Sin zona')+' · '+esc(c.availability_label||'Disponible')+'</div><div class="muted">Semana tras asignar: '+c._hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(rest)+'</div></div><span class="badge '+cls+'">'+label+'</span></div>'+(c._warnings.length?'<div class="mini-actions" style="margin-top:8px">'+c._warnings.map(function(x){return '<span class="badge amber">⚠️ '+esc(x)+'</span>'}).join('')+'</div>':'')+'<div class="mini-actions" style="margin-top:10px"><button class="btn small primary" data-operation-assign="'+c.worker_id+'" data-shift="'+sh.id+'">Asignar</button></div></div>';
+ }).join('')+'</div>':'<div class="card empty">No hay trabajadores elegibles ahora mismo. Revisa documentación, disponibilidad, ausencias y solapes.</div>')+'</div>';
+ var el=modal('Cubrir turno',body);
+ el.querySelectorAll('[data-operation-assign]').forEach(function(b){b.onclick=async function(){var ok=await operationAssignCandidate(b.getAttribute('data-shift'),b.getAttribute('data-operation-assign'));if(ok)el.remove()}});
+}
+function operationsPage(){
+ var now=new Date(),horizon=Math.max(7,Math.min(30,Number(state.operationsHorizon||14))),end=new Date(now);end.setDate(end.getDate()+horizon);
+ var upcoming=(state.shifts||[]).filter(function(sh){return new Date(sh.ends_at)>now&&new Date(sh.starts_at)<end&&sh.status!=='cancelled'&&sh.status!=='completed'});
+ var open=upcoming.filter(function(sh){return sh.status==='open'&&!sh.worker_id}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
+ var assigned=upcoming.filter(function(sh){return sh.status==='assigned'&&sh.worker_id});
+ var urgent=open.filter(function(sh){return new Date(sh.starts_at)-now<=48*3600000});
+ var zeroCandidates=open.filter(function(sh){return operationShiftCandidates(sh.id).length===0});
+ var uncoveredHours=open.reduce(function(a,sh){return a+Math.max(0,new Date(sh.ends_at)-new Date(sh.starts_at))/3600000},0);
+ var published=open.filter(function(sh){return sh.open_to_workers});
+ var reqFacilities=complianceRequiredFacilities();
+
+ var queue=open.map(function(sh){
+   var ranked=operationRankedCandidates(sh),best=ranked[0]||null,hours=Math.max(0,(new Date(sh.starts_at)-now)/3600000);
+   var urgency=hours<=24?0:hours<=48?1:ranked.length===0?2:hours<=168?3:4;
+   return {shift:sh,ranked:ranked,best:best,hours:hours,urgency:urgency};
+ }).sort(function(a,b){return a.urgency-b.urgency||a.hours-b.hours});
+
+ var facilityRows=(state.facilities||[]).filter(function(f){return f.active}).map(function(f){
+   var fOpen=open.filter(function(sh){return sh.facility_id===f.id}),fAssigned=assigned.filter(function(sh){return sh.facility_id===f.id}),zero=fOpen.filter(function(sh){return operationShiftCandidates(sh.id).length===0}).length;
+   return {facility:f,open:fOpen.length,assigned:fAssigned.length,zero:zero};
+ }).filter(function(x){return x.open||x.assigned}).sort(function(a,b){return b.zero-a.zero||b.open-a.open});
+
+ var sevenEnd=new Date(now);sevenEnd.setDate(sevenEnd.getDate()+7);
+ var workers=(state.workers||[]).filter(function(w){return w.active}).map(function(w){
+   var ws=assigned.filter(function(sh){return sh.worker_id===w.id&&new Date(sh.starts_at)<sevenEnd});
+   var hours=ws.reduce(function(a,sh){return a+Math.max(0,new Date(sh.ends_at)-new Date(sh.starts_at))/3600000},0);
+   var blocked=reqFacilities.filter(function(f){return !facilityComplianceForWorker(w.id,f.id,new Date()).ok}).length;
+   var alerts=ws.reduce(function(a,sh){return a+(shiftWarning(sh)?1:0)},0);
+   return {worker:w,shifts:ws.length,hours:hours,blocked:blocked,alerts:alerts};
+ }).sort(function(a,b){return b.hours-a.hours||b.shifts-a.shifts});
+
+ var dayRows=[];
+ for(var di=0;di<horizon;di++){
+   var day=new Date(now);day.setHours(0,0,0,0);day.setDate(day.getDate()+di);
+   var next=new Date(day);next.setDate(next.getDate()+1);
+   var dOpen=open.filter(function(sh){return new Date(sh.starts_at)<next&&new Date(sh.ends_at)>day});
+   var dAssigned=assigned.filter(function(sh){return new Date(sh.starts_at)<next&&new Date(sh.ends_at)>day});
+   dayRows.push({day:day,open:dOpen.length,assigned:dAssigned.length,zero:dOpen.filter(function(sh){return operationShiftCandidates(sh.id).length===0}).length});
+ }
+
+ var body='<div class="filters"><select id="operationsHorizon"><option value="7" '+(horizon===7?'selected':'')+'>7 días</option><option value="14" '+(horizon===14?'selected':'')+'>14 días</option><option value="30" '+(horizon===30?'selected':'')+'>30 días</option></select><button class="btn secondary" id="operationsRefresh">Actualizar</button><button class="btn secondary" id="operationsCsv">Exportar riesgos CSV</button></div>'+
+ '<div class="cards section"><div class="card kpi"><span class="muted">Turnos próximos</span><strong>'+upcoming.length+'</strong></div><div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div><div class="card kpi"><span class="muted">Urgentes ≤48 h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Sin candidatos</span><strong>'+zeroCandidates.length+'</strong></div><div class="card kpi"><span class="muted">Horas sin cubrir</span><strong>'+uncoveredHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Publicados</span><strong>'+published.length+'</strong></div></div>'+
+ '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Cola de cobertura</h2><div class="muted">Ordenada por urgencia y disponibilidad real de candidatos.</div></div><div class="mini-actions"><button class="btn secondary" id="publishAllOperation">📣 Publicar abiertos</button><button class="btn secondary" id="notifyAllAssigned">🔔 Recordar cuadrante</button></div></div>'+
+ (queue.length?'<div class="stack">'+queue.map(function(q){
+   var sh=q.shift,b=q.best,fc=operationShiftCandidates(sh.id).length,urg=q.hours<=24?['Crítico','red']:q.hours<=48?['Urgente','amber']:fc===0?['Sin candidatos','red']:['Pendiente','blue'];
+   return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(sh.facilities&&sh.facilities.name||'Turno')+'</strong><div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+' · empieza en '+(q.hours<24?q.hours.toFixed(1)+' h':Math.ceil(q.hours/24)+' d')+'</div><div class="mini-actions" style="margin-top:7px"><span class="badge '+urg[1]+'">'+urg[0]+'</span><span class="badge '+(fc?'green':'red')+'">'+fc+' candidato'+(fc===1?'':'s')+'</span>'+(sh.open_to_workers?'<span class="badge green">📣 Publicado</span>':'')+'</div></div><div class="mini-actions">'+(b?'<button class="btn small primary" data-quick-assign="'+b.worker_id+'" data-shift="'+sh.id+'">Asignar '+esc(b.full_name)+'</button>':'')+'<button class="btn small secondary" data-operation-candidates="'+sh.id+'">Ver candidatos</button>'+(!sh.open_to_workers?'<button class="btn small secondary" data-operation-publish="'+sh.id+'">Publicar</button>':'')+'</div></div>'+(b?'<div class="muted" style="margin-top:8px">Recomendado: '+esc(b.full_name)+' · '+b._hours.toFixed(1)+' h semana'+(b._warnings.length?' · ⚠️ '+esc(b._warnings.join(' · ')):'')+'</div>':'<div class="msg err" style="margin-top:8px">No existe ahora mismo ningún trabajador que pase documentación, disponibilidad, ausencias y solapes.</div>')+'</div>';
+ }).join('')+'</div>':'<div class="card empty">No hay turnos abiertos en este horizonte.</div>')+'</div>'+
+ '<div class="section"><h2>Riesgo por instalación</h2>'+(facilityRows.length?'<div class="table"><table><thead><tr><th>Instalación</th><th>Asignados</th><th>Sin cubrir</th><th>Sin candidatos</th><th>Requisitos</th></tr></thead><tbody>'+facilityRows.map(function(x){return '<tr><td><strong>'+esc(x.facility.name)+'</strong></td><td>'+x.assigned+'</td><td><span class="badge '+(x.open?'amber':'green')+'">'+x.open+'</span></td><td><span class="badge '+(x.zero?'red':'green')+'">'+x.zero+'</span></td><td>'+esc(facilityRequirementsLabel(x.facility.id))+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">Sin actividad próxima.</div>')+'</div>'+
+ '<div class="section"><h2>Carga de plantilla · próximos 7 días</h2>'+(workers.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Turnos</th><th>Horas</th><th>Alertas</th><th>Centros no aptos</th><th>Estado</th></tr></thead><tbody>'+workers.map(function(x){var cls=x.alerts?'amber':x.blocked===reqFacilities.length&&reqFacilities.length?'red':'green',label=x.alerts?'Revisar descansos/horas':x.hours===0?'Disponible':'Planificado';return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.shifts+'</td><td>'+x.hours.toFixed(1)+' h</td><td><span class="badge '+(x.alerts?'amber':'green')+'">'+x.alerts+'</span></td><td><span class="badge '+(x.blocked?'amber':'green')+'">'+x.blocked+'/'+reqFacilities.length+'</span></td><td><span class="badge '+cls+'">'+label+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores activos.</div>')+'</div>'+
+ '<div class="section"><h2>Previsión diaria</h2><div class="table"><table><thead><tr><th>Día</th><th>Asignados</th><th>Sin cubrir</th><th>Sin candidatos</th></tr></thead><tbody>'+dayRows.map(function(x){return '<tr><td>'+d(x.day)+'</td><td>'+x.assigned+'</td><td><span class="badge '+(x.open?'amber':'green')+'">'+x.open+'</span></td><td><span class="badge '+(x.zero?'red':'green')+'">'+x.zero+'</span></td></tr>'}).join('')+'</tbody></table></div></div>';
+
+ shell('Centro de Operaciones','Cobertura, candidatos, urgencias y carga de plantilla en una sola vista.',body,'<button class="btn primary" id="operationNewShift">+ Nuevo turno</button>');
+ document.getElementById('operationNewShift').onclick=function(){shiftModal()};
+ document.getElementById('operationsHorizon').onchange=function(e){state.operationsHorizon=Number(e.target.value);operationsPage()};
+ document.getElementById('operationsRefresh').onclick=async function(){await load();operationsPage()};
+ document.querySelectorAll('[data-operation-candidates]').forEach(function(b){b.onclick=function(){operationCandidatesModal(b.getAttribute('data-operation-candidates'))}});
+ document.querySelectorAll('[data-quick-assign]').forEach(function(b){b.onclick=function(){operationAssignCandidate(b.getAttribute('data-shift'),b.getAttribute('data-quick-assign'))}});
+ document.querySelectorAll('[data-operation-publish]').forEach(function(b){b.onclick=async function(){
+   var id=b.getAttribute('data-operation-publish'),sh=state.shifts.find(function(x){return x.id===id}),r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:true});
+   if(r.error){alert(r.error.message);return}var ids=Array.isArray(r.data)?r.data:[];if(ids.length)await notifyWorkers(ids,'Nuevo turno abierto',(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));await load();operationsPage();
+ }});
+ document.getElementById('publishAllOperation').onclick=async function(){
+   var ids=open.filter(function(sh){return !sh.open_to_workers}).map(function(sh){return sh.id});if(!ids.length){alert('Todos los turnos abiertos ya están publicados.');return}
+   if(!confirm('¿Publicar '+ids.length+' turno(s) abiertos de este horizonte?'))return;
+   var r=await sb.rpc('bulk_set_open_shift_marketplace',{p_shift_ids:ids,p_enabled:true});if(r.error){alert(r.error.message);return}
+   var data=r.data||{},workersIds=Array.isArray(data.worker_ids)?data.worker_ids:[];if(workersIds.length)await notifyWorkers(workersIds,'Nuevos turnos abiertos','Hay nuevos turnos compatibles disponibles en GuardShift.');await load();operationsPage();
+ };
+ document.getElementById('notifyAllAssigned').onclick=async function(){
+   var ids=Array.from(new Set(assigned.map(function(sh){return sh.worker_id}).filter(Boolean)));if(!ids.length){alert('No hay trabajadores asignados en este horizonte.');return}
+   if(!confirm('¿Enviar recordatorio a '+ids.length+' trabajador(es)?'))return;await notifyWorkers(ids,'Recordatorio de cuadrante','Revisa tus próximos turnos en GuardShift.');alert('Recordatorio enviado.');
+ };
+ document.getElementById('operationsCsv').onclick=function(){
+   var csv='Fecha,Instalacion,Inicio,Fin,Candidatos,Publicado,Urgencia\n'+queue.map(function(q){return [d(q.shift.starts_at),q.shift.facilities&&q.shift.facilities.name||'',q.shift.starts_at,q.shift.ends_at,q.ranked.length,q.shift.open_to_workers?'Sí':'No',q.hours<=24?'Critico':q.hours<=48?'Urgente':q.ranked.length===0?'Sin candidatos':'Pendiente'].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_operaciones.csv';a.click();URL.revokeObjectURL(a.href);
+ };
+}
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
  var pendingSubs=state.substitutions.filter(function(x){return x.status==='open'||x.status==='offered'});
@@ -421,7 +538,7 @@ function dashboard(){
  '<div class="section">'+notificationSettingsCard()+'</div>'+
  '<div class="section">'+planningRulesCard()+'</div>'+
  '<div class="section"><h2>Alertas operativas recientes</h2>'+((state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).length?'<div class="stack">'+(state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).slice(0,8).map(function(x){return '<div class="card notice"><strong>'+esc(x.workers&&x.workers.full_name||'Trabajador')+' · '+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.created_at)+' '+ts(x.created_at)+' · '+esc(x.body)+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay avisos recientes de fichaje pendiente.</div>')+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var osc=document.getElementById('openShiftControl');if(osc)osc.onclick=function(){state.page='shifts';render()};var comp=document.getElementById('openCompliance');if(comp)comp.onclick=function(){state.page='compliance';render()};var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn secondary" id="openOperations">Centro de Operaciones</button><button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};var oop=document.getElementById('openOperations');if(oop)oop.onclick=function(){state.page='operations';render()};bindCoverageActions();var osc=document.getElementById('openShiftControl');if(osc)osc.onclick=function(){state.page='shifts';render()};var comp=document.getElementById('openCompliance');if(comp)comp.onclick=function(){state.page='compliance';render()};var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -1597,10 +1714,10 @@ function render(){
  var map=state.profile&&state.profile.role==='worker'
    ? {workerhome:workerhome,myshifts:myshifts,clocking:clocking,workerhours:workerHoursPage,offers:offers,availability:availability,leave:leavePage,incidents:incidentsPage,mydocuments:mydocuments}
    : {dashboard:dashboard,facilities:facilities,workers:workers,shifts:shifts,schedule:schedule,coverage:coveragePlannerPage,summary:summaryPage,substitutions:substitutionsPage,hours:hoursPage,leave:leavePage,incidents:incidentsPage,documents:documentsPage,compliance:compliancePage};
- if(state.profile&&state.profile.role==='worker'&&['dashboard','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
+ if(state.profile&&state.profile.role==='worker'&&['dashboard','operations','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],staffingCandidates:[],operationsHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  if(typeof err==='string')return err;
