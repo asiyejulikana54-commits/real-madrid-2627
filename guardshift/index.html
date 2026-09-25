@@ -485,7 +485,34 @@ function operationsPage(){
    dayRows.push({day:day,open:dOpen.length,assigned:dAssigned.length,zero:dOpen.filter(function(sh){return operationShiftCandidates(sh.id).length===0}).length,gaps:dayGap.length,personHours:dayGap.reduce(function(a,x){return a+x.personHours},0)});
  }
 
- var body='<div class="filters"><select id="operationsHorizon"><option value="7" '+(horizon===7?'selected':'')+'>7 días</option><option value="14" '+(horizon===14?'selected':'')+'>14 días</option><option value="30" '+(horizon===30?'selected':'')+'>30 días</option></select><button class="btn secondary" id="operationsRefresh">Actualizar</button><button class="btn secondary" id="operationsCsv">Exportar riesgos CSV</button></div>'+
+
+ var actionItems=[];
+ queue.forEach(function(q){
+   if(q.hours<=48||q.ranked.length===0)actionItems.push({
+     severity:(q.hours<=24||q.ranked.length===0)?0:1,
+     title:(q.ranked.length===0?'Turno sin candidato · ':'Turno urgente · ')+(q.shift.facilities&&q.shift.facilities.name||'Instalación'),
+     detail:d(q.shift.starts_at)+' · '+t(q.shift.starts_at)+'–'+t(q.shift.ends_at),
+     kind:'candidates',shift_id:q.shift.id
+   });
+ });
+ coverageGapRows.filter(function(x){return x.day<new Date(Date.now()+48*3600000)}).forEach(function(x){
+   actionItems.push({severity:localDateKey(x.day)===localDateKey(now)?0:1,title:'Déficit de cobertura · '+x.facility.name,detail:d(x.day)+' · '+t(x.gap.start)+'–'+t(x.gap.end)+' · faltan '+x.missing,kind:'gap',facility_id:x.facility.id,start:x.gap.start,end:x.gap.end});
+ });
+ futureComplianceRisks(7).forEach(function(r){
+   var sh=r.shift,w=state.workers.find(function(x){return x.id===sh.worker_id}),fa=state.facilities.find(function(x){return x.id===sh.facility_id}),h=(new Date(sh.starts_at)-now)/3600000;
+   actionItems.push({severity:h<=48?0:1,title:'Documentación bloqueante · '+(w&&w.full_name||'Trabajador'),detail:(fa&&fa.name||'Instalación')+' · '+d(sh.starts_at)+' · '+r.missing.join(', '),kind:'route',page:'compliance'});
+ });
+ (state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}).forEach(function(x){actionItems.push({severity:1,title:'Solicitud de sustitución pendiente',detail:(x.workers&&x.workers.full_name||'Trabajador'),kind:'route',page:'substitutions'})});
+ (state.substitutions||[]).filter(function(x){return x.status==='open'||x.status==='offered'}).forEach(function(x){actionItems.push({severity:1,title:'Sustitución sin cerrar',detail:(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno'),kind:'route',page:'substitutions'})});
+ (state.timeEntries||[]).filter(function(x){return x.approval_status==='pending'&&timeEntryAnomalies(x,Number(state.company&&state.company.clock_in_grace_minutes||10)).attention}).slice(0,10).forEach(function(x){actionItems.push({severity:1,title:'Fichaje con incidencia',detail:(x.workers&&x.workers.full_name||'Trabajador')+' · '+d(x.clock_in),kind:'route',page:'hours'})});
+ (state.leaveRequests||[]).filter(function(x){return x.status==='pending'}).forEach(function(x){actionItems.push({severity:2,title:'Ausencia pendiente de revisar',detail:(x.workers&&x.workers.full_name||'Trabajador')+' · '+d(x.starts_on)+'–'+d(x.ends_on),kind:'route',page:'leave'})});
+ var sevenDays=new Date(now);sevenDays.setDate(sevenDays.getDate()+7);
+ (state.documents||[]).filter(function(x){return x.expires_on&&new Date(x.expires_on+'T23:59:59')>=now&&new Date(x.expires_on+'T23:59:59')<=sevenDays}).forEach(function(x){actionItems.push({severity:1,title:'Documento caduca esta semana',detail:(x.workers&&x.workers.full_name||'Trabajador')+' · '+x.document_type+' · '+d(x.expires_on),kind:'route',page:'compliance'})});
+ (state.facilities||[]).filter(function(f){return f.active&&!facilityCoverageConfigured(f)}).forEach(function(f){actionItems.push({severity:2,title:'Cobertura sin configurar',detail:f.name,kind:'route',page:'coverage'})});
+ workers.filter(function(x){return x.alerts>0}).forEach(function(x){actionItems.push({severity:2,title:'Carga de plantilla a revisar',detail:x.worker.full_name+' · '+x.hours.toFixed(1)+' h · '+x.alerts+' alertas',kind:'route',page:'shifts'})});
+ actionItems.sort(function(a,b){return a.severity-b.severity||String(a.title).localeCompare(String(b.title))});
+ var criticalActions=actionItems.filter(function(x){return x.severity===0}).length;
+var body='<div class="filters"><select id="operationsHorizon"><option value="7" '+(horizon===7?'selected':'')+'>7 días</option><option value="14" '+(horizon===14?'selected':'')+'>14 días</option><option value="30" '+(horizon===30?'selected':'')+'>30 días</option></select><button class="btn secondary" id="operationsRefresh">Actualizar</button><button class="btn secondary" id="operationsCsv">Exportar riesgos CSV</button></div>'+
  '<div class="cards section"><div class="card kpi"><span class="muted">Turnos próximos</span><strong>'+upcoming.length+'</strong></div><div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div><div class="card kpi"><span class="muted">Urgentes ≤48 h</span><strong>'+urgent.length+'</strong></div><div class="card kpi"><span class="muted">Sin candidatos</span><strong>'+zeroCandidates.length+'</strong></div><div class="card kpi"><span class="muted">Horas sin cubrir</span><strong>'+uncoveredHours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Publicados</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Huecos de cobertura</span><strong>'+coverageGapRows.length+'</strong></div><div class="card kpi"><span class="muted">Horas-persona cobertura</span><strong>'+coverageMissingHours.toFixed(1)+'</strong></div></div>'+
  '<div class="section"><div class="doc-row"><div><h2 style="margin-bottom:4px">Cola de cobertura</h2><div class="muted">Ordenada por urgencia y disponibilidad real de candidatos.</div></div><div class="mini-actions"><button class="btn secondary" id="publishAllOperation">📣 Publicar abiertos</button><button class="btn secondary" id="notifyAllAssigned">🔔 Recordar cuadrante</button></div></div>'+
  (queue.length?'<div class="stack">'+queue.map(function(q){
