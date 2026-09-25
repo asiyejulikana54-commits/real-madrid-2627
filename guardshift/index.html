@@ -41,7 +41,7 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BEibTrUQEc-HS7tlDczgoJ2yQ0mSGJSZGYQaMs-olTR3DhWSE1btG4MI9PdrfbH47htThFEQxAYctM98_pQ-p_A';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],shiftEvents:[],summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
@@ -144,10 +144,11 @@ async function load(){
     sb.from('leave_requests').select('*').order('starts_on',{ascending:false}),
     sb.from('time_entry_locations').select('*').order('recorded_at',{ascending:false}),
     sb.from('shift_change_requests').select('*,shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
-    sb.rpc('get_claimable_open_shifts')
+    sb.rpc('get_claimable_open_shifts'),
+    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(200)
    ]);
    var er=wr.find(function(x){return x.error}); if(er){fatal(er.error.message);return}
-   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];
+   state.facilities=wr[0].data||[];state.workers=wr[1].data||[];state.shifts=wr[2].data||[];state.offers=wr[3].data||[];state.availability=wr[4].data||[];state.documents=wr[5].data||[];state.timeEntries=wr[6].data||[];state.incidents=wr[7].data||[];state.leaveRequests=wr[8].data||[];state.timeLocations=wr[9].data||[];state.shiftChangeRequests=wr[10].data||[];state.claimableOpenShifts=wr[11].data||[];state.shiftEvents=wr[12].data||[];
  }else{
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
@@ -162,10 +163,11 @@ async function load(){
     sb.from('availability').select('*').order('starts_at',{ascending:true}),
     sb.from('time_entry_audit').select('*').order('created_at',{ascending:false}),
     sb.from('notification_events').select('*,workers(full_name),shifts(starts_at,ends_at,facilities(name))').order('created_at',{ascending:false}).limit(100),
-    sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false})
+    sb.from('shift_change_requests').select('*,workers(full_name),shifts(id,starts_at,ends_at,status,facility_id,facilities(name)),substitutions(id,status,accepted_worker_id)').order('created_at',{ascending:false}),
+    sb.from('shift_events').select('*').order('created_at',{ascending:false}).limit(500)
    ]);
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
-   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];
+   state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];
  }
 }
 function nav(){
@@ -189,11 +191,39 @@ function shiftTable(rows,actions){
  rows.map(function(x){
    var canManage=x.status!=='cancelled'&&x.status!=='completed';
    var market=x.status==='open'&&!x.worker_id;
-   var stateHtml=badge(x.status)+(x.open_to_workers?' <span class="badge green">📣 Publicado</span>':'');
-   return '<tr><td>'+d(x.starts_at)+'</td><td>'+esc(x.facilities&&x.facilities.name||'—')+'</td><td>'+t(x.starts_at)+'–'+t(x.ends_at)+'</td><td>'+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</td><td>'+stateHtml+'</td>'+(act?'<td><div class="mini-actions">'+(canManage?'<button class="btn small secondary" data-edit-shift="'+x.id+'">Editar</button><button class="btn small secondary" data-cover="'+x.id+'">'+(x.status==='open'?'Buscar candidato':'Sustituir')+'</button>'+(market?'<button class="btn small '+(x.open_to_workers?'secondary':'primary')+'" data-market-shift="'+x.id+'" data-enabled="'+(x.open_to_workers?'0':'1')+'">'+(x.open_to_workers?'Retirar del tablón':'📣 Publicar')+'</button>':'')+'<button class="btn small danger" data-cancel-shift="'+x.id+'">Cancelar</button>':'')+'</div></td>':'')+'</tr>';
+   var warn=shiftWarning(x);
+   var stateHtml=badge(x.status)+(x.open_to_workers?' <span class="badge green">📣 Publicado</span>':'')+(warn?' <span class="badge '+(warn[1]==='conflict'?'red':'amber')+'">'+esc(warn[0])+'</span>':'');
+   return '<tr><td>'+d(x.starts_at)+'</td><td>'+esc(x.facilities&&x.facilities.name||'—')+'</td><td>'+t(x.starts_at)+'–'+t(x.ends_at)+'</td><td>'+esc(x.workers&&x.workers.full_name||'Sin asignar')+'</td><td>'+stateHtml+'</td>'+(act?'<td><div class="mini-actions"><button class="btn small secondary" data-shift-history="'+x.id+'">Historial</button>'+(canManage?'<button class="btn small secondary" data-edit-shift="'+x.id+'">Editar</button><button class="btn small secondary" data-cover="'+x.id+'">'+(x.status==='open'?'Buscar candidato':'Sustituir')+'</button>'+(market?'<button class="btn small '+(x.open_to_workers?'secondary':'primary')+'" data-market-shift="'+x.id+'" data-enabled="'+(x.open_to_workers?'0':'1')+'">'+(x.open_to_workers?'Retirar del tablón':'📣 Publicar')+'</button>':'')+'<button class="btn small danger" data-cancel-shift="'+x.id+'">Cancelar</button>':'')+'</div></td>':'')+'</tr>';
  }).join('')+'</tbody></table></div>';
 }
+function shiftEventPresentation(e){
+ var map={
+   created:['Creado','blue'],baseline:['Estado inicial','blue'],schedule_changed:['Horario / centro modificado','amber'],
+   assigned:['Asignado','green'],unassigned:['Quedó sin asignar','amber'],reassigned:['Reasignado','amber'],
+   published:['Publicado en tablón','green'],unpublished:['Retirado del tablón','blue'],
+   cancelled:['Cancelado','red'],status_changed:['Estado modificado','blue']
+ };
+ return map[e.event_type]||[e.event_type,'blue'];
+}
+function workerNameById(id){
+ var w=(state.workers||[]).find(function(x){return x.id===id});
+ return w&&w.full_name||'—';
+}
+function shiftHistoryModal(shiftId){
+ var sh=(state.shifts||[]).find(function(x){return x.id===shiftId});
+ var events=(state.shiftEvents||[]).filter(function(e){return e.shift_id===shiftId}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)});
+ var title=sh&&sh.facilities&&sh.facilities.name||'Turno';
+ var body='<div class="card"><strong>'+esc(title)+'</strong>'+(sh?'<div class="muted">'+d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at)+' · '+esc(sh.workers&&sh.workers.full_name||'Sin asignar')+'</div>':'')+'</div>'+
+   '<div class="section"><h3>Actividad</h3>'+(events.length?'<div class="stack">'+events.map(function(e){var p=shiftEventPresentation(e),move='';if(e.from_worker_id||e.to_worker_id)move='<div class="muted">'+esc(workerNameById(e.from_worker_id))+' → '+esc(workerNameById(e.to_worker_id))+'</div>';return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div>'+move+'</div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay eventos registrados para este turno.</div>')+'</div>'+
+   (events.length?'<button class="btn secondary" id="exportShiftHistory">Exportar historial CSV</button>':'');
+ var el=modal('Historial del turno',body);
+ var exp=el.querySelector('#exportShiftHistory');if(exp)exp.onclick=function(){
+   var csv='Fecha,Evento,Actor,Rol,Desde,Hacia\n'+events.map(function(e){var p=shiftEventPresentation(e);return [e.created_at,p[0],e.actor_name||'Sistema',e.actor_role||'',workerNameById(e.from_worker_id),workerNameById(e.to_worker_id)].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_historial_turno.csv';a.click();window.URL.revokeObjectURL(a.href);
+ };
+}
 function bindCoverButtons(){
+ document.querySelectorAll('[data-shift-history]').forEach(function(b){b.onclick=function(){shiftHistoryModal(b.getAttribute('data-shift-history'))}});
  document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}});
  document.querySelectorAll('[data-edit-shift]').forEach(function(b){b.onclick=function(){shiftModal(b.getAttribute('data-edit-shift'))}});
  document.querySelectorAll('[data-market-shift]').forEach(function(b){b.onclick=async function(){
@@ -368,7 +398,7 @@ function dashboard(){
  var coverageUnconfigured=state.facilities.filter(function(f){return f.active&&!facilityCoverageConfigured(f)});
  var coverageIssues=coverageConfigured.map(function(f){return {facility:f,config:facilityCoverageConfig(f,tomorrow),gaps:coverageGapsForFacility(f,tomorrow)||[]}}).filter(function(x){return x.gaps.length});
  var pendingTimeAnomalies=(state.timeEntries||[]).filter(function(x){return x.approval_status==='pending'&&timeEntryAnomalies(x,Number(state.company&&state.company.clock_in_grace_minutes||10)).attention}).length;
- var pendingChangeRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}),complianceRisks=futureComplianceRisks(60);
+ var pendingChangeRequests=(state.shiftChangeRequests||[]).filter(function(x){return x.status==='pending'}),complianceRisks=futureComplianceRisks(60),recentShiftEvents=(state.shiftEvents||[]).filter(function(e){return new Date(e.created_at)>=new Date(Date.now()-86400000)});
  var cards='<div class="cards"><div class="card kpi"><span class="muted">Trabajadores activos</span><strong>'+state.workers.filter(function(w){return w.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Instalaciones</span><strong>'+state.facilities.filter(function(f){return f.active}).length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Turnos</span><strong>'+state.shifts.length+'</strong></div>'+
@@ -379,17 +409,19 @@ function dashboard(){
  '<div class="card kpi"><span class="muted">Cobertura sin configurar</span><strong>'+coverageUnconfigured.length+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Fichajes con incidencias</span><strong>'+pendingTimeAnomalies+'</strong></div>'+
  '<div class="card kpi"><span class="muted">Solicitudes de sustitución</span><strong>'+pendingChangeRequests.length+'</strong></div>'+
- '<div class="card kpi"><span class="muted">Turnos con riesgo documental</span><strong>'+complianceRisks.length+'</strong></div></div>'+
+ '<div class="card kpi"><span class="muted">Turnos con riesgo documental</span><strong>'+complianceRisks.length+'</strong></div>'+
+ '<div class="card kpi"><span class="muted">Cambios de turno · 24 h</span><strong>'+recentShiftEvents.length+'</strong></div></div>'+
  '<div class="section"><h2>Turnos sin cubrir</h2>'+shiftTable(open.slice(0,8),true)+'</div>'+
  '<div class="section"><h2>Solicitudes de sustitución</h2>'+(pendingChangeRequests.length?'<div class="stack">'+pendingChangeRequests.slice(0,5).map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},w=x.workers||{};return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(w.full_name||'Trabajador')+' · '+esc(fa.name||'Turno')+'</strong><div class="muted">'+(sh.starts_at?d(sh.starts_at)+' · '+t(sh.starts_at)+'–'+t(sh.ends_at):'')+'</div></div><button class="btn small secondary" data-open-change-requests>Revisar</button></div></div>'}).join('')+'</div>':'<div class="card empty">No hay solicitudes pendientes.</div>')+'</div>'+
  '<div class="section"><h2>Sustituciones activas</h2>'+substitutionSummary(pendingSubs.slice(0,5))+'</div>'+
  '<div class="section"><div class="doc-row"><h2>Alertas de cobertura de mañana</h2><button class="btn small secondary" id="openCoveragePlanner">Ver 7 días</button></div>'+(coverageIssues.length?'<div class="stack">'+coverageIssues.map(function(x){var f=x.facility,cfg=x.config;return '<div class="card notice"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">Horario de mañana: '+esc(cfg.start)+'–'+esc(cfg.end)+' · Necesarios: '+cfg.required+'</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div><div class="stack" style="margin-top:10px">'+x.gaps.map(function(g){return '<div class="card" style="padding:10px"><div class="doc-row"><div><span class="badge red">⚠️ '+esc(formatCoverageGap(g))+'</span>'+(g.need-g.assigned>1?'<div class="muted" style="margin-top:5px">Faltan '+(g.need-g.assigned)+' trabajadores simultáneos en este tramo.</div>':'')+'</div><button class="btn small primary" data-cover-gap data-facility="'+f.id+'" data-start="'+g.start+'" data-end="'+g.end+'">Crear turno</button></div></div>'}).join('')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay huecos de cobertura mañana en los centros configurados.</div>')+(coverageUnconfigured.length?'<div class="section"><h3>Falta configurar horario de cobertura</h3><div class="stack">'+coverageUnconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No se puede comprobar su cobertura hasta indicar el horario.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+'</div>'+
  '<div class="section"><div class="doc-row"><h2>Documentación próxima a caducar</h2><button class="btn small secondary" id="openCompliance">Ver cumplimiento</button></div>'+documentExpiryCards(expiring.slice(0,5))+'</div>'+
  '<div class="section"><h2>Próximos turnos</h2>'+shiftTable(state.shifts.filter(function(s){return new Date(s.starts_at)>=new Date()}).slice(0,8),true)+'</div>'+
+ '<div class="section"><div class="doc-row"><h2>Actividad reciente de turnos</h2><button class="btn small secondary" id="openShiftControl">Abrir control</button></div>'+(recentShiftEvents.length?'<div class="stack">'+recentShiftEvents.slice(0,6).map(function(e){var p=shiftEventPresentation(e),sh=state.shifts.find(function(x){return x.id===e.shift_id});return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+(sh&&sh.facilities?' · '+esc(sh.facilities.name):'')+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div></div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">No hay cambios de turnos en las últimas 24 horas.</div>')+'</div>'+
  '<div class="section">'+notificationSettingsCard()+'</div>'+
  '<div class="section">'+planningRulesCard()+'</div>'+
  '<div class="section"><h2>Alertas operativas recientes</h2>'+((state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).length?'<div class="stack">'+(state.notificationEvents||[]).filter(function(x){return x.event_type==='missing_clock_in'}).slice(0,8).map(function(x){return '<div class="card notice"><strong>'+esc(x.workers&&x.workers.full_name||'Trabajador')+' · '+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.created_at)+' '+ts(x.created_at)+' · '+esc(x.body)+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay avisos recientes de fichaje pendiente.</div>')+'</div>';
- shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var comp=document.getElementById('openCompliance');if(comp)comp.onclick=function(){state.page='compliance';render()};var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
+ shell('Panel de control','Hola, '+state.profile.full_name,cards,'<button class="btn primary" id="newShift">+ Nuevo turno</button>');document.getElementById('newShift').onclick=function(){shiftModal()};bindCoverageActions();var osc=document.getElementById('openShiftControl');if(osc)osc.onclick=function(){state.page='shifts';render()};var comp=document.getElementById('openCompliance');if(comp)comp.onclick=function(){state.page='compliance';render()};var ocp=document.getElementById('openCoveragePlanner');if(ocp)ocp.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};document.querySelectorAll('[data-open-change-requests]').forEach(function(b){b.onclick=function(){state.page='substitutions';render()}});var sns=document.getElementById('saveNotificationSettings');if(sns)sns.onclick=async function(){var payload={shift_reminders_enabled:document.getElementById('reminderEnabled').value==='1',shift_reminder_minutes:Math.max(5,Math.min(180,Number(document.getElementById('reminderMinutes').value)||30)),missing_clock_in_alerts_enabled:document.getElementById('missingEnabled').value==='1'};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Avisos automáticos actualizados.');dashboard()};var spr=document.getElementById('savePlanningRules');if(spr)spr.onclick=async function(){var payload={max_planned_weekly_hours:Math.max(1,Math.min(168,Number(document.getElementById('maxWeeklyHours').value)||40)),min_rest_hours:Math.max(0,Math.min(72,Number(document.getElementById('minRestHours').value)||12))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;alert('Reglas de planificación actualizadas.');dashboard()};bindCoverButtons();
 }
 function facilities(){
  var body='<div class="filters"><input id="facilitySearch" placeholder="Buscar instalación"><select id="facilityStatus"><option value="all">Todas</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></div><div id="facilityList"></div>';
@@ -419,16 +451,54 @@ function workers(){
  document.getElementById('workerSearch').oninput=draw;document.getElementById('workerStatus').onchange=draw;draw();
 }
 function shifts(){
- var body='<div class="filters"><input id="shiftDate" type="date"><select id="shiftFacility"><option value="">Todas las instalaciones</option>'+state.facilities.map(function(f){return '<option value="'+f.id+'">'+esc(f.name)+'</option>'}).join('')+'</select><select id="shiftWorker"><option value="">Todos los trabajadores</option>'+state.workers.map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('')+'</select><select id="shiftStatus"><option value="">Todos los estados</option><option value="assigned">Asignados</option><option value="open">Sin cubrir</option><option value="cancelled">Cancelados</option><option value="completed">Completados</option></select><button class="btn secondary" id="clearShiftFilters">Limpiar</button></div><div id="shiftList"></div>';
- shell('Turnos','Crea, filtra, edita y cubre turnos.',body,'<button class="btn primary" id="add">+ Turno</button>');
+ var body='<div class="filters"><input id="shiftFrom" type="date" title="Desde"><input id="shiftTo" type="date" title="Hasta"><select id="shiftFacility"><option value="">Todas las instalaciones</option>'+state.facilities.map(function(f){return '<option value="'+f.id+'">'+esc(f.name)+'</option>'}).join('')+'</select><select id="shiftWorker"><option value="">Todos los trabajadores</option>'+state.workers.map(function(w){return '<option value="'+w.id+'">'+esc(w.full_name)+'</option>'}).join('')+'</select><select id="shiftStatus"><option value="">Todos los estados</option><option value="assigned">Asignados</option><option value="open">Sin cubrir</option><option value="cancelled">Cancelados</option><option value="completed">Completados</option></select><select id="shiftMarket"><option value="">Tablón: todos</option><option value="published">Publicados</option><option value="not_published">No publicados</option></select><select id="shiftRisk"><option value="">Riesgo: todos</option><option value="risk">Con alerta</option><option value="clean">Sin alertas</option></select><button class="btn secondary" id="clearShiftFilters">Limpiar</button></div>'+
+ '<div id="shiftStats"></div><div class="mini-actions section"><button class="btn secondary" id="bulkPublish">📣 Publicar abiertos filtrados</button><button class="btn secondary" id="bulkUnpublish">Retirar publicados filtrados</button><button class="btn secondary" id="bulkNotify">🔔 Avisar asignados filtrados</button><button class="btn secondary" id="shiftCsv">Exportar CSV</button></div><div id="shiftList"></div>';
+ shell('Turnos','Control operativo, riesgos, tablón e historial de asignaciones.',body,'<button class="btn primary" id="add">+ Turno</button>');
  document.getElementById('add').onclick=function(){shiftModal()};
+ var currentList=[];
+
  function draw(){
-   var dt=document.getElementById('shiftDate').value,fa=document.getElementById('shiftFacility').value,wo=document.getElementById('shiftWorker').value,st=document.getElementById('shiftStatus').value;
-   var list=state.shifts.filter(function(x){var local=new Date(x.starts_at),ds=local.getFullYear()+'-'+String(local.getMonth()+1).padStart(2,'0')+'-'+String(local.getDate()).padStart(2,'0');return (!dt||ds===dt)&&(!fa||x.facility_id===fa)&&(!wo||x.worker_id===wo)&&(!st||x.status===st)});
-   document.getElementById('shiftList').innerHTML=shiftTable(list,true);bindCoverButtons();
+   var from=document.getElementById('shiftFrom').value,to=document.getElementById('shiftTo').value,fa=document.getElementById('shiftFacility').value,wo=document.getElementById('shiftWorker').value,st=document.getElementById('shiftStatus').value,mk=document.getElementById('shiftMarket').value,risk=document.getElementById('shiftRisk').value;
+   currentList=state.shifts.filter(function(x){
+     var day=localDateKey(x.starts_at),warn=!!shiftWarning(x);
+     return (!from||day>=from)&&(!to||day<=to)&&(!fa||x.facility_id===fa)&&(!wo||x.worker_id===wo)&&(!st||x.status===st)&&(!mk||(mk==='published'?x.open_to_workers:!x.open_to_workers))&&(!risk||(risk==='risk'?warn:!warn));
+   });
+   var assigned=currentList.filter(function(x){return x.status==='assigned'}),open=currentList.filter(function(x){return x.status==='open'}),published=currentList.filter(function(x){return x.open_to_workers}),risks=currentList.filter(function(x){return !!shiftWarning(x)}),hours=currentList.reduce(function(a,x){return a+Math.max(0,new Date(x.ends_at)-new Date(x.starts_at))/3600000},0);
+   document.getElementById('shiftStats').innerHTML='<div class="cards section"><div class="card kpi"><span class="muted">Filtrados</span><strong>'+currentList.length+'</strong></div><div class="card kpi"><span class="muted">Horas de turno</span><strong>'+hours.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Asignados</span><strong>'+assigned.length+'</strong></div><div class="card kpi"><span class="muted">Sin cubrir</span><strong>'+open.length+'</strong></div><div class="card kpi"><span class="muted">Publicados</span><strong>'+published.length+'</strong></div><div class="card kpi"><span class="muted">Con alertas</span><strong>'+risks.length+'</strong></div></div>';
+   document.getElementById('shiftList').innerHTML=shiftTable(currentList,true);bindCoverButtons();
  }
- ['shiftDate','shiftFacility','shiftWorker','shiftStatus'].forEach(function(id){document.getElementById(id).onchange=draw});
- document.getElementById('clearShiftFilters').onclick=function(){['shiftDate','shiftFacility','shiftWorker','shiftStatus'].forEach(function(id){document.getElementById(id).value=''});draw()};draw();
+ ['shiftFrom','shiftTo','shiftFacility','shiftWorker','shiftStatus','shiftMarket','shiftRisk'].forEach(function(id){document.getElementById(id).onchange=draw});
+ document.getElementById('clearShiftFilters').onclick=function(){['shiftFrom','shiftTo','shiftFacility','shiftWorker','shiftStatus','shiftMarket','shiftRisk'].forEach(function(id){document.getElementById(id).value=''});draw()};
+
+ document.getElementById('bulkPublish').onclick=async function(){
+   var ids=currentList.filter(function(x){return x.status==='open'&&!x.worker_id&&!x.open_to_workers&&new Date(x.ends_at)>new Date()}).map(function(x){return x.id});
+   if(!ids.length){alert('No hay turnos abiertos no publicados en el filtro actual.');return}
+   if(!confirm('¿Publicar '+ids.length+' turno(s) abiertos del filtro actual?'))return;
+   var r=await sb.rpc('bulk_set_open_shift_marketplace',{p_shift_ids:ids,p_enabled:true});if(r.error){alert(r.error.message);return}
+   var data=r.data||{},workers=Array.isArray(data.worker_ids)?data.worker_ids:[];
+   if(workers.length)await notifyWorkers(workers,'Nuevos turnos abiertos','Hay nuevos turnos compatibles disponibles en GuardShift.');
+   await load();shifts();alert('Publicados: '+(data.updated||0)+(data.skipped?' · Omitidos: '+data.skipped:'')+'.');
+ };
+ document.getElementById('bulkUnpublish').onclick=async function(){
+   var ids=currentList.filter(function(x){return x.status==='open'&&!x.worker_id&&x.open_to_workers}).map(function(x){return x.id});
+   if(!ids.length){alert('No hay turnos publicados en el filtro actual.');return}
+   if(!confirm('¿Retirar del tablón '+ids.length+' turno(s)?'))return;
+   var r=await sb.rpc('bulk_set_open_shift_marketplace',{p_shift_ids:ids,p_enabled:false});if(r.error){alert(r.error.message);return}
+   await load();shifts();var data=r.data||{};alert('Retirados: '+(data.updated||0)+(data.skipped?' · Omitidos: '+data.skipped:'')+'.');
+ };
+ document.getElementById('bulkNotify').onclick=async function(){
+   var ids=Array.from(new Set(currentList.filter(function(x){return x.status==='assigned'&&x.worker_id&&new Date(x.ends_at)>new Date()}).map(function(x){return x.worker_id})));
+   if(!ids.length){alert('No hay trabajadores asignados a turnos futuros en el filtro actual.');return}
+   if(!confirm('¿Enviar un recordatorio de cuadrante a '+ids.length+' trabajador(es)?'))return;
+   await notifyWorkers(ids,'Recordatorio de cuadrante','Tu coordinador ha actualizado o revisado el cuadrante. Consulta tus próximos turnos en GuardShift.');
+   alert('Aviso enviado a '+ids.length+' trabajador(es).');
+ };
+ document.getElementById('shiftCsv').onclick=function(){
+   if(!currentList.length){alert('No hay turnos para exportar.');return}
+   var csv='Fecha,Instalacion,Inicio,Fin,Trabajador,Estado,Publicado,Riesgo\n'+currentList.map(function(x){var warn=shiftWarning(x);return [d(x.starts_at),x.facilities&&x.facilities.name||'',x.starts_at,x.ends_at,x.workers&&x.workers.full_name||'',x.status,x.open_to_workers?'Sí':'No',warn?warn[0]:''].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_turnos_filtrados.csv';a.click();window.URL.revokeObjectURL(a.href);
+ };
+ draw();
 }
 function monday(offset){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day+((offset||0)*7));x.setHours(0,0,0,0);return x}
 function shiftOverlaps(a,b){return new Date(a.starts_at)<new Date(b.ends_at)&&new Date(a.ends_at)>new Date(b.starts_at)}
@@ -1016,6 +1086,11 @@ function setupRealtime(){
  channel=channel.on('postgres_changes',requestCfg,async function(){
     await load();render();
   });
+ var shiftCfg={event:'*',schema:'public',table:'shifts'};
+ if(state.profile.role==='worker'&&state.profile.worker_id)shiftCfg.filter='worker_id=eq.'+state.profile.worker_id;
+ channel=channel.on('postgres_changes',shiftCfg,async function(){await load();render()});
+ var eventCfg={event:'INSERT',schema:'public',table:'shift_events'};
+ channel=channel.on('postgres_changes',eventCfg,async function(){await load();render()});
  var subCfg={event:'*',schema:'public',table:'substitutions'};
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
  state.realtime=channel.on('postgres_changes',subCfg,async function(){
@@ -1128,10 +1203,12 @@ function myshifts(){
    var req=reqs.find(function(r){return r.shift_id===x.id&&r.status==='pending'});
    var canRequest=x.status==='assigned'&&new Date(x.ends_at)>now&&!req;
    return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div></div>'+badge(x.status)+'</div>'+
-   '<div class="mini-actions" style="margin-top:10px">'+(canRequest?'<button class="btn small secondary" data-request-change="'+x.id+'">Solicitar sustitución</button>':'')+(req?'<span class="badge amber">Solicitud pendiente</span>':'')+'</div></div>';
+   '<div class="mini-actions" style="margin-top:10px"><button class="btn small secondary" data-worker-shift-history="'+x.id+'">Historial</button>'+(canRequest?'<button class="btn small secondary" data-request-change="'+x.id+'">Solicitar sustitución</button>':'')+(req?'<span class="badge amber">Solicitud pendiente</span>':'')+'</div></div>';
  }).join('')+'</div>':'<div class="card empty">No tienes turnos asignados actualmente.</div>';
- var body='<div class="section"><h2>Turnos asignados</h2>'+assigned+'</div><div class="section"><h2>Mis solicitudes de sustitución</h2>'+workerRequestHistory()+'</div>';
+ var recent=(state.shiftEvents||[]).filter(function(e){return e.from_worker_id===state.profile.worker_id||e.to_worker_id===state.profile.worker_id}).slice(0,8);
+ var body='<div class="section"><h2>Turnos asignados</h2>'+assigned+'</div><div class="section"><h2>Actividad reciente de mis turnos</h2>'+(recent.length?'<div class="stack">'+recent.map(function(e){var p=shiftEventPresentation(e),sh=state.shifts.find(function(x){return x.id===e.shift_id});return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+(sh&&sh.facilities?' · '+esc(sh.facilities.name):'')+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+'</div></div><span class="badge '+p[1]+'">'+esc(e.actor_name||'Sistema')+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay cambios recientes.</div>')+'</div><div class="section"><h2>Mis solicitudes de sustitución</h2>'+workerRequestHistory()+'</div>';
  shell('Mis turnos','Tus turnos y el seguimiento de tus solicitudes.',body,'');
+ document.querySelectorAll('[data-worker-shift-history]').forEach(function(b){b.onclick=function(){shiftHistoryModal(b.getAttribute('data-worker-shift-history'))}});
  document.querySelectorAll('[data-request-change]').forEach(function(b){b.onclick=async function(){
    var reason=prompt('¿Por qué necesitas que te cubran este turno?','');if(reason===null)return;
    var r=await sb.rpc('request_shift_change',{p_shift_id:b.getAttribute('data-request-change'),p_reason:reason||null});
