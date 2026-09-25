@@ -1647,8 +1647,10 @@ async function startSubstitution(shiftId,defaultReason){
  var sh=state.shifts.find(function(x){return x.id===shiftId}); if(!sh)return;
  var reason=prompt('Motivo de la sustitución (opcional):',defaultReason||'');
  if(reason===null)return;
+ var originalWorker=sh.worker_id;
  var cr=await sb.rpc('create_substitution',{p_shift_id:shiftId,p_reason:reason||null});
  if(cr.error){alert(cr.error.message);return}
+ if(originalWorker)await notifyWorkers([originalWorker],'Sustitución iniciada',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+'Se ha iniciado la búsqueda de una persona para cubrir tu turno.');
  var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:cr.data});
  if(ca.error){alert(ca.error.message);return}
  showCandidates(cr.data,sh,ca.data||[]);
@@ -1814,10 +1816,10 @@ function openShiftCards(list){
  return '<div class="stack">'+list.map(function(x){
    var a=new Date(x.starts_at),b=new Date(x.ends_at),warnings=planningWarningsForAssignment(wid,a,b,null,[]),reqLabel=facilityRequirementsLabel(x.facility_id);
    var hours=plannedHoursInWeek(wid,a,b,null,[]),rest=restGapForAssignment(wid,a,b,null,[]);
-   var prefer=x.availability_label==='Preferiría no';
+   var label=String(x.availability_label||''),prefer=label.indexOf('Preferiría no')>=0,isSubstitution=label.indexOf('Sustitución')===0;
    var caution=warnings.length||prefer;
    var restText=rest==null?'Sin turno cercano':rest.toFixed(1)+' h de descanso';
-   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility_name||'Turno abierto')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+(x.facility_address?' · '+esc(x.facility_address):'')+'</div></div><span class="badge '+(caution?'amber':'green')+'">'+(caution?'Revisar':'Disponible')+'</span></div><div class="muted" style="margin-top:8px">'+esc(x.availability_label||'Sin disponibilidad marcada')+' · Semana tras cogerlo: '+hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</div><div class="muted" style="margin-top:4px">Requisitos: '+esc(reqLabel)+'</div>'+
+   return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facility_name||'Turno abierto')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+(x.facility_address?' · '+esc(x.facility_address):'')+'</div><div class="mini-actions" style="margin-top:6px">'+(isSubstitution?'<span class="badge blue">🔄 Sustitución</span>':'<span class="badge blue">📣 Turno abierto</span>')+'</div></div><span class="badge '+(caution?'amber':'green')+'">'+(caution?'Revisar':'Disponible')+'</span></div><div class="muted" style="margin-top:8px">'+esc(label||'Sin disponibilidad marcada')+' · Semana tras cogerlo: '+hours.toFixed(1)+'/'+rules.maxWeekly+' h · '+esc(restText)+'</div><div class="muted" style="margin-top:4px">Requisitos: '+esc(reqLabel)+'</div>'+
      (warnings.length?'<div class="mini-actions" style="margin-top:8px">'+warnings.map(function(w){return '<span class="badge amber">⚠️ '+esc(w)+'</span>'}).join('')+'</div>':'')+
      (prefer?'<div style="margin-top:8px"><span class="badge amber">🟡 Marcaste que preferirías no trabajar</span></div>':'')+
      '<button class="btn primary" style="margin-top:10px" data-claim-open="'+x.shift_id+'">Coger turno</button></div>';
@@ -1834,7 +1836,7 @@ function offers(){
    var id=b.getAttribute('data-claim-open'),x=(state.claimableOpenShifts||[]).find(function(y){return y.shift_id===id});
    if(!x)return;
    var warnings=planningWarningsForAssignment(state.profile.worker_id,new Date(x.starts_at),new Date(x.ends_at),null,[]);
-   var extra=(x.availability_label==='Preferiría no'?'\n• Marcaste que preferirías no trabajar en este horario':'')+(warnings.length?'\n• '+warnings.join('\n• '):'');
+   var extra=(String(x.availability_label||'').indexOf('Preferiría no')>=0?'\n• Marcaste que preferirías no trabajar en este horario':'')+(warnings.length?'\n• '+warnings.join('\n• '):'');
    if(!confirm('¿Quieres coger este turno?'+(extra?'\n'+extra:'')))return;
    var r=await sb.rpc('claim_open_shift',{p_shift_id:id});
    if(r.error){alert(r.error.message);await load();offers();return}
