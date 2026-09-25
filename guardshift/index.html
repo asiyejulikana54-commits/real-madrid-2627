@@ -1656,14 +1656,7 @@ function setupRealtime(){
  channel=channel.on('postgres_changes',timeEntryCfg,async function(){await load();render()});
  var correctionCfg={event:'*',schema:'public',table:'time_correction_requests'};
  if(state.profile.role==='worker'&&state.profile.worker_id)correctionCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',correctionCfg,async function(payload){
-   var row=payload&&payload.new||{};
-   await load();
-   if(state.profile.role==='worker'&&payload.eventType==='UPDATE'&&['approved','rejected'].indexOf(row.status)>=0){
-     await showGuardShiftNotification('Corrección de fichaje',row.status==='approved'?'Tu solicitud de corrección ha sido aprobada.':'Tu solicitud de corrección ha sido rechazada.'+(row.review_note?' · '+row.review_note:''));
-   }
-   render();
- });
+ channel=channel.on('postgres_changes',correctionCfg,async function(){await load();render()});
  if(state.profile.role==='coordinator'){
    channel=channel.on('postgres_changes',{event:'*',schema:'public',table:'timesheet_day_closures'},async function(){await load();render()});
  }
