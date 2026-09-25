@@ -185,7 +185,13 @@ function shiftTable(rows,actions){
 function bindCoverButtons(){
  document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}});
  document.querySelectorAll('[data-edit-shift]').forEach(function(b){b.onclick=function(){shiftModal(b.getAttribute('data-edit-shift'))}});
- document.querySelectorAll('[data-cancel-shift]').forEach(function(b){b.onclick=async function(){if(!confirm('¿Cancelar este turno?'))return;var r=await sb.rpc('cancel_shift',{p_shift_id:b.getAttribute('data-cancel-shift')});if(r.error){alert(r.error.message);return}await load();render()}});
+ document.querySelectorAll('[data-cancel-shift]').forEach(function(b){b.onclick=async function(){
+   if(!confirm('¿Cancelar este turno?'))return;
+   var id=b.getAttribute('data-cancel-shift'),sh=state.shifts.find(function(x){return x.id===id});
+   var r=await sb.rpc('cancel_shift',{p_shift_id:id});if(r.error){alert(r.error.message);return}
+   if(sh&&sh.worker_id)await notifyWorkers([sh.worker_id],'Turno cancelado',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));
+   await load();render()
+ }});
 }
 function dashboard(){
  var open=state.shifts.filter(function(s){return s.status==='open'});
@@ -284,6 +290,8 @@ async function duplicateDisplayedWeek(){
  });
  if(!payload.length){alert('La semana siguiente ya contiene todos esos turnos.');return}
  var r=await sb.from('shifts').insert(payload);if(r.error){alert(r.error.message);return}
+ var affected=payload.map(function(x){return x.worker_id}).filter(Boolean);
+ if(affected.length)await notifyWorkers(affected,'Cuadrante actualizado','Se han añadido nuevos turnos a tu próxima semana. Revisa tu cuadrante en GuardShift.');
  await load();state.scheduleOffset++;schedule();alert('Copiados '+payload.length+' turno(s).');
 }
 function schedule(){
@@ -336,16 +344,34 @@ function toLocalInput(v){if(!v)return '';var x=new Date(v),o=x.getTimezoneOffset
 function shiftModal(id){
  if(!state.facilities.length){alert('Primero crea una instalación.');return}
  var item=id?state.shifts.find(function(x){return x.id===id}):null;
+ var original=item?{worker_id:item.worker_id,facility_id:item.facility_id,starts_at:item.starts_at,ends_at:item.ends_at}:null;
  var fo=state.facilities.filter(function(f){return f.active||item&&f.id===item.facility_id}).map(function(f){return '<option value="'+f.id+'" '+(item&&item.facility_id===f.id?'selected':'')+'>'+esc(f.name)+'</option>'}).join('');
  var wo='<option value="">Sin asignar</option>'+state.workers.filter(function(w){return w.active||item&&w.id===item.worker_id}).map(function(w){return '<option value="'+w.id+'" '+(item&&item.worker_id===w.id?'selected':'')+'>'+esc(w.full_name)+'</option>'}).join('');
  var el=modal(item?'Editar turno':'Nuevo turno','<form class="form"><div class="field"><label>Instalación</label><select name="facility" required>'+fo+'</select></div><div class="field"><label>Trabajador</label><select name="worker">'+wo+'</select></div><div class="field"><label>Inicio</label><input name="start" type="datetime-local" value="'+toLocalInput(item&&item.starts_at)+'" required></div><div class="field"><label>Fin</label><input name="end" type="datetime-local" value="'+toLocalInput(item&&item.ends_at)+'" required></div><button class="btn primary">'+(item?'Guardar cambios':'Crear turno')+'</button></form>');
- el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}if(w){
-   if(workerHasOverlap(w,a,b,item&&item.id)){ferr(e.target,'Ese trabajador ya tiene otro turno que se solapa con este horario.');return}
-   var leave=approvedLeaveForShift(w,a,b);if(leave&&!confirm('El trabajador tiene una ausencia aprobada en esas fechas. ¿Quieres asignarlo de todas formas?'))return;
-   var av=availabilityForShift(w,a,b);if(av&&av.status==='unavailable'&&!confirm('El trabajador ha marcado que NO está disponible en ese horario. ¿Asignarlo de todas formas?'))return;
-   if(av&&av.status==='prefer_not'&&!confirm('El trabajador ha indicado que preferiría no trabajar en ese horario. ¿Continuar?'))return;
+ el.querySelector('form').onsubmit=async function(e){
+   e.preventDefault();
+   var f=new FormData(e.target),w=f.get('worker')||null,a=new Date(f.get('start')),b=new Date(f.get('end'));
+   if(b<=a){ferr(e.target,'La hora de fin debe ser posterior al inicio.');return}
+   if(w){
+     if(workerHasOverlap(w,a,b,item&&item.id)){ferr(e.target,'Ese trabajador ya tiene otro turno que se solapa con este horario.');return}
+     var leave=approvedLeaveForShift(w,a,b);if(leave&&!confirm('El trabajador tiene una ausencia aprobada en esas fechas. ¿Quieres asignarlo de todas formas?'))return;
+     var av=availabilityForShift(w,a,b);if(av&&av.status==='unavailable'&&!confirm('El trabajador ha marcado que NO está disponible en ese horario. ¿Asignarlo de todas formas?'))return;
+     if(av&&av.status==='prefer_not'&&!confirm('El trabajador ha indicado que preferiría no trabajar en ese horario. ¿Continuar?'))return;
+   }
+   var facilityId=f.get('facility'),payload={facility_id:facilityId,worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};
+   var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));
+   if(r.error){ferr(e.target,r.error.message);return}
+   var facility=state.facilities.find(function(x){return x.id===facilityId}),where=facility&&facility.name?facility.name:'Turno';
+   var detail=where+' · '+d(a)+' '+t(a)+'–'+t(b);
+   if(!original&&w){
+     await notifyWorkers([w],'Nuevo turno asignado',detail);
+   }else if(original){
+     if(original.worker_id&&original.worker_id!==w)await notifyWorkers([original.worker_id],'Turno retirado','Ya no tienes asignado el turno del '+d(original.starts_at)+' a las '+t(original.starts_at)+'.');
+     if(w&&original.worker_id!==w)await notifyWorkers([w],'Nuevo turno asignado',detail);
+     if(w&&original.worker_id===w&&(original.facility_id!==facilityId||new Date(original.starts_at).getTime()!==a.getTime()||new Date(original.ends_at).getTime()!==b.getTime()))await notifyWorkers([w],'Turno actualizado',detail);
+   }
+   el.remove();await load();render()
  }
- var payload={facility_id:f.get('facility'),worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
 }
 
 function substitutionSummary(list){
@@ -452,6 +478,13 @@ function setupRealtime(){
     }
     render();
   }).subscribe();
+}
+async function notifyWorkers(workerIds,title,body){
+ var ids=Array.from(new Set((workerIds||[]).filter(Boolean)));
+ if(!ids.length)return;
+ try{
+   await sb.functions.invoke('send-guardshift-push',{body:{worker_ids:ids,title:title,body:body,url:location.href}});
+ }catch(_){}
 }
 async function startSubstitution(shiftId,defaultReason){
  var sh=state.shifts.find(function(x){return x.id===shiftId}); if(!sh)return;
