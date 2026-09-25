@@ -263,7 +263,23 @@ function facilityModal(id){
  var item=id?state.facilities.find(function(x){return x.id===id}):null;
  var el=modal(item?'Editar instalación':'Nueva instalación','<form class="form"><div class="field"><label>Nombre</label><input name="name" value="'+esc(item&&item.name||'')+'" required></div><div class="field"><label>Dirección</label><input name="address" value="'+esc(item&&item.address||'')+'"></div><div class="field"><label>Socorristas necesarios</label><input name="required" type="number" min="1" value="'+esc(item&&item.required_workers||1)+'" required></div><div class="field"><label>Ubicación del centro</label><div class="mini-actions"><input name="latitude" type="number" step="any" placeholder="Latitud" value="'+esc(item&&item.latitude!=null?item.latitude:'')+'"><input name="longitude" type="number" step="any" placeholder="Longitud" value="'+esc(item&&item.longitude!=null?item.longitude:'')+'"></div><button type="button" class="btn secondary" id="useFacilityLocation">📍 Usar mi ubicación actual</button><div class="muted">Úsalo estando físicamente en la instalación para poder calcular la distancia de los fichajes.</div></div><button class="btn primary">'+(item?'Guardar cambios':'Guardar')+'</button></form>');
  document.getElementById('useFacilityLocation').onclick=async function(){try{var p=await getGeoPosition();el.querySelector('[name="latitude"]').value=p.latitude;el.querySelector('[name="longitude"]').value=p.longitude;alert('Ubicación capturada con precisión aproximada de ±'+Math.round(p.accuracy)+' m.')}catch(e){alert(e.message)}};
- el.querySelector('form').onsubmit=async function(e){e.preventDefault();var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),payload={name:f.get('name'),address:f.get('address')||null,required_workers:Number(f.get('required')),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};var r=item?await sb.from('facilities').update(payload).eq('id',item.id):await sb.from('facilities').insert(Object.assign({company_id:state.profile.company_id},payload));if(r.error){ferr(e.target,r.error.message);return}el.remove();await load();render()}
+ el.querySelector('form').onsubmit=async function(e){
+   e.preventDefault();
+   var f=new FormData(e.target),lat=f.get('latitude'),lng=f.get('longitude'),address=f.get('address')||null;
+   var payload={name:f.get('name'),address:address,required_workers:Number(f.get('required')),latitude:lat===''?null:Number(lat),longitude:lng===''?null:Number(lng)};
+   if((payload.latitude==null||payload.longitude==null)&&address){
+     try{
+       var g=await sb.functions.invoke('geocode-facility',{body:{address:address}});
+       if(!g.error&&g.data&&g.data.found){
+         payload.latitude=g.data.latitude;
+         payload.longitude=g.data.longitude;
+       }
+     }catch(_){}
+   }
+   var r=item?await sb.from('facilities').update(payload).eq('id',item.id):await sb.from('facilities').insert(Object.assign({company_id:state.profile.company_id},payload));
+   if(r.error){ferr(e.target,r.error.message);return}
+   el.remove();await load();render()
+ }
 }
 function workerModal(id){
  var item=id?state.workers.find(function(x){return x.id===id}):null;
