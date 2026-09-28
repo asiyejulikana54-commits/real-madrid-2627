@@ -2392,6 +2392,15 @@ function render(){
 async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};auth()}
 function readableError(err){
  if(!err)return 'Error desconocido.';
+ var raw=typeof err==='string'?err:(err.message||'');
+ var low=raw.toLowerCase();
+ if(low.includes('overlap')||low.includes('solapa'))return 'El fichaje se solapa con otro registro del trabajador. Revisa las horas antes de guardar.';
+ if((low.includes('clock_out')&&low.includes('clock_in'))||(low.includes('salida')&&low.includes('posterior')))return 'La hora de salida debe ser posterior a la hora de entrada.';
+ if(low.includes('24 hours')||low.includes('24 horas'))return 'Un fichaje no puede superar 24 horas. Revisa la entrada y la salida.';
+ if(low.includes('timesheet')&&low.includes('closed'))return 'Ese día ya está cerrado. Reábrelo antes de modificar sus fichajes.';
+ if(low.includes('pending')&&low.includes('correction'))return 'Este fichaje tiene una corrección pendiente y no puede aprobarse todavía.';
+ if(low.includes('not authorized')||low.includes('not coordinator')||low.includes('permission denied'))return 'No tienes permisos para realizar esta operación.';
+ if(low.includes('network')||low.includes('failed to fetch'))return 'No se pudo conectar con GuardShift. Comprueba tu conexión y vuelve a intentarlo.';
  if(typeof err==='string')return err;
  if(err.message)return err.message;
  try{return JSON.stringify(err)}catch(_){return 'Error inesperado.'}
