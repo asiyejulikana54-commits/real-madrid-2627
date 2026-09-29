@@ -1431,7 +1431,7 @@ function substitutionsPage(){
    var workerIds=new Set(),count=0;
    active.forEach(function(x){(x.substitution_offers||[]).filter(function(o){return o.accepted===null&&o.offered_at&&(now-new Date(o.offered_at))>=2*3600000}).forEach(function(o){workerIds.add(o.worker_id);count++})});
    if(!workerIds.size){alert('No hay ofertas con al menos 2 horas sin respuesta.');btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
-   if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) sin respuesta desde hace al menos 2 horas?'')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
+   if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) sin respuesta desde hace al menos 2 horas?')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
    await notifyWorkers(Array.from(workerIds),'Oferta de sustitución pendiente','Tienes una oferta de sustitución sin responder. Revísala en GuardShift.');
    unlockAction('bulkRemindOffers');btn.disabled=false;btn.textContent=oldText;alert('Recordatorio enviado a '+workerIds.size+' trabajador(es).');
  };
