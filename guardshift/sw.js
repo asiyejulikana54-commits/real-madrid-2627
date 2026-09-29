@@ -1,6 +1,55 @@
-const CACHE='guardshift-notify-v2';
-self.addEventListener('install',event=>self.skipWaiting());
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+const CACHE='guardshift-shell-v3';
+const SHELL=['./','./index.html'];
+
+self.addEventListener('install',event=>{
+  event.waitUntil((async()=>{
+    try{
+      const cache=await caches.open(CACHE);
+      await cache.addAll(SHELL);
+    }catch(e){}
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate',event=>{
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(key=>key.startsWith('guardshift-')&&key!==CACHE).map(key=>caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch',event=>{
+  const request=event.request;
+  if(request.method!=='GET')return;
+  const url=new URL(request.url);
+
+  if(request.mode==='navigate'){
+    event.respondWith((async()=>{
+      const cache=await caches.open(CACHE);
+      try{
+        const response=await fetch(request);
+        if(response&&response.ok)await cache.put('./index.html',response.clone());
+        return response;
+      }catch(e){
+        return (await cache.match('./index.html'))||(await cache.match('./'))||Response.error();
+      }
+    })());
+    return;
+  }
+
+  if(url.hostname==='cdn.jsdelivr.net'){
+    event.respondWith((async()=>{
+      const cache=await caches.open(CACHE);
+      const cached=await cache.match(request);
+      if(cached)return cached;
+      const response=await fetch(request);
+      if(response)await cache.put(request,response.clone());
+      return response;
+    })());
+  }
+});
+
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
   const target=(event.notification.data&&event.notification.data.url)||'./';
