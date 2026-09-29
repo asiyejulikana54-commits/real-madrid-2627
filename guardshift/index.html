@@ -43,7 +43,7 @@ var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfY
 var sb=supabase.createClient(URL,KEY);
 var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
-var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false,realtimeGeneration=0,realtimeReconnectTimer=null,realtimeReconnectAttempt=0,lastSyncError='',lastSyncAt=0;
+var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false,realtimeGeneration=0,realtimeReconnectTimer=null,realtimeReconnectAttempt=0,syncRetryTimer=null,syncRetryAttempt=0,lastSyncError='',lastSyncAt=0;
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
 function refreshConnectionBanner(){
@@ -64,8 +64,18 @@ async function runRealtimeRefresh(){
  if(realtimeRefreshRunning){realtimeRefreshQueued=true;return}
  if(navigator.onLine===false){refreshConnectionBanner();return}
  realtimeRefreshRunning=true;
- try{await load();lastSyncAt=Date.now();lastSyncError='';render()}
- catch(e){lastSyncError=readableError(e);refreshConnectionBanner()}
+ try{
+  await load();lastSyncAt=Date.now();lastSyncError='';syncRetryAttempt=0;
+  if(syncRetryTimer){clearTimeout(syncRetryTimer);syncRetryTimer=null}
+  render()
+ }
+ catch(e){
+  lastSyncError=readableError(e);refreshConnectionBanner();
+  if(!syncRetryTimer&&navigator.onLine!==false&&state.session){
+    var delay=Math.min(30000,2000*Math.pow(2,Math.min(syncRetryAttempt,4)));syncRetryAttempt++;
+    syncRetryTimer=setTimeout(function(){syncRetryTimer=null;scheduleRealtimeRefresh()},delay);
+  }
+ }
  finally{realtimeRefreshRunning=false;if(realtimeRefreshQueued){realtimeRefreshQueued=false;scheduleRealtimeRefresh()}}
 }
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
@@ -2447,6 +2457,7 @@ function render(){
 async function logout(){
  realtimeGeneration++;
  if(realtimeReconnectTimer){clearTimeout(realtimeReconnectTimer);realtimeReconnectTimer=null}
+ if(syncRetryTimer){clearTimeout(syncRetryTimer);syncRetryTimer=null}syncRetryAttempt=0;
  await sb.auth.signOut();
  if(state.realtime){sb.removeChannel(state.realtime)}
  state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null,realtimeStatus:'IDLE'};
@@ -2489,8 +2500,8 @@ window.addEventListener('unhandledrejection',function(ev){
  if(ev&&ev.preventDefault)ev.preventDefault();
  recovery(ev&&ev.reason?ev.reason:'Promesa rechazada','Se ha producido un error inesperado al completar una operación.');
 });
-window.addEventListener('offline',function(){lastSyncError='';state.realtimeStatus='OFFLINE';refreshConnectionBanner()});
-window.addEventListener('online',function(){lastSyncError='';refreshConnectionBanner();if(state.session&&state.profile){setupRealtime();scheduleRealtimeRefresh()}});
+window.addEventListener('offline',function(){lastSyncError='';state.realtimeStatus='OFFLINE';if(syncRetryTimer){clearTimeout(syncRetryTimer);syncRetryTimer=null}refreshConnectionBanner()});
+window.addEventListener('online',function(){lastSyncError='';syncRetryAttempt=0;refreshConnectionBanner();if(state.session&&state.profile){setupRealtime();scheduleRealtimeRefresh()}});
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});safeBoot();
 })();
 </script></body></html>
