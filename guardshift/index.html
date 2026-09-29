@@ -1426,13 +1426,16 @@ function substitutionsPage(){
    if(!targets.length){alert('No hay sustituciones estancadas pendientes de escalar.');btn.disabled=false;btn.textContent=oldText;unlockAction('bulkEscalateSubs');return}
    if(!confirm('¿Publicar '+targets.length+' sustitución(es) estancada(s) para toda la plantilla compatible?')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkEscalateSubs');return}
    var workers=new Set(),ok=0,failed=0;
-   for(var i=0;i<targets.length;i++){
-     var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:targets[i].id,p_enabled:true});
-     if(r.error){failed++;continue}
-     ok++;(r.data||[]).forEach(function(id){workers.add(id)});
-   }
-   if(workers.size)await notifyWorkers(Array.from(workers),'Sustituciones disponibles','Hay nuevas sustituciones compatibles en Turnos disponibles.');
-   await load();substitutionsPage();unlockAction('bulkEscalateSubs');alert('Escaladas: '+ok+(failed?' · No procesadas: '+failed:'')+' · Trabajadores avisados: '+workers.size+'.');
+   try{
+     for(var i=0;i<targets.length;i++){
+       var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:targets[i].id,p_enabled:true});
+       if(r.error){failed++;continue}
+       ok++;(r.data||[]).forEach(function(id){workers.add(id)});
+     }
+     if(workers.size)await notifyWorkers(Array.from(workers),'Sustituciones disponibles','Hay nuevas sustituciones compatibles en Turnos disponibles.');
+     await load();substitutionsPage();alert('Escaladas: '+ok+(failed?' · No procesadas: '+failed:'')+' · Trabajadores avisados: '+workers.size+'.');
+   }catch(e){alert(readableError(e))}
+   finally{unlockAction('bulkEscalateSubs');var live=document.getElementById('bulkEscalateSubs');if(live){live.disabled=false;live.textContent=oldText}}
  };
  document.getElementById('bulkRemindOffers').onclick=async function(){
    if(!lockAction('bulkRemindOffers')){alert('El envío de recordatorios ya está en curso.');return}
@@ -1441,8 +1444,11 @@ function substitutionsPage(){
    active.forEach(function(x){(x.substitution_offers||[]).filter(function(o){return o.accepted===null&&o.offered_at&&(now-new Date(o.offered_at))>=2*3600000}).forEach(function(o){workerIds.add(o.worker_id);count++})});
    if(!workerIds.size){alert('No hay ofertas con al menos 2 horas sin respuesta.');btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
    if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) sin respuesta desde hace al menos 2 horas?')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
-   await notifyWorkers(Array.from(workerIds),'Oferta de sustitución pendiente','Tienes una oferta de sustitución sin responder. Revísala en GuardShift.');
-   unlockAction('bulkRemindOffers');btn.disabled=false;btn.textContent=oldText;alert('Recordatorio enviado a '+workerIds.size+' trabajador(es).');
+   try{
+     await notifyWorkers(Array.from(workerIds),'Oferta de sustitución pendiente','Tienes una oferta de sustitución sin responder. Revísala en GuardShift.');
+     alert('Recordatorio enviado a '+workerIds.size+' trabajador(es).');
+   }catch(e){alert(readableError(e))}
+   finally{unlockAction('bulkRemindOffers');var live=document.getElementById('bulkRemindOffers');if(live){live.disabled=false;live.textContent=oldText}}
  };
  document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}var csv='Centro,Inicio,Fin,Original,Cubre,Estado,Horas abierta,Ofertas,Aceptadas,Rechazadas,Pendientes,Pendientes 2h,Respuesta %,Publicada,Creada,Resuelta,Motivo\\n'+rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[],answered=offers.filter(function(o){return o.accepted!==null}).length,pending=offers.filter(function(o){return o.accepted===null}),old=pending.filter(function(o){return o.offered_at&&(new Date()-new Date(o.offered_at))>=2*3600000}).length;return [fa.name||'',sh.starts_at||'',sh.ends_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===true}).length,offers.filter(function(o){return o.accepted===false}).length,pending.length,old,offers.length?Math.round(answered*100/offers.length):0,sh.open_to_workers?'sí':'no',x.created_at||'',x.resolved_at||'',x.reason||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\\n');var blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_sustituciones_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href)};
 }
