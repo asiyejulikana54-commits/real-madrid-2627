@@ -68,10 +68,9 @@ jobs:
           print("HTML parsed successfully")
           PY
 
-      - name: Verify published GuardShift when deployment URL is configured
-        if: ${{ vars.GUARDSHIFT_PUBLIC_URL != '' }}
+      - name: Verify published GuardShift
         env:
-          GUARDSHIFT_PUBLIC_URL: ${{ vars.GUARDSHIFT_PUBLIC_URL }}
+          GUARDSHIFT_PUBLIC_URL: https://asiyejulikana54-commits.github.io/real-madrid-2627/guardshift
         run: |
           python3 - <<'PY'
           import hashlib,os,time,urllib.request
