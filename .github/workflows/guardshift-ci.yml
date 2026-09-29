@@ -7,6 +7,7 @@ on:
       - "guardshift/**"
       - ".github/workflows/guardshift-ci.yml"
   pull_request:
+    branches: [main]
     paths:
       - "guardshift/**"
       - ".github/workflows/guardshift-ci.yml"
