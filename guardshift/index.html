@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0f6fff">
 <title>GuardShift</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--nav:#0b2a4d;--primary:#0f6fff;--text:#172033;--muted:#6b7280;--border:#dfe7f2;--green:#0a8f47;--red:#c93636}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
@@ -16,7 +16,7 @@ button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!impo
 .tabs{display:flex;background:#eef3fa;padding:4px;border-radius:12px;margin:20px 0}.tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:700}.tabs .on{background:#fff;box-shadow:0 2px 8px #0001}
 .form{display:grid;gap:13px}.field{display:grid;gap:6px}.field label{font-size:13px;font-weight:700}.field input,.field select{border:1px solid #cfd9e7;border-radius:12px;padding:11px 12px;width:100%;background:#fff}
 .btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800}.primary{background:var(--primary);color:#fff}.secondary{background:#eaf1fb;color:#234}
-.msg{padding:11px 13px;border-radius:12px;font-size:13px;margin:12px 0}.err{background:#fdecec;color:#9d1c1c}.ok{background:#e7f7ee;color:#08723a}
+.msg{padding:11px 13px;border-radius:12px;font-size:13px;margin:12px 0}.connection-banner{padding:10px 13px;border-radius:12px;font-size:13px;font-weight:700;margin:0 0 14px;border:1px solid transparent}.connection-banner.offline{background:#fff4df;color:#7a4d00;border-color:#f4d28f}.connection-banner.syncing{background:#eaf2ff;color:#1456b8;border-color:#bfd5ff}.connection-banner.error{background:#fdecec;color:#9d1c1c;border-color:#f3bcbc}.err{background:#fdecec;color:#9d1c1c}.ok{background:#e7f7ee;color:#08723a}
 .shell{min-height:100vh;display:grid;grid-template-columns:235px 1fr}.side{background:var(--nav);color:#fff;padding:20px 14px;position:sticky;top:0;height:100vh}
 .side .logo{font-size:20px;margin:3px 8px 26px}.nav{display:grid;gap:7px}.nav button{border:0;background:transparent;color:#dce9f8;text-align:left;padding:12px;border-radius:11px}.nav button.on,.nav button:hover{background:#17426f;color:#fff}
 .logout{position:absolute;bottom:18px;left:14px;right:14px;border:1px solid #ffffff40;background:transparent;color:#fff;padding:10px;border-radius:11px}
@@ -43,11 +43,31 @@ var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfY
 var sb=supabase.createClient(URL,KEY);
 var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
-var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false;
+var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false,realtimeGeneration=0,realtimeReconnectTimer=null,realtimeReconnectAttempt=0,lastSyncError='',lastSyncAt=0;
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
+function refreshConnectionBanner(){
+ var el=document.getElementById('connectionBanner');if(!el)return;
+ if(navigator.onLine===false){el.className='connection-banner offline';el.textContent='📡 Sin conexión. Puedes consultar lo ya cargado, pero no se enviarán cambios ni fichajes.';return}
+ if(lastSyncError){el.className='connection-banner error';el.textContent='⚠️ Conexión disponible, pero la última sincronización falló. GuardShift reintentará automáticamente.';return}
+ if(state.session&&state.profile&&state.realtimeStatus&&state.realtimeStatus!=='SUBSCRIBED'){el.className='connection-banner syncing';el.textContent='↻ Sincronizando cambios en tiempo real…';return}
+ el.className='connection-banner hidden';el.textContent='';
+}
+function scheduleRealtimeReconnect(generation){
+ if(navigator.onLine===false||!state.session||!state.profile||generation!==realtimeGeneration||realtimeReconnectTimer)return;
+ var delay=Math.min(30000,1000*Math.pow(2,Math.min(realtimeReconnectAttempt,5)));realtimeReconnectAttempt++;
+ realtimeReconnectTimer=setTimeout(function(){realtimeReconnectTimer=null;if(generation===realtimeGeneration&&navigator.onLine!==false)setupRealtime()},delay);
+}
 function scheduleRealtimeRefresh(){if(realtimeRefreshTimer)clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=setTimeout(runRealtimeRefresh,180)}
-async function runRealtimeRefresh(){realtimeRefreshTimer=null;if(realtimeRefreshRunning){realtimeRefreshQueued=true;return}realtimeRefreshRunning=true;try{await load();render()}finally{realtimeRefreshRunning=false;if(realtimeRefreshQueued){realtimeRefreshQueued=false;scheduleRealtimeRefresh()}}}
+async function runRealtimeRefresh(){
+ realtimeRefreshTimer=null;
+ if(realtimeRefreshRunning){realtimeRefreshQueued=true;return}
+ if(navigator.onLine===false){refreshConnectionBanner();return}
+ realtimeRefreshRunning=true;
+ try{await load();lastSyncAt=Date.now();lastSyncError='';render()}
+ catch(e){lastSyncError=readableError(e);refreshConnectionBanner()}
+ finally{realtimeRefreshRunning=false;if(realtimeRefreshQueued){realtimeRefreshQueued=false;scheduleRealtimeRefresh()}}
+}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
 function t(v){return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit'}).format(new Date(v))}
@@ -140,7 +160,7 @@ async function load(){
    var wr=await Promise.all([
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*'),
-    sb.from('shifts').select('*,facilities(name,timezone),workers(full_name)').order('starts_at'),
+    sb.from('shifts').select('*,facilities(name,timezone,address,latitude,longitude,attendance_radius_m),workers(full_name)').order('starts_at'),
     sb.from('substitution_offers').select('id,accepted,responded_at,offered_at,substitution_id,substitutions(id,status,reason,shift_id,shifts(id,starts_at,ends_at,status,facility_id,facilities(name,address)))').order('offered_at',{ascending:false}),
     sb.from('availability').select('*').order('starts_at',{ascending:true}),
     sb.from('worker_documents').select('*').order('expires_on',{ascending:true}),
@@ -164,7 +184,7 @@ async function load(){
    var rs=await Promise.all([
     sb.from('facilities').select('*').order('name'),
     sb.from('workers').select('*').order('full_name'),
-    sb.from('shifts').select('*,facilities(name,timezone),workers(full_name)').order('starts_at'),
+    sb.from('shifts').select('*,facilities(name,timezone,address,latitude,longitude,attendance_radius_m),workers(full_name)').order('starts_at'),
     sb.from('substitutions').select('id,status,reason,created_at,updated_at,resolved_at,marketplace_escalated_at,last_offered_at,original_worker_id,accepted_worker_id,shift_id,shifts(id,starts_at,ends_at,status,open_to_workers,facility_id,facilities(name)),substitution_offers(id,worker_id,offered_at,responded_at,accepted,workers(full_name,email))').order('created_at',{ascending:false}),
     sb.from('worker_documents').select('*,workers(full_name)').order('expires_on',{ascending:true}),
     sb.from('time_entries').select('*,workers(full_name),shifts(facility_id,starts_at,ends_at,facilities(name,timezone,latitude,longitude,attendance_radius_m))').order('clock_in',{ascending:false}),
@@ -198,10 +218,11 @@ function nav(){
 }
 function shell(title,sub,body,actions){
  app.innerHTML='<div class="shell"><aside class="side"><div class="logo">🛟 GuardShift</div><div class="nav">'+nav()+'</div><button class="logout" id="logout">Cerrar sesión</button></aside>'+
- '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
+ '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
  document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');render()}});
  document.getElementById('logout').onclick=logout;
  var mobileLogout=document.getElementById('mobileLogout');if(mobileLogout)mobileLogout.onclick=logout;
+ refreshConnectionBanner();
 }
 function badge(s){var x={assigned:['Asignado','green'],open:['Sin cubrir','red'],cancelled:['Cancelado','blue'],completed:['Completado','blue']}[s]||[s,'blue'];return '<span class="badge '+x[1]+'">'+x[0]+'</span>'}
 function shiftTable(rows,actions){
@@ -1604,8 +1625,11 @@ async function enableNotifications(){
  }else alert('Las notificaciones no están permitidas. Revisa los permisos del navegador.');
 }
 function setupRealtime(){
+ var generation=++realtimeGeneration;
+ if(realtimeReconnectTimer){clearTimeout(realtimeReconnectTimer);realtimeReconnectTimer=null}
  if(state.realtime){sb.removeChannel(state.realtime);state.realtime=null}
- if(!state.profile)return;
+ if(!state.profile||navigator.onLine===false){state.realtimeStatus='OFFLINE';refreshConnectionBanner();return}
+ state.realtimeStatus='CONNECTING';refreshConnectionBanner();
  var channel=sb.channel('guardshift-live-'+state.profile.id);
  var cfg={event:'*',schema:'public',table:'substitution_offers'};
  if(state.profile.role==='worker'&&state.profile.worker_id)cfg.filter='worker_id=eq.'+state.profile.worker_id;
@@ -1683,7 +1707,16 @@ function setupRealtime(){
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
  state.realtime=channel.on('postgres_changes',subCfg,async function(){
     scheduleRealtimeRefresh();
-  }).subscribe();
+  }).subscribe(function(status,err){
+    if(generation!==realtimeGeneration)return;
+    state.realtimeStatus=status;
+    if(status==='SUBSCRIBED'){realtimeReconnectAttempt=0;lastSyncError='';lastSyncAt=Date.now()}
+    else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+      if(err&&err.message)lastSyncError=err.message;
+      scheduleRealtimeReconnect(generation);
+    }
+    refreshConnectionBanner();
+  });
 }
 async function notifyWorkers(workerIds,title,body){
  var ids=Array.from(new Set((workerIds||[]).filter(Boolean)));
@@ -1975,13 +2008,33 @@ function availability(){
 function getGeoPosition(){
  return new Promise(function(resolve,reject){
   if(!navigator.geolocation){reject(new Error('Este dispositivo no permite obtener ubicación.'));return}
-  navigator.geolocation.getCurrentPosition(function(pos){
-    resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy});
+  var best=null,settled=false,watchId=null,timer=null;
+  function finish(err){
+    if(settled)return;settled=true;
+    if(timer)clearTimeout(timer);
+    if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+    if(best&&!err){resolve(best);return}
+    reject(err||new Error('No se pudo obtener una ubicación suficientemente precisa. Inténtalo de nuevo.'));
+  }
+  watchId=navigator.geolocation.watchPosition(function(pos){
+    var accuracy=Number(pos.coords.accuracy);
+    var candidate={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:Number.isFinite(accuracy)?accuracy:99999};
+    if(!best||candidate.accuracy<best.accuracy)best=candidate;
+    if(candidate.accuracy<=35)finish();
   },function(err){
-    var m=err&&err.code===1?'Debes permitir la ubicación para fichar.':'No se pudo obtener la ubicación. Inténtalo de nuevo.';
-    reject(new Error(m));
-  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+    if(err&&err.code===1){finish(new Error('Debes permitir la ubicación para fichar.'));return}
+    if(best){finish();return}
+    finish(new Error('No se pudo obtener la ubicación. Activa el GPS y vuelve a intentarlo.'));
+  },{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+  timer=setTimeout(function(){if(best)finish();else finish(new Error('El GPS está tardando demasiado. Comprueba que la ubicación esté activada e inténtalo de nuevo.'))},12000);
  });
+}
+function validateClockingPosition(pos,facility){
+ if(!facility||!Number.isFinite(Number(facility.latitude))||!Number.isFinite(Number(facility.longitude)))throw new Error('La instalación no tiene ubicación GPS configurada. Contacta con el coordinador.');
+ if(!pos||!Number.isFinite(Number(pos.accuracy))||Number(pos.accuracy)>150)throw new Error('La precisión GPS es insuficiente (±'+Math.round(Number(pos&&pos.accuracy)||0)+' m). Espera unos segundos o muévete a una zona con mejor señal.');
+ var radius=Math.max(25,Number(facility.attendance_radius_m)||250),dist=distanceMeters(Number(pos.latitude),Number(pos.longitude),Number(facility.latitude),Number(facility.longitude)),max=radius+Math.min(Number(pos.accuracy),50);
+ if(dist>max)throw new Error('Estás fuera de la zona de fichaje. Distancia aproximada: '+Math.round(dist)+' m · radio permitido: '+radius+' m.');
+ return {distance:dist,radius:radius,max:max};
 }
 function geoLink(lat,lng){return 'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng)}
 function distanceMeters(lat1,lon1,lat2,lon2){
@@ -2224,43 +2277,40 @@ function hoursPage(){
  document.getElementById('exportPdf').onclick=function(){window.print()};
 }
 function clocking(){
- var now=new Date(),early=Math.max(0,Number(state.company&&state.company.clock_in_early_minutes||30));
+ var now=new Date(),early=Math.max(0,Number(state.company&&state.company.clock_in_early_minutes||30)),online=navigator.onLine!==false;
  var open=(state.timeEntries||[]).find(function(x){return !x.clock_out});
  var upcoming=state.shifts.filter(function(x){return x.worker_id===state.profile.worker_id&&x.status==='assigned'&&new Date(x.ends_at)>now}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
- var openLoc=open?locationForEntry(open.id,'clock_in'):null,openShift=open&&open.shifts||{},overdue=open&&openShift.ends_at&&now>new Date(openShift.ends_at);
- var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+ts(open.clock_in)+'</div>'+(openLoc?'<div style="margin-top:7px"><span class="badge green">📍 Ubicación registrada · GPS ±'+Math.round(openLoc.accuracy_m||0)+' m</span></div>':'')+(overdue?'<div class="msg err" style="margin-top:10px">El turno ya ha superado su hora prevista de finalización. Si sigues trabajando, ficha al terminar; si olvidaste la salida, puedes solicitar una corrección desde Mis horas.</div>':'')+'<button class="btn danger" id="clockOut" style="margin-top:10px">Fichar salida</button></div>':
- (upcoming.length?'<div class="stack">'+upcoming.slice(0,6).map(function(x){var start=new Date(x.starts_at),end=new Date(x.ends_at),availableAt=new Date(start.getTime()-early*60000),can=now>=availableAt&&now<=end,started=now>=start;return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><div class="muted">Ventana de entrada: desde '+t(availableAt)+' hasta el fin previsto del turno.</div></div><span class="badge '+(can?'green':'blue')+'">'+(can?(started?'Turno en curso':'Puedes fichar'):'Próximo')+'</span></div>'+(can?'<button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button>':'<button class="btn secondary" disabled style="margin-top:10px">Disponible desde '+t(availableAt)+'</button>')+'</div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos pendientes de fichaje.</div>');
- shell('Fichaje','GuardShift valida en servidor la ventana temporal del turno, la hora oficial y la ubicación GPS.',body,'');
+ var openLoc=open?locationForEntry(open.id,'clock_in'):null,openShift=open&&open.shifts||{},openFacility=openShift.facilities||{},overdue=open&&openShift.ends_at&&now>new Date(openShift.ends_at);
+ var body=open?'<div class="card notice"><strong>Fichaje abierto</strong><div class="muted">Entrada oficial: '+d(open.clock_in)+' '+ts(open.clock_in)+'</div>'+(openFacility.name?'<div class="muted">Instalación: '+esc(openFacility.name)+' · radio GPS '+Math.max(25,Number(openFacility.attendance_radius_m)||250)+' m</div>':'')+(openLoc?'<div style="margin-top:7px"><span class="badge green">📍 Ubicación registrada · GPS ±'+Math.round(openLoc.accuracy_m||0)+' m</span></div>':'')+(overdue?'<div class="msg err" style="margin-top:10px">El turno ya ha superado su hora prevista de finalización. Si sigues trabajando, ficha al terminar; si olvidaste la salida, puedes solicitar una corrección desde Mis horas.</div>':'')+'<button class="btn danger" id="clockOut" style="margin-top:10px" '+(online?'':'disabled')+'>'+(online?'Fichar salida':'Sin conexión')+'</button></div>':
+ (upcoming.length?'<div class="stack">'+upcoming.slice(0,6).map(function(x){var start=new Date(x.starts_at),end=new Date(x.ends_at),availableAt=new Date(start.getTime()-early*60000),fa=x.facilities||{},geoReady=Number.isFinite(Number(fa.latitude))&&Number.isFinite(Number(fa.longitude)),timeReady=now>=availableAt&&now<=end,can=timeReady&&online&&geoReady,started=now>=start,radius=Math.max(25,Number(fa.attendance_radius_m)||250),label=!online?'Sin conexión':!geoReady?'GPS no configurado':timeReady?(started?'Turno en curso':'Puedes fichar'):'Próximo';return '<div class="card"><div class="doc-row"><div><strong>'+esc(fa.name||'Turno')+'</strong><div class="muted">'+d(x.starts_at)+' · '+t(x.starts_at)+'–'+t(x.ends_at)+'</div><div class="muted">Ventana de entrada: desde '+t(availableAt)+' hasta el fin previsto del turno.</div><div class="muted">Zona de fichaje: '+radius+' m · precisión GPS máxima: ±150 m.</div></div><span class="badge '+(can?'green':(!online||!geoReady?'red':'blue'))+'">'+label+'</span></div>'+(can?'<button class="btn primary" data-clock-in="'+x.id+'" style="margin-top:10px">Fichar entrada</button>':'<button class="btn secondary" disabled style="margin-top:10px">'+(!online?'Necesitas conexión':!geoReady?'Contacta con el coordinador':'Disponible desde '+t(availableAt))+'</button>')+'</div>'}).join('')+'</div>':'<div class="card empty">No tienes turnos pendientes de fichaje.</div>');
+ shell('Fichaje','La hora se fija en servidor y el GPS se comprueba contra el radio configurado de la instalación.',body,'');
  document.querySelectorAll('[data-clock-in]').forEach(function(b){b.onclick=async function(){
+   var shiftId=b.getAttribute('data-clock-in'),key='clock-in:'+shiftId;if(!lockAction(key))return;
    try{
-     b.disabled=true;b.textContent='Obteniendo ubicación…';
-     var pos=await getGeoPosition();
-     b.textContent='Registrando fichaje…';
-     var r=await sb.rpc('clock_in_shift_with_location',{
-       p_shift_id:b.getAttribute('data-clock-in'),
-       p_latitude:pos.latitude,
-       p_longitude:pos.longitude,
-       p_accuracy_m:pos.accuracy
-     });
+     if(navigator.onLine===false)throw new Error('No hay conexión. GuardShift no permite dejar un fichaje pendiente para evitar horas o ubicaciones incorrectas.');
+     var sh=upcoming.find(function(x){return x.id===shiftId});
+     b.disabled=true;b.textContent='Buscando GPS preciso…';
+     var pos=await getGeoPosition();validateClockingPosition(pos,sh&&sh.facilities);
+     b.textContent='Dentro de zona · registrando…';
+     var r=await sb.rpc('clock_in_shift_with_location',{p_shift_id:shiftId,p_latitude:pos.latitude,p_longitude:pos.longitude,p_accuracy_m:pos.accuracy});
      if(r.error)throw r.error;
-     await load();render();
-   }catch(e){alert(e.message||'No se pudo fichar. No se ha guardado un fichaje parcial.');b.disabled=false;b.textContent='Fichar entrada'}
+     lastSyncError='';await load();render();
+   }catch(e){alert(readableError(e));b.disabled=false;b.textContent='Fichar entrada'}
+   finally{unlockAction(key)}
  }});
  var co=document.getElementById('clockOut');if(co)co.onclick=async function(){
    var notes=prompt('Notas del turno (opcional):','');if(notes===null)return;
+   var key='clock-out';if(!lockAction(key))return;
    try{
-     co.disabled=true;co.textContent='Obteniendo ubicación…';
-     var pos=await getGeoPosition();
-     co.textContent='Registrando salida…';
-     var r=await sb.rpc('clock_out_current_with_location',{
-       p_notes:notes||null,
-       p_latitude:pos.latitude,
-       p_longitude:pos.longitude,
-       p_accuracy_m:pos.accuracy
-     });
+     if(navigator.onLine===false)throw new Error('No hay conexión. La salida debe registrarse directamente en el servidor.');
+     co.disabled=true;co.textContent='Buscando GPS preciso…';
+     var pos=await getGeoPosition();validateClockingPosition(pos,openFacility);
+     co.textContent='Dentro de zona · registrando salida…';
+     var r=await sb.rpc('clock_out_current_with_location',{p_notes:notes||null,p_latitude:pos.latitude,p_longitude:pos.longitude,p_accuracy_m:pos.accuracy});
      if(r.error)throw r.error;
-     await load();render();
-   }catch(e){alert(e.message||'No se pudo fichar salida. No se ha guardado una salida parcial.');co.disabled=false;co.textContent='Fichar salida'}
+     lastSyncError='';await load();render();
+   }catch(e){alert(readableError(e));co.disabled=false;co.textContent='Fichar salida'}
+   finally{unlockAction(key)}
  };
 }
 function leaveTypeLabel(type){
@@ -2394,7 +2444,14 @@ function render(){
  if(state.profile&&state.profile.role==='worker'&&['dashboard','operations','workforce','schedule','coverage','facilities','workers','shifts','substitutions','documents','compliance'].indexOf(state.page)>=0)state.page='workerhome';
  (map[state.page]||(state.profile&&state.profile.role==='worker'?workerhome:dashboard))();
 }
-async function logout(){await sb.auth.signOut();if(state.realtime){sb.removeChannel(state.realtime)}state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};auth()}
+async function logout(){
+ realtimeGeneration++;
+ if(realtimeReconnectTimer){clearTimeout(realtimeReconnectTimer);realtimeReconnectTimer=null}
+ await sb.auth.signOut();
+ if(state.realtime){sb.removeChannel(state.realtime)}
+ state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null,realtimeStatus:'IDLE'};
+ lastSyncError='';auth();
+}
 function readableError(err){
  if(!err)return 'Error desconocido.';
  var raw=typeof err==='string'?err:(err.message||'');
@@ -2405,7 +2462,10 @@ function readableError(err){
  if(low.includes('timesheet')&&low.includes('closed'))return 'Ese día ya está cerrado. Reábrelo antes de modificar sus fichajes.';
  if(low.includes('pending')&&low.includes('correction'))return 'Este fichaje tiene una corrección pendiente y no puede aprobarse todavía.';
  if(low.includes('not authorized')||low.includes('not coordinator')||low.includes('permission denied'))return 'No tienes permisos para realizar esta operación.';
- if(low.includes('network')||low.includes('failed to fetch'))return 'No se pudo conectar con GuardShift. Comprueba tu conexión y vuelve a intentarlo.';
+ if(low.includes('fuera de la zona')||low.includes('zona de fichaje'))return raw||'Estás fuera de la zona permitida para fichar.';
+ if(low.includes('precisión gps')||low.includes('precision gps'))return raw||'La señal GPS no es suficientemente precisa. Espera unos segundos e inténtalo de nuevo.';
+ if(low.includes('ubicación gps configurada')||low.includes('ubicacion gps configurada'))return raw||'La instalación no tiene ubicación GPS configurada. Contacta con el coordinador.';
+ if(low.includes('network')||low.includes('failed to fetch')||low.includes('load failed'))return 'No se pudo conectar con GuardShift. Comprueba tu conexión y vuelve a intentarlo.';
  if(typeof err==='string')return err;
  if(err.message)return err.message;
  try{return JSON.stringify(err)}catch(_){return 'Error inesperado.'}
@@ -2429,6 +2489,8 @@ window.addEventListener('unhandledrejection',function(ev){
  if(ev&&ev.preventDefault)ev.preventDefault();
  recovery(ev&&ev.reason?ev.reason:'Promesa rechazada','Se ha producido un error inesperado al completar una operación.');
 });
+window.addEventListener('offline',function(){lastSyncError='';state.realtimeStatus='OFFLINE';refreshConnectionBanner()});
+window.addEventListener('online',function(){lastSyncError='';refreshConnectionBanner();if(state.session&&state.profile){setupRealtime();scheduleRealtimeRefresh()}});
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});safeBoot();
 })();
 </script></body></html>
