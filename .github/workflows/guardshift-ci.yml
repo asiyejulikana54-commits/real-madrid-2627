@@ -1,0 +1,77 @@
+name: GuardShift CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "guardshift/**"
+      - ".github/workflows/guardshift-ci.yml"
+  pull_request:
+    paths:
+      - "guardshift/**"
+      - ".github/workflows/guardshift-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guardshift-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate GuardShift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          test -f guardshift/index.html
+          test -s guardshift/index.html
+
+      - name: Validate inline JavaScript syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path("guardshift/index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>",html,re.I)
+          if not scripts:
+              raise SystemExit("No inline JavaScript found")
+          Path("/tmp/guardshift-inline.js").write_text("\n;\n".join(scripts),encoding="utf-8")
+          PY
+          node --check /tmp/guardshift-inline.js
+
+      - name: Guard against privileged client secrets
+        shell: bash
+        run: |
+          if grep -Eqi 'service[_-]?role|SUPABASE_SERVICE_ROLE_KEY' guardshift/index.html; then
+            echo "Privileged server credential reference found in client."
+            exit 1
+          fi
+
+      - name: Validate HTML structure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          class Parser(HTMLParser):
+              pass
+          Parser().feed(Path("guardshift/index.html").read_text(encoding="utf-8"))
+          print("HTML parsed successfully")
+          PY
+
+      - name: GuardShift validation summary
+        run: |
+          echo "### GuardShift validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Required files: OK" >> "$GITHUB_STEP_SUMMARY"
+          echo "- JavaScript syntax: OK" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Client secret guard: OK" >> "$GITHUB_STEP_SUMMARY"
+          echo "- HTML parse: OK" >> "$GITHUB_STEP_SUMMARY"
