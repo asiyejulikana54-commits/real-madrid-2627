@@ -68,6 +68,32 @@ jobs:
           print("HTML parsed successfully")
           PY
 
+      - name: Verify published GuardShift when deployment URL is configured
+        if: ${{ vars.GUARDSHIFT_PUBLIC_URL != '' }}
+        env:
+          GUARDSHIFT_PUBLIC_URL: ${{ vars.GUARDSHIFT_PUBLIC_URL }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os,time,urllib.request
+          base=os.environ["GUARDSHIFT_PUBLIC_URL"].rstrip("/")
+          expected=os.environ["EXPECTED_SHA"]
+          marker=f"guardshift-build:{expected}"
+          last=""
+          for attempt in range(12):
+              try:
+                  req=urllib.request.Request(base+"/",headers={"Cache-Control":"no-cache","User-Agent":"GuardShift-CI"})
+                  with urllib.request.urlopen(req,timeout=15) as r:
+                      last=r.read().decode("utf-8","replace")
+                  if marker in last:
+                      print("Published GuardShift matches commit",expected)
+                      raise SystemExit(0)
+              except Exception as e:
+                  print(f"Attempt {attempt+1}: {e}")
+              time.sleep(10)
+          raise SystemExit("Public GuardShift did not expose expected build marker after 2 minutes")
+          PY
+
       - name: GuardShift validation summary
         run: |
           echo "### GuardShift validation" >> "$GITHUB_STEP_SUMMARY"
