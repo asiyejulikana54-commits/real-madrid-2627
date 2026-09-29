@@ -43,6 +43,11 @@ var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfY
 var sb=supabase.createClient(URL,KEY);
 var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
+var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false;
+function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
+function unlockAction(key){actionLocks.delete(key)}
+function scheduleRealtimeRefresh(){if(realtimeRefreshTimer)clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=setTimeout(runRealtimeRefresh,180)}
+async function runRealtimeRefresh(){realtimeRefreshTimer=null;if(realtimeRefreshRunning){realtimeRefreshQueued=true;return}realtimeRefreshRunning=true;try{await load();render()}finally{realtimeRefreshRunning=false;if(realtimeRefreshQueued){realtimeRefreshQueued=false;scheduleRealtimeRefresh()}}}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})}
 function d(v){return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(v))}
 function t(v){return new Intl.DateTimeFormat('es-ES',{hour:'2-digit',minute:'2-digit'}).format(new Date(v))}
@@ -1373,9 +1378,11 @@ function substitutionsPage(){
  ['subSearch','subFilter','subRisk'].forEach(function(id){document.getElementById(id).oninput=draw;document.getElementById(id).onchange=draw});draw();bindShiftChangeReview();
  document.getElementById('saveSubRules').onclick=async function(){var staleVal=Math.max(1,Math.min(72,Number(document.getElementById('subStaleHours').value)||6)),urgentVal=Math.max(1,Math.min(168,Number(document.getElementById('subUrgentHours').value)||24)),autoHours=Math.max(1,Math.min(72,Number(document.getElementById('subAutoEscalateHours').value)||6)),autoEnabled=document.getElementById('subAutoEscalate').value==='1';var r=await sb.from('companies').update({substitution_stale_hours:staleVal,substitution_urgent_hours_before_shift:urgentVal,substitution_auto_escalate_enabled:autoEnabled,substitution_auto_escalate_after_hours:autoHours}).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;substitutionsPage();alert('Reglas de sustitución actualizadas.')};
  document.getElementById('bulkEscalateSubs').onclick=async function(){
+   if(!lockAction('bulkEscalateSubs')){alert('El escalado ya está en curso.');return}
+   var btn=document.getElementById('bulkEscalateSubs'),oldText=btn.textContent;btn.disabled=true;btn.textContent='Escalando…';
    var targets=active.filter(function(x){return substitutionIdleHours(x)>=staleHours&&x.shifts&&!x.shifts.open_to_workers});
-   if(!targets.length){alert('No hay sustituciones estancadas pendientes de escalar.');return}
-   if(!confirm('¿Publicar '+targets.length+' sustitución(es) estancada(s) para toda la plantilla compatible?'))return;
+   if(!targets.length){alert('No hay sustituciones estancadas pendientes de escalar.');btn.disabled=false;btn.textContent=oldText;unlockAction('bulkEscalateSubs');return}
+   if(!confirm('¿Publicar '+targets.length+' sustitución(es) estancada(s) para toda la plantilla compatible?')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkEscalateSubs');return}
    var workers=new Set(),ok=0,failed=0;
    for(var i=0;i<targets.length;i++){
      var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:targets[i].id,p_enabled:true});
@@ -1383,17 +1390,19 @@ function substitutionsPage(){
      ok++;(r.data||[]).forEach(function(id){workers.add(id)});
    }
    if(workers.size)await notifyWorkers(Array.from(workers),'Sustituciones disponibles','Hay nuevas sustituciones compatibles en Turnos disponibles.');
-   await load();substitutionsPage();alert('Escaladas: '+ok+(failed?' · No procesadas: '+failed:'')+' · Trabajadores avisados: '+workers.size+'.');
+   await load();substitutionsPage();unlockAction('bulkEscalateSubs');alert('Escaladas: '+ok+(failed?' · No procesadas: '+failed:'')+' · Trabajadores avisados: '+workers.size+'.');
  };
  document.getElementById('bulkRemindOffers').onclick=async function(){
+   if(!lockAction('bulkRemindOffers')){alert('El envío de recordatorios ya está en curso.');return}
+   var btn=document.getElementById('bulkRemindOffers'),oldText=btn.textContent;btn.disabled=true;btn.textContent='Enviando…';
    var workerIds=new Set(),count=0;
    active.filter(function(x){return substitutionIdleHours(x)>=staleHours}).forEach(function(x){(x.substitution_offers||[]).filter(function(o){return o.accepted===null}).forEach(function(o){workerIds.add(o.worker_id);count++})});
-   if(!workerIds.size){alert('No hay ofertas pendientes en sustituciones estancadas.');return}
-   if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) pendiente(s)?'))return;
+   if(!workerIds.size){alert('No hay ofertas pendientes en sustituciones estancadas.');btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
+   if(!confirm('¿Reenviar recordatorio a '+workerIds.size+' trabajador(es) con '+count+' oferta(s) pendiente(s)?')){btn.disabled=false;btn.textContent=oldText;unlockAction('bulkRemindOffers');return}
    await notifyWorkers(Array.from(workerIds),'Oferta de sustitución pendiente','Tienes una oferta de sustitución pendiente. Revísala en GuardShift.');
-   alert('Recordatorio enviado a '+workerIds.size+' trabajador(es).');
+   unlockAction('bulkRemindOffers');btn.disabled=false;btn.textContent=oldText;alert('Recordatorio enviado a '+workerIds.size+' trabajador(es).');
  };
- document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}var csv='Centro,Fecha,Original,Cubre,Estado,Horas abierta,Ofertas,Pendientes,Publicada,Motivo\n'+rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[];return [fa.name||'',sh.starts_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===null}).length,sh.open_to_workers?'sí':'no',x.reason||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_sustituciones.csv';a.click();URL.revokeObjectURL(a.href)};
+ document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}var csv='Centro,Inicio,Fin,Original,Cubre,Estado,Horas abierta,Ofertas,Aceptadas,Rechazadas,Pendientes,Pendientes 2h,Respuesta %,Publicada,Creada,Resuelta,Motivo\\n'+rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[],answered=offers.filter(function(o){return o.accepted!==null}).length,pending=offers.filter(function(o){return o.accepted===null}),old=pending.filter(function(o){return o.offered_at&&(new Date()-new Date(o.offered_at))>=2*3600000}).length;return [fa.name||'',sh.starts_at||'',sh.ends_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===true}).length,offers.filter(function(o){return o.accepted===false}).length,pending.length,old,offers.length?Math.round(answered*100/offers.length):0,sh.open_to_workers?'sí':'no',x.created_at||'',x.resolved_at||'',x.reason||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\\n');var blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_sustituciones_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href)};
 }
 function documentsPage(){
  var activeWorkers=state.workers.filter(function(w){return w.active});
@@ -1601,24 +1610,23 @@ function setupRealtime(){
  var cfg={event:'*',schema:'public',table:'substitution_offers'};
  if(state.profile.role==='worker'&&state.profile.worker_id)cfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',cfg,async function(payload){
-    await load();
-    if(state.profile.role==='worker'&&payload.eventType==='INSERT'){
+    scheduleRealtimeRefresh();
+   if(state.profile.role==='worker'&&payload.eventType==='INSERT'){
       await showGuardShiftNotification('Nuevo turno disponible','Tienes una nueva oferta de sustitución en GuardShift.');
     }
-    render();
   });
  var requestCfg={event:'*',schema:'public',table:'shift_change_requests'};
  if(state.profile.role==='worker'&&state.profile.worker_id)requestCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',requestCfg,async function(){
-    await load();render();
+    scheduleRealtimeRefresh();
   });
  var shiftCfg={event:'*',schema:'public',table:'shifts'};
  if(state.profile.role==='worker'&&state.profile.worker_id)shiftCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',shiftCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',shiftCfg,async function(){scheduleRealtimeRefresh()});
  var eventCfg={event:'INSERT',schema:'public',table:'shift_events'};
  channel=channel.on('postgres_changes',eventCfg,async function(payload){
    var ev=payload&&payload.new||{};
-   await load();
+   scheduleRealtimeRefresh();
    if(state.profile.role==='worker'&&state.profile.worker_id){
      var mine=ev.from_worker_id===state.profile.worker_id||ev.to_worker_id===state.profile.worker_id;
      if(mine){
@@ -1626,58 +1634,55 @@ function setupRealtime(){
        if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
      }
    }
-   render();
  });
  var docCfg={event:'*',schema:'public',table:'worker_documents'};
  if(state.profile.role==='worker'&&state.profile.worker_id)docCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',docCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',docCfg,async function(){scheduleRealtimeRefresh()});
  var docEventCfg={event:'INSERT',schema:'public',table:'worker_document_events'};
  if(state.profile.role==='worker'&&state.profile.worker_id)docEventCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',docEventCfg,async function(payload){
    var ev=payload&&payload.new||{};
-   await load();
+   scheduleRealtimeRefresh();
    if(state.profile.role==='worker'&&['approved','rejected','returned_to_pending'].indexOf(ev.event_type)>=0){
      var p=documentEventPresentation(ev);await showGuardShiftNotification('Documentación',p[0]+(ev.note?' · '+ev.note:''));
    }
-   render();
  });
  var docNoticeCfg={event:'INSERT',schema:'public',table:'document_notification_events'};
  if(state.profile.role==='worker'&&state.profile.worker_id)docNoticeCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',docNoticeCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',docNoticeCfg,async function(){scheduleRealtimeRefresh()});
  var leaveCfg={event:'*',schema:'public',table:'leave_requests'};
  if(state.profile.role==='worker'&&state.profile.worker_id)leaveCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',leaveCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',leaveCfg,async function(){scheduleRealtimeRefresh()});
  var leaveEventCfg={event:'INSERT',schema:'public',table:'leave_request_events'};
  if(state.profile.role==='worker'&&state.profile.worker_id)leaveEventCfg.filter='worker_id=eq.'+state.profile.worker_id;
  channel=channel.on('postgres_changes',leaveEventCfg,async function(payload){
    var ev=payload&&payload.new||{};
-   await load();
+   scheduleRealtimeRefresh();
    if(state.profile.role==='worker'&&['approved','rejected','coverage_opened'].indexOf(ev.event_type)>=0){
      var p=leaveEventPresentation(ev);await showGuardShiftNotification('Ausencias',p[0]+(ev.note?' · '+ev.note:''));
    }
-   render();
  });
  var availabilityCfg={event:'*',schema:'public',table:'availability'};
  if(state.profile.role==='worker'&&state.profile.worker_id)availabilityCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',availabilityCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',availabilityCfg,async function(){scheduleRealtimeRefresh()});
  var timeEntryCfg={event:'*',schema:'public',table:'time_entries'};
  if(state.profile.role==='worker'&&state.profile.worker_id)timeEntryCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',timeEntryCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',timeEntryCfg,async function(){scheduleRealtimeRefresh()});
  var correctionCfg={event:'*',schema:'public',table:'time_correction_requests'};
  if(state.profile.role==='worker'&&state.profile.worker_id)correctionCfg.filter='worker_id=eq.'+state.profile.worker_id;
- channel=channel.on('postgres_changes',correctionCfg,async function(){await load();render()});
+ channel=channel.on('postgres_changes',correctionCfg,async function(){scheduleRealtimeRefresh()});
  if(state.profile.role==='coordinator'){
-   channel=channel.on('postgres_changes',{event:'*',schema:'public',table:'timesheet_day_closures'},async function(){await load();render()});
-   channel=channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'timesheet_closure_events'},async function(){await load();render()});
+   channel=channel.on('postgres_changes',{event:'*',schema:'public',table:'timesheet_day_closures'},async function(){scheduleRealtimeRefresh()});
+   channel=channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'timesheet_closure_events'},async function(){scheduleRealtimeRefresh()});
  }
  var subEventCfg={event:'INSERT',schema:'public',table:'substitution_events'};
  channel=channel.on('postgres_changes',subEventCfg,async function(){
-   await load();render();
+   scheduleRealtimeRefresh();
  });
  var subCfg={event:'*',schema:'public',table:'substitutions'};
  if(state.profile.role==='worker'&&state.profile.worker_id)subCfg.filter='original_worker_id=eq.'+state.profile.worker_id;
  state.realtime=channel.on('postgres_changes',subCfg,async function(){
-    await load();render();
+    scheduleRealtimeRefresh();
   }).subscribe();
 }
 async function notifyWorkers(workerIds,title,body){
