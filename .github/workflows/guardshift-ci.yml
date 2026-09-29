@@ -72,26 +72,26 @@ jobs:
         if: ${{ vars.GUARDSHIFT_PUBLIC_URL != '' }}
         env:
           GUARDSHIFT_PUBLIC_URL: ${{ vars.GUARDSHIFT_PUBLIC_URL }}
-          EXPECTED_SHA: ${{ github.sha }}
         run: |
           python3 - <<'PY'
-          import os,time,urllib.request
+          import hashlib,os,time,urllib.request
+          expected=open("guardshift/index.html","rb").read()
+          expected_hash=hashlib.sha256(expected).hexdigest()
           base=os.environ["GUARDSHIFT_PUBLIC_URL"].rstrip("/")
-          expected=os.environ["EXPECTED_SHA"]
-          marker=f"guardshift-build:{expected}"
-          last=""
           for attempt in range(12):
               try:
                   req=urllib.request.Request(base+"/",headers={"Cache-Control":"no-cache","User-Agent":"GuardShift-CI"})
                   with urllib.request.urlopen(req,timeout=15) as r:
-                      last=r.read().decode("utf-8","replace")
-                  if marker in last:
-                      print("Published GuardShift matches commit",expected)
+                      live=r.read()
+                  live_hash=hashlib.sha256(live).hexdigest()
+                  print(f"Attempt {attempt+1}: expected={expected_hash} live={live_hash}")
+                  if live==expected:
+                      print("Published GuardShift exactly matches repository index.html")
                       raise SystemExit(0)
               except Exception as e:
                   print(f"Attempt {attempt+1}: {e}")
               time.sleep(10)
-          raise SystemExit("Public GuardShift did not expose expected build marker after 2 minutes")
+          raise SystemExit("Public GuardShift does not match this commit after 2 minutes")
           PY
 
       - name: GuardShift validation summary
