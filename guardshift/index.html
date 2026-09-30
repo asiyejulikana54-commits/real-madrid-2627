@@ -1853,7 +1853,7 @@ function showCandidates(subId,sh,list){
    }catch(err){ferr(e.target,readableError(err));if(btn){btn.disabled=false;btn.textContent=oldText}}
    finally{unlockAction(key)}
  };
-}}
+}
 function workerhome(){
  var now=new Date(),wid=state.profile.worker_id,early=Math.max(0,Number(state.company&&state.company.clock_in_early_minutes||30)),grace=Math.max(0,Number(state.company&&state.company.clock_in_grace_minutes||10));
  var assignedFuture=state.shifts.filter(function(x){return x.worker_id===wid&&x.status==='assigned'&&new Date(x.ends_at)>now}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)});
