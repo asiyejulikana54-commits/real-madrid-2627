@@ -1332,27 +1332,31 @@ function shiftChangeRequestCards(){
 }
 function bindShiftChangeReview(){
  document.querySelectorAll('[data-approve-change]').forEach(function(b){b.onclick=async function(){
-   var id=b.getAttribute('data-approve-change'),req=(state.shiftChangeRequests||[]).find(function(x){return x.id===id});
-   if(!req)return;
-   if(!confirm('¿Aprobar la solicitud? El turno quedará abierto mientras buscas sustituto.'))return;
-   var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'approved'});
-   if(r.error){alert(r.error.message);return}
-   var subId=r.data,shiftId=req.shift_id;
-   await notifyWorkers([req.worker_id],'Solicitud de sustitución aprobada','El coordinador ha aprobado tu solicitud. GuardShift ya está buscando a otra persona para cubrir el turno.');
-   await load();
-   var sh=state.shifts.find(function(x){return x.id===shiftId});
-   var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:subId});
-   if(ca.error){alert(ca.error.message);substitutionsPage();return}
-   substitutionsPage();
-   showCandidates(subId,sh,ca.data||[]);
+   var id=b.getAttribute('data-approve-change'),req=(state.shiftChangeRequests||[]).find(function(x){return x.id===id}),key='review-change:'+id;
+   if(!req||!confirm('¿Aprobar la solicitud? El turno quedará abierto mientras buscas sustituto.')||!lockAction(key))return;
+   var oldText=b.textContent;b.disabled=true;b.textContent='Aprobando…';
+   try{
+     var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'approved'});if(r.error)throw r.error;
+     var subId=r.data,shiftId=req.shift_id;
+     await notifyWorkers([req.worker_id],'Solicitud de sustitución aprobada','El coordinador ha aprobado tu solicitud. GuardShift ya está buscando a otra persona para cubrir el turno.');
+     await load();var sh=state.shifts.find(function(x){return x.id===shiftId});
+     var ca=await sb.rpc('get_substitution_candidates',{p_substitution_id:subId});
+     substitutionsPage();
+     if(ca.error){alert(readableError(ca.error));return}
+     showCandidates(subId,sh,ca.data||[]);
+   }catch(e){alert(readableError(e));await load();substitutionsPage()}
+   finally{unlockAction(key);if(document.body.contains(b)){b.disabled=false;b.textContent=oldText}}
  }});
  document.querySelectorAll('[data-reject-change]').forEach(function(b){b.onclick=async function(){
-   if(!confirm('¿Rechazar esta solicitud?'))return;
-   var id=b.getAttribute('data-reject-change'),req=(state.shiftChangeRequests||[]).find(function(x){return x.id===id});
-   var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'rejected'});
-   if(r.error){alert(r.error.message);return}
-   if(req)await notifyWorkers([req.worker_id],'Solicitud de sustitución rechazada','El coordinador ha rechazado tu solicitud. El turno continúa asignado a ti.');
-   await load();substitutionsPage();
+   var id=b.getAttribute('data-reject-change'),req=(state.shiftChangeRequests||[]).find(function(x){return x.id===id}),key='review-change:'+id;
+   if(!confirm('¿Rechazar esta solicitud?')||!lockAction(key))return;
+   var oldText=b.textContent;b.disabled=true;b.textContent='Rechazando…';
+   try{
+     var r=await sb.rpc('review_shift_change_request',{p_request_id:id,p_status:'rejected'});if(r.error)throw r.error;
+     if(req)await notifyWorkers([req.worker_id],'Solicitud de sustitución rechazada','El coordinador ha rechazado tu solicitud. El turno continúa asignado a ti.');
+     await load();substitutionsPage();
+   }catch(e){alert(readableError(e));await load();substitutionsPage()}
+   finally{unlockAction(key);if(document.body.contains(b)){b.disabled=false;b.textContent=oldText}}
  }});
 }
 function substitutionStatusPresentation(status){
@@ -1397,13 +1401,15 @@ function substitutionTimelineModal(subId){
  modal('Historial de sustitución',body);
 }
 async function toggleSubstitutionMarketplace(subId,enabled){
- var sub=(state.substitutions||[]).find(function(x){return x.id===subId});if(!sub)return;
- var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:subId,p_enabled:!!enabled});
- if(r.error){alert(r.error.message);return}
- var workers=Array.isArray(r.data)?r.data:[];
- if(enabled&&workers.length)await notifyWorkers(workers,'Turno de sustitución disponible','Hay un turno compatible que puedes cubrir directamente desde Turnos disponibles.');
- await load();substitutionsPage();
- alert(enabled?'Sustitución publicada para '+workers.length+' trabajador(es) compatibles.':'Sustitución retirada de Turnos disponibles.');
+ var sub=(state.substitutions||[]).find(function(x){return x.id===subId}),key='sub-market:'+subId;if(!sub||!lockAction(key))return;
+ try{
+   var r=await sb.rpc('set_substitution_marketplace',{p_substitution_id:subId,p_enabled:!!enabled});if(r.error)throw r.error;
+   var workers=Array.isArray(r.data)?r.data:[];
+   if(enabled&&workers.length)await notifyWorkers(workers,'Turno de sustitución disponible','Hay un turno compatible que puedes cubrir directamente desde Turnos disponibles.');
+   await load();substitutionsPage();
+   alert(enabled?'Sustitución publicada para '+workers.length+' trabajador(es) compatibles.':'Sustitución retirada de Turnos disponibles.');
+ }catch(e){alert(readableError(e));await load();substitutionsPage()}
+ finally{unlockAction(key)}
 }
 async function openSubstitutionCandidates(subId){
  var sub=(state.substitutions||[]).find(function(x){return x.id===subId});if(!sub)return;
@@ -1483,7 +1489,7 @@ function substitutionsPage(){
    }catch(e){alert(readableError(e))}
    finally{unlockAction('bulkRemindOffers');var live=document.getElementById('bulkRemindOffers');if(live){live.disabled=false;live.textContent=oldText}}
  };
- document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}var csv='Centro,Inicio,Fin,Original,Cubre,Estado,Horas abierta,Ofertas,Aceptadas,Rechazadas,Pendientes,Pendientes 2h,Respuesta %,Publicada,Creada,Resuelta,Motivo\\n'+rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[],answered=offers.filter(function(o){return o.accepted!==null}).length,pending=offers.filter(function(o){return o.accepted===null}),old=pending.filter(function(o){return o.offered_at&&(new Date()-new Date(o.offered_at))>=2*3600000}).length;return [fa.name||'',sh.starts_at||'',sh.ends_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===true}).length,offers.filter(function(o){return o.accepted===false}).length,pending.length,old,offers.length?Math.round(answered*100/offers.length):0,sh.open_to_workers?'sí':'no',x.created_at||'',x.resolved_at||'',x.reason||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\\n');var blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_sustituciones_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href)};
+ document.getElementById('subCsv').onclick=function(){var rows=current.length?current:state.substitutions;if(!rows.length){alert('No hay sustituciones para exportar.');return}downloadCsv('guardshift_sustituciones_'+new Date().toISOString().slice(0,10)+'.csv',['Centro','Inicio','Fin','Original','Cubre','Estado','Horas abierta','Ofertas','Aceptadas','Rechazadas','Pendientes','Pendientes 2h','Respuesta %','Publicada','Creada','Resuelta','Motivo'],rows.map(function(x){var sh=x.shifts||{},fa=sh.facilities||{},ow=state.workers.find(function(w){return w.id===x.original_worker_id}),aw=state.workers.find(function(w){return w.id===x.accepted_worker_id}),offers=x.substitution_offers||[],answered=offers.filter(function(o){return o.accepted!==null}).length,pending=offers.filter(function(o){return o.accepted===null}),old=pending.filter(function(o){return o.offered_at&&(new Date()-new Date(o.offered_at))>=2*3600000}).length;return [fa.name||'',sh.starts_at||'',sh.ends_at||'',ow&&ow.full_name||'',aw&&aw.full_name||'',x.status,substitutionAgeHours(x).toFixed(2),offers.length,offers.filter(function(o){return o.accepted===true}).length,offers.filter(function(o){return o.accepted===false}).length,pending.length,old,offers.length?Math.round(answered*100/offers.length):0,sh.open_to_workers?'sí':'no',x.created_at||'',x.resolved_at||'',x.reason||'']}))};
 }
 function documentsPage(){
  var activeWorkers=state.workers.filter(function(w){return w.active});
@@ -1704,11 +1710,10 @@ function setupRealtime(){
  channel=channel.on('postgres_changes',shiftCfg,async function(){scheduleRealtimeRefresh()});
  var eventCfg={event:'INSERT',schema:'public',table:'shift_events'};
  channel=channel.on('postgres_changes',eventCfg,async function(payload){
-   var ev=payload&&payload.new||{};
+   var ev=payload&&payload.new||{},mine=state.profile.role!=='worker'||(state.profile.worker_id&&(ev.from_worker_id===state.profile.worker_id||ev.to_worker_id===state.profile.worker_id));
+   if(!mine)return;
    scheduleRealtimeRefresh();
    if(state.profile.role==='worker'&&state.profile.worker_id){
-     var mine=ev.from_worker_id===state.profile.worker_id||ev.to_worker_id===state.profile.worker_id;
-     if(mine){
        var p=shiftEventPresentation(ev);
        if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
      }
@@ -1756,7 +1761,9 @@ function setupRealtime(){
    channel=channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'notification_events'},async function(){scheduleRealtimeRefresh()});
  }
  var subEventCfg={event:'INSERT',schema:'public',table:'substitution_events'};
- channel=channel.on('postgres_changes',subEventCfg,async function(){
+ channel=channel.on('postgres_changes',subEventCfg,async function(payload){
+   var ev=payload&&payload.new||{};
+   if(state.profile.role==='worker'&&!(state.substitutions||[]).some(function(x){return x.id===ev.substitution_id}))return;
    scheduleRealtimeRefresh();
  });
  var subCfg={event:'*',schema:'public',table:'substitutions'};
