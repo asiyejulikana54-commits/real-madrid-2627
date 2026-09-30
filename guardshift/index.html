@@ -41,38 +41,13 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfYDZetMp5SgVL7eeaNNC0jGJOMc';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null,realtimeStatus:'IDLE'};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};
 var app=document.getElementById('app');
 var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false,realtimeGeneration=0,realtimeReconnectTimer=null,realtimeReconnectAttempt=0,syncRetryTimer=null,syncRetryAttempt=0,lastSyncError='',lastSyncAt=0;
-function preferenceKey(){return 'guardshift:prefs:'+(state.profile&&state.profile.id||'guest')}
-function restorePreferences(){
- try{
-  var p=JSON.parse(localStorage.getItem(preferenceKey())||'{}');
-  ['page','operationsHorizon','workforceHorizon','summaryMode','summaryOffset','scheduleOffset','coverageOffset','workerHoursMode','workerHoursOffset','hoursMode','hoursOffset','hoursFilter'].forEach(function(k){if(p[k]!==undefined&&p[k]!==null)state[k]=p[k]});
- }catch(_){ }
-}
-function savePreferences(){
- if(!state.profile)return;
- try{var p={};['page','operationsHorizon','workforceHorizon','summaryMode','summaryOffset','scheduleOffset','coverageOffset','workerHoursMode','workerHoursOffset','hoursMode','hoursOffset','hoursFilter'].forEach(function(k){p[k]=state[k]});localStorage.setItem(preferenceKey(),JSON.stringify(p))}catch(_){ }
-}
-function csvCell(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}
-function downloadCsv(filename,headers,rows){
- var csv='\ufeff'+headers.map(csvCell).join(',')+'\n'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\n');
- var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),objectUrl=window.URL.createObjectURL(blob);a.href=objectUrl;a.download=filename;a.click();setTimeout(function(){window.URL.revokeObjectURL(objectUrl)},0);
-}
-function syncStatusText(){
- if(navigator.onLine===false)return 'Sin conexión';
- if(lastSyncError)return 'Error de sincronización';
- if(state.realtimeStatus==='SUBSCRIBED')return lastSyncAt?'Sincronizado '+new Date(lastSyncAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'Tiempo real activo';
- if(state.realtimeStatus==='CONNECTING')return 'Conectando…';
- return 'Conexión disponible';
-}
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
 function refreshConnectionBanner(){
- var el=document.getElementById('connectionBanner'),health=document.getElementById('systemHealth');
- if(health){var st=syncStatusText();health.textContent=(navigator.onLine===false?'● Offline':lastSyncError?'● Error':state.realtimeStatus==='SUBSCRIBED'?'● Sincronizado':'● '+st);health.title=st}
- if(!el)return;
+ var el=document.getElementById('connectionBanner');if(!el)return;
  if(navigator.onLine===false){el.className='connection-banner offline';el.textContent='📡 Sin conexión. Puedes consultar lo ya cargado, pero no se enviarán cambios ni fichajes.';return}
  if(lastSyncError){el.className='connection-banner error';el.textContent='⚠️ Conexión disponible, pero la última sincronización falló. GuardShift reintentará automáticamente.';return}
  if(state.session&&state.profile&&state.realtimeStatus&&state.realtimeStatus!=='SUBSCRIBED'){el.className='connection-banner syncing';el.textContent='↻ Sincronizando cambios en tiempo real…';return}
@@ -173,7 +148,7 @@ async function boot(){
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
  if(c.error){fatal(c.error.message);return}
- state.company=c.data;restorePreferences();await ensureServiceWorker();await load();setupRealtime();render();if(state.profile.role==='worker'&&'Notification' in window&&Notification.permission==='granted')registerPushSubscription().catch(function(){});
+ state.company=c.data;await ensureServiceWorker();await load();setupRealtime();render();if(state.profile.role==='worker'&&'Notification' in window&&Notification.permission==='granted')registerPushSubscription().catch(function(){});
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
@@ -244,7 +219,6 @@ async function load(){
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
    state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];state.documentEvents=rs[15].data||[];state.documentNotifications=rs[16].data||[];state.leaveEvents=rs[17].data||[];state.substitutionEvents=rs[18].data||[];state.substitutionNotifications=rs[19].data||[];state.timeCorrectionRequests=rs[20].data||[];state.timesheetClosures=rs[21].data||[];state.timesheetClosureEvents=rs[22].data||[];
  }
- lastSyncAt=Date.now();lastSyncError='';syncRetryAttempt=0;refreshConnectionBanner();
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
@@ -254,11 +228,10 @@ function nav(){
 }
 function shell(title,sub,body,actions){
  app.innerHTML='<div class="shell"><aside class="side"><div class="logo">🛟 GuardShift</div><div class="nav">'+nav()+'</div><button class="logout" id="logout">Cerrar sesión</button></aside>'+
- '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions"><button class="btn secondary" id="systemHealth" title="Estado de conexión y sincronización">● Estado</button>'+(actions||'')+'</div></div>'+body+'</main></div>';
- document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');savePreferences();render()}});
+ '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
+ document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');render()}});
  document.getElementById('logout').onclick=logout;
  var mobileLogout=document.getElementById('mobileLogout');if(mobileLogout)mobileLogout.onclick=logout;
- var health=document.getElementById('systemHealth');if(health)health.onclick=systemHealthModal;
  refreshConnectionBanner();
 }
 function badge(s){var x={assigned:['Asignado','green'],open:['Sin cubrir','red'],cancelled:['Cancelado','blue'],completed:['Completado','blue']}[s]||[s,'blue'];return '<span class="badge '+x[1]+'">'+x[0]+'</span>'}
@@ -629,7 +602,7 @@ var body='<div class="filters"><select id="operationsHorizon"><option value="7" 
  var ocov=document.getElementById('openCoverageFromOperations');if(ocov)ocov.onclick=function(){state.page='coverage';state.coverageOffset=0;render()};
  var ocomp=document.getElementById('openComplianceFromOperations');if(ocomp)ocomp.onclick=function(){state.page='compliance';render()};
  document.querySelectorAll('[data-operation-cover-gap]').forEach(function(b){b.onclick=function(){shiftModal(null,{facility_id:b.getAttribute('data-facility'),starts_at:new Date(Number(b.getAttribute('data-start'))).toISOString(),ends_at:new Date(Number(b.getAttribute('data-end'))).toISOString(),coverage_gap:true})}});
- document.getElementById('operationsHorizon').onchange=function(e){state.operationsHorizon=Number(e.target.value);savePreferences();operationsPage()};
+ document.getElementById('operationsHorizon').onchange=function(e){state.operationsHorizon=Number(e.target.value);operationsPage()};
  document.getElementById('operationsRefresh').onclick=async function(){await load();operationsPage()};
  document.querySelectorAll('[data-operation-candidates]').forEach(function(b){b.onclick=function(){operationCandidatesModal(b.getAttribute('data-operation-candidates'))}});
  document.querySelectorAll('[data-quick-assign]').forEach(function(b){b.onclick=function(){operationAssignCandidate(b.getAttribute('data-shift'),b.getAttribute('data-quick-assign'))}});
@@ -648,7 +621,8 @@ var body='<div class="filters"><select id="operationsHorizon"><option value="7" 
    if(!confirm('¿Enviar recordatorio a '+ids.length+' trabajador(es)?'))return;await notifyWorkers(ids,'Recordatorio de cuadrante','Revisa tus próximos turnos en GuardShift.');alert('Recordatorio enviado.');
  };
  document.getElementById('operationsCsv').onclick=function(){
-   downloadCsv('guardshift_operaciones.csv',['Fecha','Instalación','Inicio','Fin','Candidatos','Publicado','Urgencia'],queue.map(function(q){return [d(q.shift.starts_at),q.shift.facilities&&q.shift.facilities.name||'',q.shift.starts_at,q.shift.ends_at,q.ranked.length,q.shift.open_to_workers?'Sí':'No',q.hours<=24?'Crítico':q.hours<=48?'Urgente':q.ranked.length===0?'Sin candidatos':'Pendiente']}));
+   var csv='Fecha,Instalacion,Inicio,Fin,Candidatos,Publicado,Urgencia\n'+queue.map(function(q){return [d(q.shift.starts_at),q.shift.facilities&&q.shift.facilities.name||'',q.shift.starts_at,q.shift.ends_at,q.ranked.length,q.shift.open_to_workers?'Sí':'No',q.hours<=24?'Critico':q.hours<=48?'Urgente':q.ranked.length===0?'Sin candidatos':'Pendiente'].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_operaciones.csv';a.click();URL.revokeObjectURL(a.href);
  };
 }
 function dashboard(){
@@ -1142,9 +1116,9 @@ function schedule(){
  var mobile='<div class="mobile-schedule">'+days.map(function(day,i){var end=new Date(day);end.setHours(23,59,59,999);var list=state.shifts.filter(function(s){return s.status!=='cancelled'&&new Date(s.starts_at)>=day&&new Date(s.starts_at)<=end});return '<div class="day-card"><h3>'+names[i]+' '+day.getDate()+'/'+(day.getMonth()+1)+'</h3>'+(list.length?list.map(function(x){var warn=shiftWarning(x);return '<div class="shift-mobile"><strong>'+esc(x.facilities&&x.facilities.name||'Turno')+'</strong><div class="muted">'+t(x.starts_at)+'–'+t(x.ends_at)+' · '+esc(x.workers&&x.workers.full_name||'Sin cubrir')+'</div>'+(warn?'<div style="margin-top:6px"><span class="badge '+(warn[1]==='conflict'?'red':'amber')+'">'+warn[0]+'</span></div>':'')+'</div>'}).join(''):'<div class="muted">Sin turnos</div>')+'</div>'}).join('')+'</div>';
  shell('Cuadrante','Planificación semanal',tools+grid+mobile,'<button class="btn primary" id="add">+ Turno</button>');
  document.getElementById('add').onclick=function(){shiftModal()};
- document.getElementById('prevWeek').onclick=function(){state.scheduleOffset--;savePreferences();schedule()};
- document.getElementById('nextWeek').onclick=function(){state.scheduleOffset++;savePreferences();schedule()};
- document.getElementById('currentWeek').onclick=function(){state.scheduleOffset=0;savePreferences();schedule()};
+ document.getElementById('prevWeek').onclick=function(){state.scheduleOffset--;schedule()};
+ document.getElementById('nextWeek').onclick=function(){state.scheduleOffset++;schedule()};
+ document.getElementById('currentWeek').onclick=function(){state.scheduleOffset=0;schedule()};
  document.getElementById('copyWeek').onclick=duplicateDisplayedWeek;
 }
 function modal(title,body){
@@ -1615,9 +1589,9 @@ function mydocuments(){
  document.getElementById('ownDocForm').onsubmit=uploadOwnDocument;bindDocumentButtons();
  document.querySelectorAll('[data-renew-type]').forEach(function(b){b.onclick=function(){document.getElementById('ownDocType').value=b.getAttribute('data-renew-type');document.getElementById('ownDocForm').scrollIntoView({behavior:'smooth',block:'center'})}});
 }
-async async function ensureServiceWorker(){
+async function ensureServiceWorker(){
  if(!('serviceWorker' in navigator))return null;
- try{var reg=await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});try{await reg.update()}catch(_){ }return reg}catch(e){return null}
+ try{return await navigator.serviceWorker.register('./sw.js',{scope:'./'})}catch(e){return null}
 }
 async function showGuardShiftNotification(title,body){
  if(!('serviceWorker' in navigator)||!('Notification' in window)||Notification.permission!=='granted')return;
@@ -2070,12 +2044,12 @@ function workforcePlanningPage(){
  '<div class="section"><h2>Planificación por trabajador</h2><div class="table"><table><thead><tr><th>Trabajador</th><th>Turnos</th><th>Ausencias</th><th>No disponible</th><th>Preferiría no</th><th>Conflictos</th><th>Acción</th></tr></thead><tbody>'+workerRows.map(function(x){return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.assigned+'</td><td>'+x.leaves+'</td><td>'+x.unavailable+'</td><td>'+x.prefer+'</td><td><span class="badge '+(x.conflicts?'red':'green')+'">'+x.conflicts+'</span></td><td><button class="btn small secondary" data-workforce-worker="'+x.worker.id+'">Ficha</button></td></tr>'}).join('')+'</tbody></table></div></div>'+
  '<div class="section"><h2>Próximas restricciones declaradas</h2>'+(availabilityRows.length?'<div class="stack">'+availabilityRows.slice().sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)}).slice(0,20).map(function(a){var w=state.workers.find(function(x){return x.id===a.worker_id}),st=availabilityStatusPresentation(a.status),hits=availabilityConflictingShifts(a);return '<div class="card doc-row"><div><strong>'+esc(w&&w.full_name||'Trabajador')+'</strong><div class="muted">'+d(a.starts_at)+' '+t(a.starts_at)+' → '+d(a.ends_at)+' '+t(a.ends_at)+'</div></div><div class="mini-actions"><span class="badge '+st[1]+'">'+st[0]+'</span>'+(hits.length?'<span class="badge red">'+hits.length+' conflicto(s)</span>':'')+'</div></div>'}).join('')+'</div>':'<div class="card empty">No hay restricciones de disponibilidad próximas.</div>')+'</div>';
  shell('Disponibilidad de plantilla','Ausencias, restricciones declaradas y capacidad preventiva del equipo.',body,'<button class="btn secondary" id="workforceLeave">Gestionar ausencias</button>');
- document.getElementById('workforceHorizon').onchange=function(e){state.workforceHorizon=Number(e.target.value);savePreferences();workforcePlanningPage()};
+ document.getElementById('workforceHorizon').onchange=function(e){state.workforceHorizon=Number(e.target.value);workforcePlanningPage()};
  document.getElementById('workforceRefresh').onclick=async function(){await load();workforcePlanningPage()};
  document.getElementById('workforceLeave').onclick=function(){state.page='leave';render()};
  document.querySelectorAll('[data-workforce-leave]').forEach(function(b){b.onclick=function(){var req=state.leaveRequests.find(function(x){return x.id===b.getAttribute('data-workforce-leave')});if(req)showLeaveConflicts(req)}});
  document.querySelectorAll('[data-workforce-worker]').forEach(function(b){b.onclick=function(){workerOperationalProfile(b.getAttribute('data-workforce-worker'))}});
- document.getElementById('workforceCsv').onclick=function(){downloadCsv('guardshift_disponibilidad_'+horizon+'d.csv',['Trabajador','Turnos','Ausencias','No disponible','Preferiría no','Conflictos'],workerRows.map(function(x){return [x.worker.full_name,x.assigned,x.leaves,x.unavailable,x.prefer,x.conflicts]}))};
+ document.getElementById('workforceCsv').onclick=function(){var csv='Trabajador,Turnos,Ausencias,No disponible,Preferiria no,Conflictos\n'+workerRows.map(function(x){return [x.worker.full_name,x.assigned,x.leaves,x.unavailable,x.prefer,x.conflicts].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_disponibilidad_'+horizon+'d.csv';a.click();URL.revokeObjectURL(a.href)};
 }
 function availability(){
  var wid=state.profile.worker_id,now=new Date(),mine=(state.availability||[]).filter(function(a){return a.worker_id===wid}),future=mine.filter(function(a){return new Date(a.ends_at)>now}).sort(function(a,b){return new Date(a.starts_at)-new Date(b.starts_at)}),history=mine.filter(function(a){return new Date(a.ends_at)<=now}).sort(function(a,b){return new Date(b.starts_at)-new Date(a.starts_at)});
@@ -2175,12 +2149,13 @@ function summaryPage(){
  '<div class="cards section"><div class="card kpi"><span class="muted">Horas previstas</span><strong>'+totals.scheduled.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas fichadas</span><strong>'+totals.worked.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas aprobadas</span><strong>'+totals.approved.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Incidencias</span><strong>'+totals.incidents+'</strong></div><div class="card kpi"><span class="muted">Días de ausencia aprobados</span><strong>'+totals.leaveDays+'</strong></div></div>'+
  '<div class="section">'+(rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Previstas</th><th>Fichadas</th><th>Aprobadas</th><th>Diferencia</th><th>Fichajes pendientes</th><th>Incidencias</th><th>Ausencia</th></tr></thead><tbody>'+rows.map(function(x){var cls=x.diff>0.01?'amber':x.diff<-0.01?'red':'green';var sign=x.diff>0?'+':'';return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.scheduled.toFixed(2)+' h</td><td>'+x.worked.toFixed(2)+' h</td><td>'+x.approved.toFixed(2)+' h</td><td><span class="badge '+cls+'">'+sign+x.diff.toFixed(2)+' h</span></td><td>'+x.pending+'</td><td>'+x.incidents+'</td><td>'+x.leaveDays+' días</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores activos.</div>')+'</div>';
  shell('Resumen','Horas previstas vs. trabajadas, ausencias e incidencias.',body,'');
- document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;savePreferences();summaryPage()};
- document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;savePreferences();summaryPage()};
- document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;savePreferences();summaryPage()};
- document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;savePreferences();summaryPage()};
+ document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;summaryPage()};
+ document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;summaryPage()};
+ document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;summaryPage()};
+ document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;summaryPage()};
  document.getElementById('summaryCsv').onclick=function(){
-   downloadCsv('guardshift_resumen_'+state.summaryMode+'.csv',['Periodo','Trabajador','Horas previstas','Horas fichadas','Horas aprobadas','Diferencia','Fichajes pendientes','Incidencias','Días ausencia'],rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays]}));
+   var csv='Periodo,Trabajador,Horas previstas,Horas fichadas,Horas aprobadas,Diferencia,Fichajes pendientes,Incidencias,Dias ausencia\n'+rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_resumen_'+state.summaryMode+'.csv';a.click();window.URL.revokeObjectURL(a.href);
  };
 }
 function entryForShift(shiftId){return (state.timeEntries||[]).find(function(x){return x.shift_id===shiftId})}
@@ -2333,11 +2308,11 @@ function hoursPage(){
  (rows.length?'<div class="section table"><table><thead><tr><th>Trabajador</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Alertas</th><th>Horas</th><th>Estado</th><th>Jornada</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody>'+rows.map(function(x){var end=x.clock_out?new Date(x.clock_out):now,h=Math.max(0,end-new Date(x.clock_in))/3600000,st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'],li=locationForEntry(x.id,'clock_in'),lo=locationForEntry(x.id,'clock_out'),fa=x.shifts&&x.shifts.facilities||{},di=li&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(li.latitude,li.longitude,fa.latitude,fa.longitude):null,dout=lo&&fa.latitude!=null&&fa.longitude!=null?distanceMeters(lo.latitude,lo.longitude,fa.latitude,fa.longitude):null,radius=Math.max(25,Number(fa.attendance_radius_m)||250),liLimit=li?radius+Math.min(Math.max(0,Number(li.accuracy_m)||0),50):radius,loLimit=lo?radius+Math.min(Math.max(0,Number(lo.accuracy_m)||0),50):radius,gi=di==null?'':(di<=radius?'<span class="badge green">✅ Dentro</span>':di<=liLimit?'<span class="badge amber">≈ Tolerancia GPS</span>':'<span class="badge red">⚠️ Fuera</span>'),go=dout==null?'':(dout<=radius?'<span class="badge green">✅ Dentro</span>':dout<=loLimit?'<span class="badge amber">≈ Tolerancia GPS</span>':'<span class="badge red">⚠️ Fuera</span>'),an=timeEntryAnomalies(x,grace),anhtml=an.items.length?'<div class="mini-actions">'+an.items.map(function(i){return '<span class="badge '+i.cls+'">'+esc(i.label)+'</span>'}).join('')+'</div>':'<span class="badge green">Sin incidencias</span>',cl=timesheetClosureForDay(entryWorkDateKey(x)),closed=cl&&cl.status==='closed';return '<tr><td>'+esc(x.workers&&x.workers.full_name||'—')+'</td><td>'+esc(fa.name||'—')+'</td><td>'+d(x.clock_in)+' '+ts(x.clock_in)+'</td><td>'+(x.clock_out?d(x.clock_out)+' '+ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+anhtml+'</td><td>'+h.toFixed(2)+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td><span class="badge '+(closed?'green':'blue')+'">'+(closed?'Cerrada':'Abierta')+'</span></td><td><div class="stack">'+(li?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(li.latitude,li.longitude)+'">Entrada</a>'+gi+'</div><div class="muted">GPS ±'+Math.round(li.accuracy_m||0)+' m'+(di!=null?' · '+formatDistance(di)+' al centro':'')+'</div></div>':'—')+(lo?'<div><div class="mini-actions"><a class="btn small secondary" target="_blank" href="'+geoLink(lo.latitude,lo.longitude)+'">Salida</a>'+go+'</div><div class="muted">GPS ±'+Math.round(lo.accuracy_m||0)+' m'+(dout!=null?' · '+formatDistance(dout)+' al centro':'')+'</div></div>':'')+'</div></td><td><div class="mini-actions">'+(closed?'<span class="badge blue">Reabre para modificar</span>':'<button class="btn small secondary" data-correct-time="'+x.id+'">Corregir</button>'+(x.clock_out?'<button class="btn small secondary" data-review-time="'+x.id+'" data-status="approved">Aprobar</button>':'<span class="badge amber">Salida pendiente</span>')+'<button class="btn small danger" data-review-time="'+x.id+'" data-status="rejected">Rechazar</button>')+'</div></td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay fichajes con este filtro.</div>')+
  closeHtml;
  shell('Horas trabajadas','Control de presencia, solicitudes de corrección y cierre diario antes de exportar a nómina.',body,'');
- document.getElementById('hoursMode').onchange=function(e){state.hoursMode=e.target.value;state.hoursOffset=0;savePreferences();hoursPage()};
- document.getElementById('hoursPrev').onclick=function(){state.hoursOffset--;savePreferences();hoursPage()};
- document.getElementById('hoursNext').onclick=function(){state.hoursOffset++;savePreferences();hoursPage()};
- document.getElementById('hoursNow').onclick=function(){state.hoursOffset=0;savePreferences();hoursPage()};
- document.getElementById('hoursFilter').onchange=function(e){state.hoursFilter=e.target.value;savePreferences();hoursPage()};
+ document.getElementById('hoursMode').onchange=function(e){state.hoursMode=e.target.value;state.hoursOffset=0;hoursPage()};
+ document.getElementById('hoursPrev').onclick=function(){state.hoursOffset--;hoursPage()};
+ document.getElementById('hoursNext').onclick=function(){state.hoursOffset++;hoursPage()};
+ document.getElementById('hoursNow').onclick=function(){state.hoursOffset=0;hoursPage()};
+ document.getElementById('hoursFilter').onchange=function(e){state.hoursFilter=e.target.value;hoursPage()};
  document.getElementById('manualEntry').onclick=manualTimeModal;
  document.getElementById('saveTimeRules').onclick=async function(){var payload={clock_in_grace_minutes:Math.max(0,Math.min(120,Number(document.getElementById('graceMinutes').value)||0)),clock_in_early_minutes:Math.max(0,Math.min(240,Number(document.getElementById('clockEarlyMinutes').value)||0)),open_clock_out_alerts_enabled:document.getElementById('openClockAlertEnabled').value==='1',open_clock_out_alert_minutes:Math.max(5,Math.min(720,Number(document.getElementById('openClockAlertMinutes').value)||30)),payroll_variance_alert_hours:Math.max(0,Math.min(100,Number(document.getElementById('payrollVarianceAlert').value)||0))};var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(r.error.message);return}state.company=r.data;hoursPage();alert('Reglas de fichaje actualizadas.')};
  document.querySelectorAll('[data-manual-for]').forEach(function(b){b.onclick=function(){manualTimeModal();setTimeout(function(){var sel=document.querySelector('.modal select[name="shift"]');if(sel){sel.value=b.getAttribute('data-manual-for');var op=sel.options[sel.selectedIndex],wid=op&&op.getAttribute('data-worker'),ws=document.querySelector('.modal select[name="worker"]');if(wid&&ws)ws.value=wid}},0)}});
@@ -2550,12 +2525,6 @@ function incidentsPage(){
 function incidentList(list,coordinator){
  if(!list.length)return '<div class="card empty">No hay incidencias registradas.</div>';
  return '<div class="stack">'+list.map(function(x){var w=x.workers||{};return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.title)+'</strong><div class="muted">'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+d(x.occurred_at)+' '+t(x.occurred_at)+' · '+esc(x.incident_type)+'</div></div><span class="badge '+(x.severity==='urgent'||x.severity==='high'?'red':x.status==='resolved'?'green':'amber')+'">'+esc(x.status)+'</span></div><p>'+esc(x.description)+'</p>'+(coordinator&&x.status!=='resolved'?'<button class="btn small secondary" data-resolve-incident="'+x.id+'">Marcar resuelta</button>':'')+'</div>'}).join('')+'</div>';
-}
-function systemHealthModal(){
- var push='No disponible';
- if('Notification' in window)push=Notification.permission==='granted'?'Permitidas':Notification.permission==='denied'?'Bloqueadas':'Sin decidir';
- var body='<div class="stack"><div class="card"><strong>Estado de sincronización</strong><div class="muted">'+esc(syncStatusText())+'</div></div><div class="card"><strong>Datos cargados</strong><div class="muted">'+state.shifts.length+' turnos · '+state.workers.length+' trabajadores · '+state.timeEntries.length+' fichajes</div></div><div class="card"><strong>Avisos del navegador</strong><div class="muted">'+esc(push)+'</div></div><div class="card"><strong>Última carga correcta</strong><div class="muted">'+(lastSyncAt?new Date(lastSyncAt).toLocaleString('es-ES'):'Todavía no registrada')+'</div></div><button class="btn primary" id="healthRefresh">Sincronizar ahora</button></div>';
- var el=modal('Estado de GuardShift',body),b=el.querySelector('#healthRefresh');if(b)b.onclick=async function(){b.disabled=true;b.textContent='Sincronizando…';await load();lastSyncAt=Date.now();lastSyncError='';setupRealtime();el.remove();render()};
 }
 function render(){
  var map=state.profile&&state.profile.role==='worker'
