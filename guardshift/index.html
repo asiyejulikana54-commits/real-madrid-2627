@@ -1579,10 +1579,11 @@ function bindDocumentButtons(){
  document.querySelectorAll('[data-open-doc]').forEach(function(b){b.onclick=async function(){var r=await sb.storage.from('guardshift-documents').createSignedUrl(b.getAttribute('data-open-doc'),120);if(r.error){alert(r.error.message);return}window.open(r.data.signedUrl,'_blank')}});
  document.querySelectorAll('[data-edit-doc-expiry]').forEach(function(b){b.onclick=async function(){
    var hostModal=b.closest('.modal-bg'),doc=state.documents.find(function(x){return x.id===b.getAttribute('data-edit-doc-expiry')});if(!doc)return;
-   var value=prompt('Nueva fecha de caducidad (AAAA-MM-DD). Deja vacío para quitarla.',doc.expires_on||'');if(value===null)return;
-   if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert('Formato de fecha no válido.');return}
-   var r=await sb.from('worker_documents').update({expires_on:value||null}).eq('id',doc.id);if(r.error){alert(r.error.message);return}
-   if(hostModal)hostModal.remove();await load();render();
+   var value=prompt('Nueva fecha de caducidad (AAAA-MM-DD). Deja vacío para quitarla.',doc.expires_on||'');if(value===null)return;if(value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert('Formato de fecha no válido.');return}
+   var key='edit-document-expiry:'+doc.id;if(!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Guardando…';
+   try{var r=await sb.from('worker_documents').update({expires_on:value||null}).eq('id',doc.id);if(r.error)throw r.error;if(hostModal)hostModal.remove();await load();render()}
+   catch(e){alert(readableError(e));if(b.isConnected){b.disabled=false;b.textContent=oldText}}
+   finally{unlockAction(key)}
  }});
 }
 function bindDocumentReviewButtons(){
