@@ -70,8 +70,17 @@ function downloadCsv(filename,headers,rows){
 }
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
+function syncStatusText(){
+ if(navigator.onLine===false)return 'Sin conexión';
+ if(lastSyncError)return 'Error de sincronización';
+ if(state.realtimeStatus==='SUBSCRIBED')return lastSyncAt?'Sincronizado '+new Date(lastSyncAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'Tiempo real activo';
+ if(state.realtimeStatus==='CONNECTING')return 'Conectando…';
+ return 'Conexión disponible';
+}
 function refreshConnectionBanner(){
- var el=document.getElementById('connectionBanner');if(!el)return;
+ var el=document.getElementById('connectionBanner'),health=document.getElementById('systemHealth'),st=syncStatusText();
+ if(health){health.textContent=navigator.onLine===false?'● Offline':lastSyncError?'● Error':state.realtimeStatus==='SUBSCRIBED'?'● Sincronizado':'● Estado';health.title=st}
+ if(!el)return;
  if(navigator.onLine===false){el.className='connection-banner offline';el.textContent='📡 Sin conexión. Puedes consultar lo ya cargado, pero no se enviarán cambios ni fichajes.';return}
  if(lastSyncError){el.className='connection-banner error';el.textContent='⚠️ Conexión disponible, pero la última sincronización falló. GuardShift reintentará automáticamente.';return}
  if(state.session&&state.profile&&state.realtimeStatus&&state.realtimeStatus!=='SUBSCRIBED'){el.className='connection-banner syncing';el.textContent='↻ Sincronizando cambios en tiempo real…';return}
@@ -243,6 +252,7 @@ async function load(){
    var er2=rs.find(function(x){return x.error});if(er2){fatal(er2.error.message);return}
    state.facilities=rs[0].data||[];state.workers=rs[1].data||[];state.shifts=rs[2].data||[];state.substitutions=rs[3].data||[];state.documents=rs[4].data||[];state.timeEntries=rs[5].data||[];state.incidents=rs[6].data||[];state.leaveRequests=rs[7].data||[];state.timeLocations=rs[8].data||[];state.availability=rs[9].data||[];state.timeAudit=rs[10].data||[];state.notificationEvents=rs[11].data||[];state.shiftChangeRequests=rs[12].data||[];state.shiftEvents=rs[13].data||[];state.staffingCandidates=rs[14].data||[];state.documentEvents=rs[15].data||[];state.documentNotifications=rs[16].data||[];state.leaveEvents=rs[17].data||[];state.substitutionEvents=rs[18].data||[];state.substitutionNotifications=rs[19].data||[];state.timeCorrectionRequests=rs[20].data||[];state.timesheetClosures=rs[21].data||[];state.timesheetClosureEvents=rs[22].data||[];
  }
+ lastSyncAt=Date.now();lastSyncError='';syncRetryAttempt=0;refreshConnectionBanner();
 }
 function nav(){
  var items=state.profile&&state.profile.role==='worker'
@@ -252,10 +262,11 @@ function nav(){
 }
 function shell(title,sub,body,actions){
  app.innerHTML='<div class="shell"><aside class="side"><div class="logo">🛟 GuardShift</div><div class="nav">'+nav()+'</div><button class="logout" id="logout">Cerrar sesión</button></aside>'+
- '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
+ '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions"><button class="btn secondary" id="systemHealth">● Estado</button>'+(actions||'')+'</div></div>'+body+'</main></div>';
  document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');savePreferences();render()}});
  document.getElementById('logout').onclick=logout;
  var mobileLogout=document.getElementById('mobileLogout');if(mobileLogout)mobileLogout.onclick=logout;
+ var health=document.getElementById('systemHealth');if(health)health.onclick=systemHealthModal;
  refreshConnectionBanner();
 }
 function badge(s){var x={assigned:['Asignado','green'],open:['Sin cubrir','red'],cancelled:['Cancelado','blue'],completed:['Completado','blue']}[s]||[s,'blue'];return '<span class="badge '+x[1]+'">'+x[0]+'</span>'}
@@ -2548,6 +2559,18 @@ function incidentsPage(){
 function incidentList(list,coordinator){
  if(!list.length)return '<div class="card empty">No hay incidencias registradas.</div>';
  return '<div class="stack">'+list.map(function(x){var w=x.workers||{};return '<div class="card"><div class="doc-row"><div><strong>'+esc(x.title)+'</strong><div class="muted">'+(coordinator?esc(w.full_name||'Trabajador')+' · ':'')+d(x.occurred_at)+' '+t(x.occurred_at)+' · '+esc(x.incident_type)+'</div></div><span class="badge '+(x.severity==='urgent'||x.severity==='high'?'red':x.status==='resolved'?'green':'amber')+'">'+esc(x.status)+'</span></div><p>'+esc(x.description)+'</p>'+(coordinator&&x.status!=='resolved'?'<button class="btn small secondary" data-resolve-incident="'+x.id+'">Marcar resuelta</button>':'')+'</div>'}).join('')+'</div>';
+}
+function systemHealthModal(){
+ var push='No disponible';
+ if('Notification' in window)push=Notification.permission==='granted'?'Permitidas':Notification.permission==='denied'?'Bloqueadas':'Sin decidir';
+ var body='<div class="stack"><div class="card"><strong>Sincronización</strong><div class="muted">'+esc(syncStatusText())+'</div></div><div class="card"><strong>Datos cargados</strong><div class="muted">'+state.shifts.length+' turnos · '+state.workers.length+' trabajadores · '+state.timeEntries.length+' fichajes</div></div><div class="card"><strong>Avisos del navegador</strong><div class="muted">'+esc(push)+'</div></div><div class="card"><strong>Última carga correcta</strong><div class="muted">'+(lastSyncAt?new Date(lastSyncAt).toLocaleString('es-ES'):'Todavía no registrada')+'</div></div><button class="btn primary" id="healthRefresh">Sincronizar ahora</button></div>';
+ var el=modal('Estado de GuardShift',body),b=el.querySelector('#healthRefresh');
+ if(b)b.onclick=async function(){
+  if(!lockAction('health-refresh'))return;b.disabled=true;b.textContent='Sincronizando…';
+  try{await load();lastSyncAt=Date.now();lastSyncError='';setupRealtime();el.remove();render()}
+  catch(e){lastSyncError=readableError(e);b.disabled=false;b.textContent='Reintentar sincronización';refreshConnectionBanner();alert(lastSyncError)}
+  finally{unlockAction('health-refresh')}
+ };
 }
 function render(){
  var map=state.profile&&state.profile.role==='worker'
