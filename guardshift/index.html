@@ -313,24 +313,20 @@ function bindCoverButtons(){
  document.querySelectorAll('[data-cover]').forEach(function(b){b.onclick=function(){startSubstitution(b.getAttribute('data-cover'))}});
  document.querySelectorAll('[data-edit-shift]').forEach(function(b){b.onclick=function(){shiftModal(b.getAttribute('data-edit-shift'))}});
  document.querySelectorAll('[data-market-shift]').forEach(function(b){b.onclick=async function(){
-   var id=b.getAttribute('data-market-shift'),enable=b.getAttribute('data-enabled')==='1',sh=state.shifts.find(function(x){return x.id===id});
+   var id=b.getAttribute('data-market-shift'),enable=b.getAttribute('data-enabled')==='1',sh=state.shifts.find(function(x){return x.id===id}),key='market-shift:'+id;
+   if(!sh||sh.status==='cancelled'){alert('Este turno ya no está disponible para modificar el tablón.');await load();render();return}
    if(enable&&!confirm('¿Publicar este turno para que un trabajador disponible pueda cogerlo directamente?'))return;
-   var r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:enable});
-   if(r.error){alert(r.error.message);return}
-   var ids=Array.isArray(r.data)?r.data:[];
-   if(enable&&ids.length){
-     await notifyWorkers(ids,'Nuevo turno abierto',(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at)+' · Puedes cogerlo desde GuardShift.');
-   }
-   await load();render();
-   if(enable)alert(ids.length?'Turno publicado. Avisados '+ids.length+' trabajador(es) elegibles.':'Turno publicado, pero ahora mismo no hay trabajadores elegibles para avisar.');
-   else alert('Turno retirado del tablón.');
+   if(!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent=enable?'Publicando…':'Retirando…';
+   try{var r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:enable});if(r.error)throw r.error;var ids=Array.isArray(r.data)?r.data:[];if(enable&&ids.length)await notifyWorkers(ids,'Nuevo turno abierto',(sh.facilities&&sh.facilities.name?sh.facilities.name+': ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at)+' · Puedes cogerlo desde GuardShift.');await load();render();if(enable)alert(ids.length?'Turno publicado. Avisados '+ids.length+' trabajador(es) elegibles.':'Turno publicado, pero ahora mismo no hay trabajadores elegibles para avisar.');else alert('Turno retirado del tablón.')}
+   catch(e){alert(readableError(e));await load();render()}
+   finally{unlockAction(key)}
  }});
  document.querySelectorAll('[data-cancel-shift]').forEach(function(b){b.onclick=async function(){
-   if(!confirm('¿Cancelar este turno?'))return;
-   var id=b.getAttribute('data-cancel-shift'),sh=state.shifts.find(function(x){return x.id===id});
-   var r=await sb.rpc('cancel_shift',{p_shift_id:id});if(r.error){alert(r.error.message);return}
-   if(sh&&sh.worker_id)await notifyWorkers([sh.worker_id],'Turno cancelado',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));
-   await load();render()
+   var id=b.getAttribute('data-cancel-shift'),sh=state.shifts.find(function(x){return x.id===id}),key='cancel-shift:'+id;if(!sh||sh.status==='cancelled'){await load();render();return}
+   if(!confirm('¿Cancelar este turno?')||!lockAction(key))return;b.disabled=true;b.textContent='Cancelando…';
+   try{var r=await sb.rpc('cancel_shift',{p_shift_id:id});if(r.error)throw r.error;if(sh.worker_id)await notifyWorkers([sh.worker_id],'Turno cancelado',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));await load();render()}
+   catch(e){alert(readableError(e));await load();render()}
+   finally{unlockAction(key)}
  }});
 }
 function timeOnDay(day,timeText){
@@ -461,9 +457,9 @@ function coveragePlannerPage(){
    (unconfigured.length?'<div class="section"><h2>⚠️ Centros sin horario configurado</h2><div class="stack">'+unconfigured.map(function(f){return '<div class="card"><div class="doc-row"><div><strong>'+esc(f.name)+'</strong><div class="muted">No entra todavía en el cálculo de cobertura.</div></div><button class="btn small secondary" data-coverage-facility="'+f.id+'">Configurar</button></div></div>'}).join('')+'</div></div>':'')+
    dayCards;
  shell('Cobertura','Planificación de personal para los próximos 7 días.',body,actions);
- document.getElementById('coveragePrev').onclick=function(){state.coverageOffset--;coveragePlannerPage()};
- document.getElementById('coverageNext').onclick=function(){state.coverageOffset++;coveragePlannerPage()};
- document.getElementById('coverageToday').onclick=function(){state.coverageOffset=0;coveragePlannerPage()};
+ document.getElementById('coveragePrev').onclick=function(){state.coverageOffset--;savePreferences();coveragePlannerPage()};
+ document.getElementById('coverageNext').onclick=function(){state.coverageOffset++;savePreferences();coveragePlannerPage()};
+ document.getElementById('coverageToday').onclick=function(){state.coverageOffset=0;savePreferences();coveragePlannerPage()};
  bindCoverageActions();
 }
 function notificationSettingsCard(){
