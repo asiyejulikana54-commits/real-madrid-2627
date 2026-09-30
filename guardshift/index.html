@@ -1981,11 +1981,14 @@ function requestTimeCorrectionModal(entryId){
  var defaultOut=x.clock_out||(x.shifts&&x.shifts.ends_at)||new Date().toISOString();
  var el=modal('Solicitar corrección de fichaje','<form class="form"><div class="field"><label>Entrada correcta</label><input type="datetime-local" name="in" value="'+toLocalInput(x.clock_in)+'" required></div><div class="field"><label>Salida correcta</label><input type="datetime-local" name="out" value="'+toLocalInput(defaultOut)+'" required></div><div class="field"><label>Motivo</label><input name="reason" placeholder="Ej.: olvidé fichar al salir" required></div><div class="muted">La solicitud no modifica tus horas hasta que el coordinador la apruebe.</div><button class="btn primary">Enviar solicitud</button></form>');
  el.querySelector('form').onsubmit=async function(e){
-   e.preventDefault();var fd=new FormData(e.target),ci=new Date(fd.get('in')),co=new Date(fd.get('out'));
-   if(!isFinite(ci)||!isFinite(co)||co<=ci){ferr(e.target,'La salida debe ser posterior a la entrada.');return}
-   var r=await sb.rpc('request_time_correction',{p_entry_id:entryId,p_clock_in:ci.toISOString(),p_clock_out:co.toISOString(),p_reason:fd.get('reason')});
-   if(r.error){ferr(e.target,r.error.message);return}
-   el.remove();await load();workerHoursPage();alert('Solicitud de corrección enviada.');
+   e.preventDefault();var form=e.target,fd=new FormData(form),ci=new Date(fd.get('in')),co=new Date(fd.get('out')),reason=String(fd.get('reason')||'').trim(),key='request-correction:'+entryId,submit=form.querySelector('button[type="submit"],button.btn.primary');
+   if(!isFinite(ci)||!isFinite(co)||co<=ci){ferr(form,'La salida debe ser posterior a la entrada.');return}
+   if(!reason){ferr(form,'Indica el motivo de la corrección.');return}
+   if(co-ci>24*3600000){ferr(form,'La corrección no puede superar 24 horas. Revisa las fechas y horas.');return}
+   if(!lockAction(key))return;if(submit){submit.disabled=true;submit.textContent='Enviando…'}
+   try{var r=await sb.rpc('request_time_correction',{p_entry_id:entryId,p_clock_in:ci.toISOString(),p_clock_out:co.toISOString(),p_reason:reason});if(r.error){ferr(form,readableError(r.error));if(submit){submit.disabled=false;submit.textContent='Enviar solicitud'}return}el.remove();await load();workerHoursPage();alert('Solicitud de corrección enviada.')}
+   catch(err){ferr(form,readableError(err));if(submit){submit.disabled=false;submit.textContent='Enviar solicitud'}}
+   finally{unlockAction(key)}
  };
 }
 function workerHoursPage(){
