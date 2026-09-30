@@ -47,7 +47,7 @@ var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false
 function preferenceKey(){return 'guardshift:prefs:'+(state.profile&&state.profile.id||'guest')}
 function savePreferences(){
  if(!state.profile)return;
- try{localStorage.setItem(preferenceKey(),JSON.stringify({page:state.page,operationsHorizon:state.operationsHorizon,workforceHorizon:state.workforceHorizon,summaryMode:state.summaryMode,hoursMode:state.hoursMode,hoursFilter:state.hoursFilter}))}catch(_){}
+ try{localStorage.setItem(preferenceKey(),JSON.stringify({page:state.page,operationsHorizon:state.operationsHorizon,workforceHorizon:state.workforceHorizon,summaryMode:state.summaryMode,workerHoursMode:state.workerHoursMode,hoursMode:state.hoursMode,hoursFilter:state.hoursFilter}))}catch(_){}
 }
 function restorePreferences(){
  if(!state.profile)return;
@@ -58,6 +58,7 @@ function restorePreferences(){
   if([7,14,21,30].indexOf(Number(p.operationsHorizon))>=0)state.operationsHorizon=Number(p.operationsHorizon);
   if([7,14,21,30].indexOf(Number(p.workforceHorizon))>=0)state.workforceHorizon=Number(p.workforceHorizon);
   if(p.summaryMode==='week'||p.summaryMode==='month')state.summaryMode=p.summaryMode;
+  if(p.workerHoursMode==='week'||p.workerHoursMode==='month')state.workerHoursMode=p.workerHoursMode;
   if(p.hoursMode==='week'||p.hoursMode==='month')state.hoursMode=p.hoursMode;
   if(['all','attention','pending','approved','rejected'].indexOf(p.hoursFilter)>=0)state.hoursFilter=p.hoursFilter;
  }catch(_){}
@@ -1997,7 +1998,7 @@ function workerHoursPage(){
  '<div class="section"><h2>Historial de fichajes</h2>'+(rows.length?'<div class="table"><table><thead><tr><th>Fecha</th><th>Instalación</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Puntualidad</th><th>Estado</th><th>Corrección</th></tr></thead><tbody>'+rows.map(function(x){var e=x.clock_out?new Date(x.clock_out):now,h=Math.max(0,e-new Date(x.clock_in))/3600000,lateMin=punctualityForEntry(x),punct=lateMin==null?'—':lateMin<=grace?'<span class="badge green">A tiempo</span>':'<span class="badge red">+'+lateMin+' min</span>',st=x.approval_status==='approved'?['Aprobado','green']:x.approval_status==='rejected'?['Rechazado','red']:['Pendiente','amber'],req=requests.find(function(r){return r.time_entry_id===x.id&&r.status==='pending'});return '<tr><td>'+d(x.clock_in)+'</td><td>'+esc(x.shifts&&x.shifts.facilities&&x.shifts.facilities.name||'—')+'</td><td>'+ts(x.clock_in)+'</td><td>'+(x.clock_out?ts(x.clock_out):'<span class="badge amber">Abierto</span>')+'</td><td>'+h.toFixed(2)+' h</td><td>'+punct+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td>'+(req?'<span class="badge amber">Pendiente</span>':'<button class="btn small secondary" data-request-time-correction="'+x.id+'">Solicitar corrección</button>')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No tienes fichajes en este periodo.</div>')+'</div>'+
  '<div class="section"><h2>Mis solicitudes de corrección</h2>'+(requests.length?'<div class="stack">'+requests.slice(0,12).map(function(r){var st=timeCorrectionStatusPresentation(r.status),entry=(state.timeEntries||[]).find(function(x){return x.id===r.time_entry_id});return '<div class="card"><div class="doc-row"><div><strong>'+d(r.requested_clock_in)+' · '+ts(r.requested_clock_in)+' → '+ts(r.requested_clock_out)+'</strong><div class="muted">'+esc(r.reason)+(r.review_note?' · Revisión: '+esc(r.review_note):'')+(entry&&entry.shifts&&entry.shifts.facilities?' · '+esc(entry.shifts.facilities.name):'')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+(r.status==='pending'?'<button class="btn small danger" style="margin-top:8px" data-cancel-time-correction="'+r.id+'">Cancelar solicitud</button>':'')+'</div>'}).join('')+'</div>':'<div class="card empty">No has solicitado correcciones.</div>')+'</div>';
  shell('Mis horas','Consulta tus horas y solicita correcciones sin modificar el registro original por tu cuenta.',body,'');
- document.getElementById('workerHoursMode').onchange=function(e){state.workerHoursMode=e.target.value;state.workerHoursOffset=0;workerHoursPage()};
+ document.getElementById('workerHoursMode').onchange=function(e){state.workerHoursMode=e.target.value;state.workerHoursOffset=0;savePreferences();workerHoursPage()};
  document.getElementById('workerHoursPrev').onclick=function(){state.workerHoursOffset--;workerHoursPage()};
  document.getElementById('workerHoursNext').onclick=function(){state.workerHoursOffset++;workerHoursPage()};
  document.getElementById('workerHoursNow').onclick=function(){state.workerHoursOffset=0;workerHoursPage()};
