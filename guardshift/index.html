@@ -1714,9 +1714,8 @@ function setupRealtime(){
    if(!mine)return;
    scheduleRealtimeRefresh();
    if(state.profile.role==='worker'&&state.profile.worker_id){
-       var p=shiftEventPresentation(ev);
-       if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
-     }
+     var p=shiftEventPresentation(ev);
+     if(['assigned','reassigned','unassigned','cancelled','schedule_changed'].indexOf(ev.event_type)>=0)await showGuardShiftNotification('Cambio en tu cuadrante',p[0]+'. Revisa Mis turnos en GuardShift.');
    }
  });
  var docCfg={event:'*',schema:'public',table:'worker_documents'};
