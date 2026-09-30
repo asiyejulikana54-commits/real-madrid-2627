@@ -70,7 +70,9 @@ function syncStatusText(){
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
 function refreshConnectionBanner(){
- var el=document.getElementById('connectionBanner');if(!el)return;
+ var el=document.getElementById('connectionBanner'),health=document.getElementById('systemHealth');
+ if(health){var st=syncStatusText();health.textContent=(navigator.onLine===false?'● Offline':lastSyncError?'● Error':state.realtimeStatus==='SUBSCRIBED'?'● Sincronizado':'● '+st);health.title=st}
+ if(!el)return;
  if(navigator.onLine===false){el.className='connection-banner offline';el.textContent='📡 Sin conexión. Puedes consultar lo ya cargado, pero no se enviarán cambios ni fichajes.';return}
  if(lastSyncError){el.className='connection-banner error';el.textContent='⚠️ Conexión disponible, pero la última sincronización falló. GuardShift reintentará automáticamente.';return}
  if(state.session&&state.profile&&state.realtimeStatus&&state.realtimeStatus!=='SUBSCRIBED'){el.className='connection-banner syncing';el.textContent='↻ Sincronizando cambios en tiempo real…';return}
