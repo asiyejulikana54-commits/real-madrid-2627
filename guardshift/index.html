@@ -2350,28 +2350,32 @@ function hoursPage(){
  document.querySelectorAll('[data-remind-clock-in]').forEach(function(b){b.onclick=async function(){
    var shiftId=b.getAttribute('data-remind-clock-in'),sh=state.shifts.find(function(x){return x.id===shiftId});if(!sh||!sh.worker_id)return;
    var key='remind-clock-in:'+shiftId;if(!lockAction(key))return;var old=b.textContent;b.disabled=true;b.textContent='Enviando…';
-   var res=await notifyWorkers([sh.worker_id],'Fichaje de entrada pendiente',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+'Tu turno ya ha empezado y todavía no consta la entrada. Revisa Fichaje en GuardShift.');
-   unlockAction(key);b.disabled=false;b.textContent=old;alert(notificationDeliveryText(res));
+   try{var res=await notifyWorkers([sh.worker_id],'Fichaje de entrada pendiente',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+'Tu turno ya ha empezado y todavía no consta la entrada. Revisa Fichaje en GuardShift.');alert(notificationDeliveryText(res))}
+   catch(e){alert(readableError(e))}
+   finally{unlockAction(key);if(b.isConnected){b.disabled=false;b.textContent=old}}
  }});
  document.querySelectorAll('[data-remind-clock-out]').forEach(function(b){b.onclick=async function(){
    var entryId=b.getAttribute('data-remind-clock-out'),x=(state.timeEntries||[]).find(function(z){return z.id===entryId});if(!x)return;
    var key='remind-clock-out:'+entryId;if(!lockAction(key))return;var old=b.textContent;b.disabled=true;b.textContent='Enviando…';
-   var fa=x.shifts&&x.shifts.facilities||{},res=await notifyWorkers([x.worker_id],'Fichaje de salida pendiente',(fa.name?fa.name+' · ':'')+'Tu turno ha terminado y el fichaje sigue abierto. Registra la salida o solicita una corrección.');
-   unlockAction(key);b.disabled=false;b.textContent=old;alert(notificationDeliveryText(res));
+   try{var fa=x.shifts&&x.shifts.facilities||{},res=await notifyWorkers([x.worker_id],'Fichaje de salida pendiente',(fa.name?fa.name+' · ':'')+'Tu turno ha terminado y el fichaje sigue abierto. Registra la salida o solicita una corrección.');alert(notificationDeliveryText(res))}
+   catch(e){alert(readableError(e))}
+   finally{unlockAction(key);if(b.isConnected){b.disabled=false;b.textContent=old}}
  }});
  var allIn=document.getElementById('remindAllMissingClockIns');if(allIn)allIn.onclick=async function(){
    var ids=Array.from(new Set(missing.map(function(sh){return sh.worker_id}).filter(Boolean)));if(!ids.length)return;
    if(!confirm('¿Enviar recordatorio de entrada a '+ids.length+' trabajador(es)?'))return;
    var key='remind-all-clock-in';if(!lockAction(key))return;allIn.disabled=true;allIn.textContent='Enviando…';
-   var res=await notifyWorkers(ids,'Fichaje de entrada pendiente','Tu turno ya ha empezado y todavía no consta la entrada. Revisa Fichaje en GuardShift.');
-   unlockAction(key);allIn.disabled=false;allIn.textContent='🔔 Recordar a todos';alert(notificationDeliveryText(res));
+   try{var res=await notifyWorkers(ids,'Fichaje de entrada pendiente','Tu turno ya ha empezado y todavía no consta la entrada. Revisa Fichaje en GuardShift.');alert(notificationDeliveryText(res))}
+   catch(e){alert(readableError(e))}
+   finally{unlockAction(key);if(allIn.isConnected){allIn.disabled=false;allIn.textContent='🔔 Recordar a todos'}}
  };
  var allOut=document.getElementById('remindAllClockOuts');if(allOut)allOut.onclick=async function(){
    var ids=Array.from(new Set(overdueOpen.map(function(x){return x.worker_id}).filter(Boolean)));if(!ids.length)return;
    if(!confirm('¿Enviar recordatorio de salida a '+ids.length+' trabajador(es)?'))return;
    var key='remind-all-clock-out';if(!lockAction(key))return;allOut.disabled=true;allOut.textContent='Enviando…';
-   var res=await notifyWorkers(ids,'Fichaje de salida pendiente','Tu turno ha terminado y el fichaje sigue abierto. Registra la salida o solicita una corrección.');
-   unlockAction(key);allOut.disabled=false;allOut.textContent='🔔 Recordar a todos';alert(notificationDeliveryText(res));
+   try{var res=await notifyWorkers(ids,'Fichaje de salida pendiente','Tu turno ha terminado y el fichaje sigue abierto. Registra la salida o solicita una corrección.');alert(notificationDeliveryText(res))}
+   catch(e){alert(readableError(e))}
+   finally{unlockAction(key);if(allOut.isConnected){allOut.disabled=false;allOut.textContent='🔔 Recordar a todos'}}
  };
  document.querySelectorAll('[data-correct-time]').forEach(function(b){b.onclick=function(){correctionModal(b.getAttribute('data-correct-time'))}});
  document.querySelectorAll('[data-review-time]').forEach(function(b){b.onclick=async function(){
