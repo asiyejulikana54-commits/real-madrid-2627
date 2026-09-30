@@ -47,7 +47,7 @@ var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false
 function preferenceKey(){return 'guardshift:prefs:'+(state.profile&&state.profile.id||'guest')}
 function savePreferences(){
  if(!state.profile)return;
- try{localStorage.setItem(preferenceKey(),JSON.stringify({page:state.page,operationsHorizon:state.operationsHorizon,workforceHorizon:state.workforceHorizon,summaryMode:state.summaryMode,workerHoursMode:state.workerHoursMode,hoursMode:state.hoursMode,hoursFilter:state.hoursFilter}))}catch(_){}
+ try{localStorage.setItem(preferenceKey(),JSON.stringify({page:state.page,operationsHorizon:state.operationsHorizon,workforceHorizon:state.workforceHorizon,summaryMode:state.summaryMode,summaryOffset:state.summaryOffset,scheduleOffset:state.scheduleOffset,coverageOffset:state.coverageOffset,workerHoursMode:state.workerHoursMode,workerHoursOffset:state.workerHoursOffset,hoursMode:state.hoursMode,hoursOffset:state.hoursOffset,hoursFilter:state.hoursFilter}))}catch(_){}
 }
 function restorePreferences(){
  if(!state.profile)return;
@@ -55,11 +55,12 @@ function restorePreferences(){
   var raw=localStorage.getItem(preferenceKey());if(!raw)return;var p=JSON.parse(raw)||{};
   var allowed=state.profile.role==='worker'?['workerhome','myshifts','clocking','workerhours','offers','availability','leave','incidents','mydocuments']:['dashboard','operations','schedule','coverage','summary','facilities','workers','shifts','substitutions','hours','workforce','leave','incidents','documents','compliance'];
   if(allowed.indexOf(p.page)>=0)state.page=p.page;
-  if([7,14,21,30].indexOf(Number(p.operationsHorizon))>=0)state.operationsHorizon=Number(p.operationsHorizon);
-  if([7,14,21,30].indexOf(Number(p.workforceHorizon))>=0)state.workforceHorizon=Number(p.workforceHorizon);
+  if([7,14,30].indexOf(Number(p.operationsHorizon))>=0)state.operationsHorizon=Number(p.operationsHorizon);
+  if([7,14,30].indexOf(Number(p.workforceHorizon))>=0)state.workforceHorizon=Number(p.workforceHorizon);
   if(p.summaryMode==='week'||p.summaryMode==='month')state.summaryMode=p.summaryMode;
   if(p.workerHoursMode==='week'||p.workerHoursMode==='month')state.workerHoursMode=p.workerHoursMode;
   if(p.hoursMode==='week'||p.hoursMode==='month')state.hoursMode=p.hoursMode;
+  ['summaryOffset','scheduleOffset','coverageOffset','workerHoursOffset','hoursOffset'].forEach(function(k){var n=Number(p[k]);if(Number.isInteger(n)&&n>=-52&&n<=52)state[k]=n});
   if(['all','attention','pending','approved','rejected'].indexOf(p.hoursFilter)>=0)state.hoursFilter=p.hoursFilter;
  }catch(_){}
 }
@@ -2014,9 +2015,9 @@ function workerHoursPage(){
  '<div class="section"><h2>Mis solicitudes de corrección</h2>'+(requests.length?'<div class="stack">'+requests.slice(0,12).map(function(r){var st=timeCorrectionStatusPresentation(r.status),entry=(state.timeEntries||[]).find(function(x){return x.id===r.time_entry_id});return '<div class="card"><div class="doc-row"><div><strong>'+d(r.requested_clock_in)+' · '+ts(r.requested_clock_in)+' → '+ts(r.requested_clock_out)+'</strong><div class="muted">'+esc(r.reason)+(r.review_note?' · Revisión: '+esc(r.review_note):'')+(entry&&entry.shifts&&entry.shifts.facilities?' · '+esc(entry.shifts.facilities.name):'')+'</div></div><span class="badge '+st[1]+'">'+st[0]+'</span></div>'+(r.status==='pending'?'<button class="btn small danger" style="margin-top:8px" data-cancel-time-correction="'+r.id+'">Cancelar solicitud</button>':'')+'</div>'}).join('')+'</div>':'<div class="card empty">No has solicitado correcciones.</div>')+'</div>';
  shell('Mis horas','Consulta tus horas y solicita correcciones sin modificar el registro original por tu cuenta.',body,'');
  document.getElementById('workerHoursMode').onchange=function(e){state.workerHoursMode=e.target.value;state.workerHoursOffset=0;savePreferences();workerHoursPage()};
- document.getElementById('workerHoursPrev').onclick=function(){state.workerHoursOffset--;workerHoursPage()};
- document.getElementById('workerHoursNext').onclick=function(){state.workerHoursOffset++;workerHoursPage()};
- document.getElementById('workerHoursNow').onclick=function(){state.workerHoursOffset=0;workerHoursPage()};
+ document.getElementById('workerHoursPrev').onclick=function(){state.workerHoursOffset--;savePreferences();workerHoursPage()};
+ document.getElementById('workerHoursNext').onclick=function(){state.workerHoursOffset++;savePreferences();workerHoursPage()};
+ document.getElementById('workerHoursNow').onclick=function(){state.workerHoursOffset=0;savePreferences();workerHoursPage()};
  document.querySelectorAll('[data-request-time-correction]').forEach(function(b){b.onclick=function(){requestTimeCorrectionModal(b.getAttribute('data-request-time-correction'))}});
  document.querySelectorAll('[data-cancel-time-correction]').forEach(function(b){b.onclick=async function(){var id=b.getAttribute('data-cancel-time-correction'),key='cancel-correction:'+id;if(!confirm('¿Cancelar esta solicitud de corrección?')||!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Cancelando…';try{var r=await sb.rpc('cancel_own_time_correction_request',{p_request_id:id});if(r.error){alert(readableError(r.error));return}await load();workerHoursPage()}catch(e){alert(readableError(e));b.disabled=false;b.textContent=oldText}finally{unlockAction(key)}}});
  document.getElementById('workerHoursCsv').onclick=function(){
@@ -2196,9 +2197,9 @@ function summaryPage(){
  '<div class="section">'+(rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Previstas</th><th>Fichadas</th><th>Aprobadas</th><th>Diferencia</th><th>Fichajes pendientes</th><th>Incidencias</th><th>Ausencia</th></tr></thead><tbody>'+rows.map(function(x){var cls=x.diff>0.01?'amber':x.diff<-0.01?'red':'green';var sign=x.diff>0?'+':'';return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.scheduled.toFixed(2)+' h</td><td>'+x.worked.toFixed(2)+' h</td><td>'+x.approved.toFixed(2)+' h</td><td><span class="badge '+cls+'">'+sign+x.diff.toFixed(2)+' h</span></td><td>'+x.pending+'</td><td>'+x.incidents+'</td><td>'+x.leaveDays+' días</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores activos.</div>')+'</div>';
  shell('Resumen','Horas previstas vs. trabajadas, ausencias e incidencias.',body,'');
  document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;savePreferences();summaryPage()};
- document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;summaryPage()};
- document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;summaryPage()};
- document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;summaryPage()};
+ document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;savePreferences();summaryPage()};
+ document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;savePreferences();summaryPage()};
+ document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;savePreferences();summaryPage()};
  document.getElementById('summaryCsv').onclick=function(){
    downloadCsv('guardshift_resumen_'+state.summaryMode+'.csv',['Periodo','Trabajador','Horas previstas','Horas fichadas','Horas aprobadas','Diferencia','Fichajes pendientes','Incidencias','Días ausencia'],rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays]}));
  };
@@ -2354,9 +2355,9 @@ function hoursPage(){
  closeHtml;
  shell('Horas trabajadas','Control de presencia, solicitudes de corrección y cierre diario antes de exportar a nómina.',body,'');
  document.getElementById('hoursMode').onchange=function(e){state.hoursMode=e.target.value;state.hoursOffset=0;savePreferences();hoursPage()};
- document.getElementById('hoursPrev').onclick=function(){state.hoursOffset--;hoursPage()};
- document.getElementById('hoursNext').onclick=function(){state.hoursOffset++;hoursPage()};
- document.getElementById('hoursNow').onclick=function(){state.hoursOffset=0;hoursPage()};
+ document.getElementById('hoursPrev').onclick=function(){state.hoursOffset--;savePreferences();hoursPage()};
+ document.getElementById('hoursNext').onclick=function(){state.hoursOffset++;savePreferences();hoursPage()};
+ document.getElementById('hoursNow').onclick=function(){state.hoursOffset=0;savePreferences();hoursPage()};
  document.getElementById('hoursFilter').onchange=function(e){state.hoursFilter=e.target.value;savePreferences();hoursPage()};
  document.getElementById('manualEntry').onclick=manualTimeModal;
  document.getElementById('saveTimeRules').onclick=async function(){var b=this,key='save-time-rules',payload={clock_in_grace_minutes:Math.max(0,Math.min(120,Number(document.getElementById('graceMinutes').value)||0)),clock_in_early_minutes:Math.max(0,Math.min(240,Number(document.getElementById('clockEarlyMinutes').value)||0)),open_clock_out_alerts_enabled:document.getElementById('openClockAlertEnabled').value==='1',open_clock_out_alert_minutes:Math.max(5,Math.min(720,Number(document.getElementById('openClockAlertMinutes').value)||30)),payroll_variance_alert_hours:Math.max(0,Math.min(100,Number(document.getElementById('payrollVarianceAlert').value)||0))};if(!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Guardando…';try{var r=await sb.from('companies').update(payload).eq('id',state.company.id).select().single();if(r.error){alert(readableError(r.error));return}state.company=r.data;hoursPage();alert('Reglas de fichaje actualizadas.')}catch(e){alert(readableError(e));b.disabled=false;b.textContent=oldText}finally{unlockAction(key)}};
@@ -2557,7 +2558,7 @@ function leavePage(){
      document.querySelectorAll('[data-review-leave]').forEach(function(b){b.onclick=function(){reviewLeaveRequest(b.getAttribute('data-review-leave'),b.getAttribute('data-status'),b.getAttribute('data-open-coverage')==='1')}});
    }
    ['leaveSearch','leaveStatus','leaveType'].forEach(function(id){document.getElementById(id).oninput=draw;document.getElementById(id).onchange=draw});draw();
-   document.getElementById('leaveCsv').onclick=function(){var rows=current.length?current:list;if(!rows.length){alert('No hay solicitudes para exportar.');return}var csv='Trabajador,Tipo,Desde,Hasta,Dias,Estado,Turnos coincidentes,Motivo,Nota revision\n'+rows.map(function(x){var w=x.workers||{};return [w.full_name||'',leaveTypeLabel(x.leave_type),x.starts_on,x.ends_on,leaveDays(x),x.status,leaveConflictingShifts(x).length,x.reason||'',x.review_note||''].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_ausencias.csv';a.click();URL.revokeObjectURL(a.href)};
+   document.getElementById('leaveCsv').onclick=function(){var rows=current.length?current:list;if(!rows.length){alert('No hay solicitudes para exportar.');return}downloadCsv('guardshift_ausencias.csv',['Trabajador','Tipo','Desde','Hasta','Días','Estado','Turnos coincidentes','Motivo','Nota revisión'],rows.map(function(x){var w=x.workers||{};return [w.full_name||'',leaveTypeLabel(x.leave_type),x.starts_on,x.ends_on,leaveDays(x),x.status,leaveConflictingShifts(x).length,x.reason||'',x.review_note||'']}))};
  }
 }
 function incidentsPage(){
