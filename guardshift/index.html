@@ -647,8 +647,11 @@ var body='<div class="filters"><select id="operationsHorizon"><option value="7" 
  document.querySelectorAll('[data-operation-candidates]').forEach(function(b){b.onclick=function(){operationCandidatesModal(b.getAttribute('data-operation-candidates'))}});
  document.querySelectorAll('[data-quick-assign]').forEach(function(b){b.onclick=function(){operationAssignCandidate(b.getAttribute('data-shift'),b.getAttribute('data-quick-assign'))}});
  document.querySelectorAll('[data-operation-publish]').forEach(function(b){b.onclick=async function(){
-   var id=b.getAttribute('data-operation-publish'),sh=state.shifts.find(function(x){return x.id===id}),r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:true});
-   if(r.error){alert(r.error.message);return}var ids=Array.isArray(r.data)?r.data:[];if(ids.length)await notifyWorkers(ids,'Nuevo turno abierto',(sh&&sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));await load();operationsPage();
+   var id=b.getAttribute('data-operation-publish'),key='publish-open:'+id,sh=state.shifts.find(function(x){return x.id===id});if(!sh||sh.status!=='open'||sh.worker_id){alert('Este turno ya no está disponible para publicar.');await load();operationsPage();return}
+   if(!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Publicando…';
+   try{var r=await sb.rpc('set_open_shift_marketplace',{p_shift_id:id,p_enabled:true});if(r.error){alert(readableError(r.error));return}var ids=Array.isArray(r.data)?r.data:[];if(ids.length)await notifyWorkers(ids,'Nuevo turno abierto',(sh.facilities&&sh.facilities.name?sh.facilities.name+' · ':'')+d(sh.starts_at)+' '+t(sh.starts_at)+'–'+t(sh.ends_at));await load();operationsPage()}
+   catch(e){alert(readableError(e));b.disabled=false;b.textContent=oldText}
+   finally{unlockAction(key)}
  }});
  document.getElementById('publishAllOperation').onclick=async function(){
    var b=this,key='publish-open-bulk',ids=open.filter(function(sh){return !sh.open_to_workers}).map(function(sh){return sh.id});if(!ids.length){alert('Todos los turnos abiertos ya están publicados.');return}
