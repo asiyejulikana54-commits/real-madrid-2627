@@ -41,9 +41,33 @@ var URL='https://mhrewwgmdqhmozzrfkiz.supabase.co';
 var KEY='sb_publishable_BFPiIdi94NASIwoOMf2Jog_uIlcYdhW';
 var VAPID_PUBLIC='BBEKnWUfruSr5WZhcB-rPC3DLcq3C69sjX5WlOua8RuaTK9bEmVRV3hHl0qPfYDZetMp5SgVL7eeaNNC0jGJOMc';
 var sb=supabase.createClient(URL,KEY);
-var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtime:null};
+var state={session:null,profile:null,company:null,page:'dashboard',facilities:[],workers:[],shifts:[],offers:[],availability:[],substitutions:[],documents:[],timeEntries:[],incidents:[],leaveRequests:[],timeLocations:[],timeAudit:[],timeCorrectionRequests:[],timesheetClosures:[],timesheetClosureEvents:[],payrollReconciliation:[],notificationEvents:[],shiftChangeRequests:[],claimableOpenShifts:[],shiftEvents:[],documentEvents:[],documentNotifications:[],leaveEvents:[],substitutionEvents:[],substitutionNotifications:[],staffingCandidates:[],operationsHorizon:14,workforceHorizon:14,summaryMode:'week',summaryOffset:0,scheduleOffset:0,coverageOffset:0,workerHoursMode:'month',workerHoursOffset:0,hoursMode:'month',hoursOffset:0,hoursFilter:'all',realtimeStatus:'IDLE',realtime:null};
 var app=document.getElementById('app');
 var actionLocks=new Set(),realtimeRefreshTimer=null,realtimeRefreshRunning=false,realtimeRefreshQueued=false,realtimeGeneration=0,realtimeReconnectTimer=null,realtimeReconnectAttempt=0,syncRetryTimer=null,syncRetryAttempt=0,lastSyncError='',lastSyncAt=0;
+function preferenceKey(){return 'guardshift:prefs:'+(state.profile&&state.profile.id||'guest')}
+function savePreferences(){
+ if(!state.profile)return;
+ try{localStorage.setItem(preferenceKey(),JSON.stringify({page:state.page,operationsHorizon:state.operationsHorizon,workforceHorizon:state.workforceHorizon,summaryMode:state.summaryMode,hoursMode:state.hoursMode,hoursFilter:state.hoursFilter}))}catch(_){}
+}
+function restorePreferences(){
+ if(!state.profile)return;
+ try{
+  var raw=localStorage.getItem(preferenceKey());if(!raw)return;var p=JSON.parse(raw)||{};
+  var allowed=state.profile.role==='worker'?['workerhome','myshifts','clocking','workerhours','offers','availability','leave','incidents','mydocuments']:['dashboard','operations','schedule','coverage','summary','facilities','workers','shifts','substitutions','hours','workforce','leave','incidents','documents','compliance'];
+  if(allowed.indexOf(p.page)>=0)state.page=p.page;
+  if([7,14,21,30].indexOf(Number(p.operationsHorizon))>=0)state.operationsHorizon=Number(p.operationsHorizon);
+  if([7,14,21,30].indexOf(Number(p.workforceHorizon))>=0)state.workforceHorizon=Number(p.workforceHorizon);
+  if(p.summaryMode==='week'||p.summaryMode==='month')state.summaryMode=p.summaryMode;
+  if(p.hoursMode==='week'||p.hoursMode==='month')state.hoursMode=p.hoursMode;
+  if(['all','attention','pending','approved','rejected'].indexOf(p.hoursFilter)>=0)state.hoursFilter=p.hoursFilter;
+ }catch(_){}
+}
+function csvCell(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}
+function downloadCsv(filename,headers,rows){
+ var csv='\ufeff'+headers.map(csvCell).join(',')+'\n'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\n');
+ var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),objectUrl=window.URL.createObjectURL(blob);
+ a.href=objectUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){window.URL.revokeObjectURL(objectUrl)},0);
+}
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
 function refreshConnectionBanner(){
@@ -148,7 +172,7 @@ async function boot(){
  if(!state.profile){onboard();return}
  var c=await sb.from('companies').select('*').eq('id',state.profile.company_id).single();
  if(c.error){fatal(c.error.message);return}
- state.company=c.data;await ensureServiceWorker();await load();setupRealtime();render();if(state.profile.role==='worker'&&'Notification' in window&&Notification.permission==='granted')registerPushSubscription().catch(function(){});
+ state.company=c.data;restorePreferences();await ensureServiceWorker();await load();setupRealtime();render();if(state.profile.role==='worker'&&'Notification' in window&&Notification.permission==='granted')registerPushSubscription().catch(function(){});
 }
 function onboard(error){
  var name=state.session.user.user_metadata&&state.session.user.user_metadata.full_name||'';
@@ -229,7 +253,7 @@ function nav(){
 function shell(title,sub,body,actions){
  app.innerHTML='<div class="shell"><aside class="side"><div class="logo">🛟 GuardShift</div><div class="nav">'+nav()+'</div><button class="logout" id="logout">Cerrar sesión</button></aside>'+
  '<main class="main"><div class="mobile">'+nav()+'<button id="mobileLogout">Cerrar sesión</button></div><div id="connectionBanner" class="connection-banner hidden" role="status" aria-live="polite"></div><div class="top"><div><h1>'+esc(title)+'</h1><div class="muted">'+esc(sub||'')+'</div></div><div class="actions">'+(actions||'')+'</div></div>'+body+'</main></div>';
- document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');render()}});
+ document.querySelectorAll('[data-page]').forEach(function(b){b.onclick=function(){state.page=b.getAttribute('data-page');savePreferences();render()}});
  document.getElementById('logout').onclick=logout;
  var mobileLogout=document.getElementById('mobileLogout');if(mobileLogout)mobileLogout.onclick=logout;
  refreshConnectionBanner();
@@ -2149,13 +2173,12 @@ function summaryPage(){
  '<div class="cards section"><div class="card kpi"><span class="muted">Horas previstas</span><strong>'+totals.scheduled.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas fichadas</span><strong>'+totals.worked.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Horas aprobadas</span><strong>'+totals.approved.toFixed(1)+'</strong></div><div class="card kpi"><span class="muted">Incidencias</span><strong>'+totals.incidents+'</strong></div><div class="card kpi"><span class="muted">Días de ausencia aprobados</span><strong>'+totals.leaveDays+'</strong></div></div>'+
  '<div class="section">'+(rows.length?'<div class="table"><table><thead><tr><th>Trabajador</th><th>Previstas</th><th>Fichadas</th><th>Aprobadas</th><th>Diferencia</th><th>Fichajes pendientes</th><th>Incidencias</th><th>Ausencia</th></tr></thead><tbody>'+rows.map(function(x){var cls=x.diff>0.01?'amber':x.diff<-0.01?'red':'green';var sign=x.diff>0?'+':'';return '<tr><td><strong>'+esc(x.worker.full_name)+'</strong></td><td>'+x.scheduled.toFixed(2)+' h</td><td>'+x.worked.toFixed(2)+' h</td><td>'+x.approved.toFixed(2)+' h</td><td><span class="badge '+cls+'">'+sign+x.diff.toFixed(2)+' h</span></td><td>'+x.pending+'</td><td>'+x.incidents+'</td><td>'+x.leaveDays+' días</td></tr>'}).join('')+'</tbody></table></div>':'<div class="card empty">No hay trabajadores activos.</div>')+'</div>';
  shell('Resumen','Horas previstas vs. trabajadas, ausencias e incidencias.',body,'');
- document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;summaryPage()};
+ document.getElementById('summaryMode').onchange=function(e){state.summaryMode=e.target.value;state.summaryOffset=0;savePreferences();summaryPage()};
  document.getElementById('summaryPrev').onclick=function(){state.summaryOffset--;summaryPage()};
  document.getElementById('summaryNext').onclick=function(){state.summaryOffset++;summaryPage()};
  document.getElementById('summaryToday').onclick=function(){state.summaryOffset=0;summaryPage()};
  document.getElementById('summaryCsv').onclick=function(){
-   var csv='Periodo,Trabajador,Horas previstas,Horas fichadas,Horas aprobadas,Diferencia,Fichajes pendientes,Incidencias,Dias ausencia\n'+rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_resumen_'+state.summaryMode+'.csv';a.click();window.URL.revokeObjectURL(a.href);
+   downloadCsv('guardshift_resumen_'+state.summaryMode+'.csv',['Periodo','Trabajador','Horas previstas','Horas fichadas','Horas aprobadas','Diferencia','Fichajes pendientes','Incidencias','Días ausencia'],rows.map(function(x){return [p.label,x.worker.full_name,x.scheduled.toFixed(2),x.worked.toFixed(2),x.approved.toFixed(2),x.diff.toFixed(2),x.pending,x.incidents,x.leaveDays]}));
  };
 }
 function entryForShift(shiftId){return (state.timeEntries||[]).find(function(x){return x.shift_id===shiftId})}
