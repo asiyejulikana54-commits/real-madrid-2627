@@ -648,8 +648,7 @@ var body='<div class="filters"><select id="operationsHorizon"><option value="7" 
    if(!confirm('¿Enviar recordatorio a '+ids.length+' trabajador(es)?'))return;await notifyWorkers(ids,'Recordatorio de cuadrante','Revisa tus próximos turnos en GuardShift.');alert('Recordatorio enviado.');
  };
  document.getElementById('operationsCsv').onclick=function(){
-   var csv='Fecha,Instalacion,Inicio,Fin,Candidatos,Publicado,Urgencia\n'+queue.map(function(q){return [d(q.shift.starts_at),q.shift.facilities&&q.shift.facilities.name||'',q.shift.starts_at,q.shift.ends_at,q.ranked.length,q.shift.open_to_workers?'Sí':'No',q.hours<=24?'Critico':q.hours<=48?'Urgente':q.ranked.length===0?'Sin candidatos':'Pendiente'].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='guardshift_operaciones.csv';a.click();URL.revokeObjectURL(a.href);
+   downloadCsv('guardshift_operaciones.csv',['Fecha','Instalación','Inicio','Fin','Candidatos','Publicado','Urgencia'],queue.map(function(q){return [d(q.shift.starts_at),q.shift.facilities&&q.shift.facilities.name||'',q.shift.starts_at,q.shift.ends_at,q.ranked.length,q.shift.open_to_workers?'Sí':'No',q.hours<=24?'Crítico':q.hours<=48?'Urgente':q.ranked.length===0?'Sin candidatos':'Pendiente']}));
  };
 }
 function dashboard(){
