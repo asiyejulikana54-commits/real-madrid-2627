@@ -1258,14 +1258,10 @@ function recurringShiftModal(results,facilityId,workerId,onDone){
  var el=modal('Revisión de turnos recurrentes',body),btn=el.querySelector('#confirmRecurringShift');
  if(!btn)return;
  btn.onclick=async function(){
-   btn.disabled=true;btn.textContent='Creando…';
-   var payload=valid.map(function(x){return x.payload});
-   var r=await sb.from('shifts').insert(payload);
-   if(r.error){alert(r.error.message);btn.disabled=false;btn.textContent='Crear '+valid.length+' turno(s)';return}
-   if(workerId)await notifyWorkers([workerId],'Nuevos turnos asignados','Se han añadido '+valid.length+' turno(s) a tu cuadrante. Revisa las fechas en GuardShift.');
-   el.remove();await load();render();
-   alert('Creados '+valid.length+' turno(s).'+(blocked.length?' · Bloqueados '+blocked.length+'.':'')+(dups.length?' · Duplicados omitidos '+dups.length+'.':''));
-   if(onDone)onDone();
+   var key='create-recurring-shifts';if(!valid.length||!lockAction(key))return;btn.disabled=true;btn.textContent='Creando…';
+   try{var payload=valid.map(function(x){return x.payload}),r=await sb.from('shifts').insert(payload);if(r.error)throw r.error;if(workerId)await notifyWorkers([workerId],'Nuevos turnos asignados','Se han añadido '+valid.length+' turno(s) a tu cuadrante. Revisa las fechas en GuardShift.');el.remove();await load();render();alert('Creados '+valid.length+' turno(s).'+(blocked.length?' · Bloqueados '+blocked.length+'.':'')+(dups.length?' · Duplicados omitidos '+dups.length+'.':''));if(onDone)onDone()}
+   catch(e){alert(readableError(e));if(btn.isConnected){btn.disabled=false;btn.textContent='Crear '+valid.length+' turno(s)'}}
+   finally{unlockAction(key)}
  };
 }
 function shiftModal(id,prefill){
