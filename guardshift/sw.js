@@ -1,4 +1,4 @@
-const CACHE='guardshift-shell-v3';
+const CACHE='guardshift-shell-v4';
 const SHELL=['./','./index.html'];
 
 self.addEventListener('install',event=>{
@@ -29,7 +29,7 @@ self.addEventListener('fetch',event=>{
       const cache=await caches.open(CACHE);
       try{
         const response=await fetch(request);
-        if(response&&response.ok)await cache.put('./index.html',response.clone());
+        if(response&&response.ok){await cache.put('./index.html',response.clone());await cache.put('./',response.clone());}
         return response;
       }catch(e){
         return (await cache.match('./index.html'))||(await cache.match('./'))||Response.error();
@@ -42,10 +42,9 @@ self.addEventListener('fetch',event=>{
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
       const cached=await cache.match(request);
-      if(cached)return cached;
-      const response=await fetch(request);
-      if(response)await cache.put(request,response.clone());
-      return response;
+      const network=fetch(request).then(async response=>{if(response&&response.ok)await cache.put(request,response.clone());return response}).catch(()=>null);
+      if(cached){event.waitUntil(network);return cached}
+      return (await network)||Response.error();
     })());
   }
 });
