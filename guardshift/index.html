@@ -2491,17 +2491,12 @@ function leaveEventTimeline(list){
  return '<div class="stack">'+list.map(function(e){var p=leaveEventPresentation(e),w=state.workers.find(function(x){return x.id===e.worker_id});return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+(w?' · '+esc(w.full_name):'')+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div>'+(e.note?'<div class="muted">Nota: '+esc(e.note)+'</div>':'')+'</div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>';
 }
 async function openLeaveCoverage(req,host){
- var conflicts=leaveConflictingShifts(req);
+ var conflicts=leaveConflictingShifts(req),key='open-leave-coverage:'+req.id;
  if(!conflicts.length){alert('No quedan turnos asignados afectados por esta ausencia.');return}
- if(!confirm('¿Abrir cobertura para '+conflicts.length+' turno(s)? El trabajador dejará de estar asignado y se crearán sustituciones abiertas.'))return;
- var r=await sb.rpc('open_leave_coverage',{p_request_id:req.id});
- if(r.error){alert(r.error.message);return}
- var data=r.data||{};
- if(host)host.remove();
- await notifyWorkers([req.worker_id],'Cobertura de ausencia iniciada','Tus '+(data.opened_count||0)+' turno(s) afectados por la ausencia ya están en proceso de cobertura.');
- await load();
- state.page='substitutions';render();
- alert('Cobertura abierta para '+(data.opened_count||0)+' turno(s).');
+ if(!confirm('¿Abrir cobertura para '+conflicts.length+' turno(s)? El trabajador dejará de estar asignado y se crearán sustituciones abiertas.')||!lockAction(key))return;
+ try{var r=await sb.rpc('open_leave_coverage',{p_request_id:req.id});if(r.error)throw r.error;var data=r.data||{};if(host)host.remove();await notifyWorkers([req.worker_id],'Cobertura de ausencia iniciada','Tus '+(data.opened_count||0)+' turno(s) afectados por la ausencia ya están en proceso de cobertura.');await load();state.page='substitutions';render();alert('Cobertura abierta para '+(data.opened_count||0)+' turno(s).')}
+ catch(e){alert(readableError(e));await load();leavePage()}
+ finally{unlockAction(key)}
 }
 function showLeaveConflicts(req){
  var conflicts=leaveConflictingShifts(req),worker=req.workers&&req.workers.full_name||workerNameById(req.worker_id)||'Trabajador';
@@ -2515,18 +2510,14 @@ function showLeaveConflicts(req){
 }
 async function reviewLeaveRequest(id,status,openCoverage){
  var req=(state.leaveRequests||[]).find(function(x){return x.id===id});if(!req)return;
- var conflicts=leaveConflictingShifts(req),note=null;
- if(status==='rejected'){note=prompt('Motivo del rechazo (se mostrará al trabajador):','');if(note===null)return;if(!note.trim()){alert('Indica el motivo del rechazo.');return}}
- if(status==='approved'){
-   var question=openCoverage&&conflicts.length?'¿Aprobar la ausencia y abrir cobertura para '+conflicts.length+' turno(s) afectados?':'¿Aprobar esta ausencia?'+(conflicts.length?' Hay '+conflicts.length+' turno(s) asignado(s) que seguirán necesitando gestión.':'');
-   if(!confirm(question))return;
- }
- var r=await sb.rpc('review_leave_request',{p_request_id:id,p_status:status,p_note:note,p_open_coverage:!!openCoverage});
- if(r.error){alert(r.error.message);return}
- var data=r.data||{};
- if(status==='approved')await notifyWorkers([req.worker_id],'Ausencia aprobada',openCoverage&&data.coverage&&data.coverage.opened_count?'Tu ausencia ha sido aprobada y '+data.coverage.opened_count+' turno(s) han pasado a cobertura.':'Tu solicitud de ausencia ha sido aprobada.');
- else await notifyWorkers([req.worker_id],'Ausencia rechazada','Tu solicitud de ausencia ha sido rechazada.'+(note?' Motivo: '+note:''));
- await load();leavePage();
+ if(req.status!=='pending'){alert('Esta solicitud ya no está pendiente. Se actualizará la vista.');await load();leavePage();return}
+ var conflicts=leaveConflictingShifts(req),note=null,key='review-leave:'+id;
+ if(status==='rejected'){note=prompt('Motivo del rechazo (se mostrará al trabajador):','');if(note===null)return;note=note.trim();if(!note){alert('Indica el motivo del rechazo.');return}}
+ if(status==='approved'){var question=openCoverage&&conflicts.length?'¿Aprobar la ausencia y abrir cobertura para '+conflicts.length+' turno(s) afectados?':'¿Aprobar esta ausencia?'+(conflicts.length?' Hay '+conflicts.length+' turno(s) asignado(s) que seguirán necesitando gestión.':'');if(!confirm(question))return}
+ if(!lockAction(key))return;
+ try{var r=await sb.rpc('review_leave_request',{p_request_id:id,p_status:status,p_note:note,p_open_coverage:!!openCoverage});if(r.error)throw r.error;var data=r.data||{};if(status==='approved')await notifyWorkers([req.worker_id],'Ausencia aprobada',openCoverage&&data.coverage&&data.coverage.opened_count?'Tu ausencia ha sido aprobada y '+data.coverage.opened_count+' turno(s) han pasado a cobertura.':'Tu solicitud de ausencia ha sido aprobada.');else await notifyWorkers([req.worker_id],'Ausencia rechazada','Tu solicitud de ausencia ha sido rechazada.'+(note?' Motivo: '+note:''));await load();leavePage()}
+ catch(e){alert(readableError(e));await load();leavePage()}
+ finally{unlockAction(key)}
 }
 function leaveList(list,coordinator){
  if(!list.length)return '<div class="card empty">No hay solicitudes.</div>';
