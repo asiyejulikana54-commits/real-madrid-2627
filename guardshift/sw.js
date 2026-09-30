@@ -1,4 +1,4 @@
-const CACHE='guardshift-shell-v4';
+const CACHE='guardshift-shell-v5';
 const SHELL=['./','./index.html'];
 
 self.addEventListener('install',event=>{
@@ -28,7 +28,9 @@ self.addEventListener('fetch',event=>{
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
       try{
-        const response=await fetch(request);
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+        let response;
+        try{response=await fetch(request,{signal:controller.signal})}finally{clearTimeout(timer)}
         if(response&&response.ok){await cache.put('./index.html',response.clone());await cache.put('./',response.clone());}
         return response;
       }catch(e){
