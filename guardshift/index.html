@@ -1588,16 +1588,14 @@ function bindDocumentButtons(){
 function bindDocumentReviewButtons(){
  bindDocumentButtons();
  document.querySelectorAll('[data-review-doc]').forEach(function(b){b.onclick=async function(){
-   var hostModal=b.closest('.modal-bg'),id=b.getAttribute('data-review-doc'),status=b.getAttribute('data-review-status'),doc=state.documents.find(function(x){return x.id===id});if(!doc)return;
-   var note=null;if(status==='rejected'){note=prompt('Motivo del rechazo (se mostrará al trabajador):','');if(note===null)return;if(!note.trim()){alert('Indica el motivo del rechazo.');return}}
-   var impact=documentImpactShifts(doc,90).length;
-   if(status==='approved'&&!confirm('¿Aprobar '+doc.document_type+'?'+(impact?' Puede resolver '+impact+' turno(s) actualmente marcados con riesgo documental.':' Desde ese momento podrá habilitar al trabajador para instalaciones que lo exijan.')))return;
-   var r=await sb.rpc('review_worker_document',{p_document_id:id,p_status:status,p_note:note,p_expires_on:null});
-   if(r.error){alert(r.error.message);return}
-   if(status==='approved')await notifyWorkers([doc.worker_id],'Documento aprobado','Tu documento '+doc.document_type+' ha sido aprobado en GuardShift.');
-   if(status==='rejected')await notifyWorkers([doc.worker_id],'Documento rechazado','Tu documento '+doc.document_type+' necesita cambios. Motivo: '+note);
-   if(status==='pending')await notifyWorkers([doc.worker_id],'Documento en revisión','Tu documento '+doc.document_type+' ha vuelto a revisión.');
-   if(hostModal)hostModal.remove();await load();render();
+   var hostModal=b.closest('.modal-bg'),id=b.getAttribute('data-review-doc'),status=b.getAttribute('data-review-status'),doc=state.documents.find(function(x){return x.id===id}),key='review-document:'+id;if(!doc){await load();render();return}
+   if(status!=='pending'&&doc.review_status!=='pending'&&doc.review_status===status){alert('Este documento ya tiene ese estado.');await load();render();return}
+   var note=null;if(status==='rejected'){note=prompt('Motivo del rechazo (se mostrará al trabajador):','');if(note===null)return;note=note.trim();if(!note){alert('Indica el motivo del rechazo.');return}}
+   var impact=documentImpactShifts(doc,90).length;if(status==='approved'&&!confirm('¿Aprobar '+doc.document_type+'?'+(impact?' Puede resolver '+impact+' turno(s) actualmente marcados con riesgo documental.':' Desde ese momento podrá habilitar al trabajador para instalaciones que lo exijan.')))return;
+   if(!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Guardando…';
+   try{var r=await sb.rpc('review_worker_document',{p_document_id:id,p_status:status,p_note:note,p_expires_on:null});if(r.error)throw r.error;if(status==='approved')await notifyWorkers([doc.worker_id],'Documento aprobado','Tu documento '+doc.document_type+' ha sido aprobado en GuardShift.');if(status==='rejected')await notifyWorkers([doc.worker_id],'Documento rechazado','Tu documento '+doc.document_type+' necesita cambios. Motivo: '+note);if(status==='pending')await notifyWorkers([doc.worker_id],'Documento en revisión','Tu documento '+doc.document_type+' ha vuelto a revisión.');if(hostModal)hostModal.remove();await load();render()}
+   catch(e){alert(readableError(e));await load();render()}
+   finally{unlockAction(key);if(b.isConnected){b.disabled=false;b.textContent=oldText}}
  }});
 }
 function mydocuments(){
