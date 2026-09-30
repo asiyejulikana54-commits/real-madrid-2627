@@ -306,10 +306,7 @@ function shiftHistoryModal(shiftId){
    '<div class="section"><h3>Actividad</h3>'+(events.length?'<div class="stack">'+events.map(function(e){var p=shiftEventPresentation(e),move='';if(e.from_worker_id||e.to_worker_id)move='<div class="muted">'+esc(workerNameById(e.from_worker_id))+' → '+esc(workerNameById(e.to_worker_id))+'</div>';return '<div class="card"><div class="doc-row"><div><strong>'+esc(p[0])+'</strong><div class="muted">'+d(e.created_at)+' · '+ts(e.created_at)+' · '+esc(e.actor_name||'Sistema')+'</div>'+move+'</div><span class="badge '+p[1]+'">'+esc(e.actor_role||'system')+'</span></div></div>'}).join('')+'</div>':'<div class="card empty">Todavía no hay eventos registrados para este turno.</div>')+'</div>'+
    (events.length?'<button class="btn secondary" id="exportShiftHistory">Exportar historial CSV</button>':'');
  var el=modal('Historial del turno',body);
- var exp=el.querySelector('#exportShiftHistory');if(exp)exp.onclick=function(){
-   var csv='Fecha,Evento,Actor,Rol,Desde,Hacia\n'+events.map(function(e){var p=shiftEventPresentation(e);return [e.created_at,p[0],e.actor_name||'Sistema',e.actor_role||'',workerNameById(e.from_worker_id),workerNameById(e.to_worker_id)].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_historial_turno.csv';a.click();window.URL.revokeObjectURL(a.href);
- };
+ var exp=el.querySelector('#exportShiftHistory');if(exp)exp.onclick=function(){downloadCsv('guardshift_historial_turno.csv',['Fecha','Evento','Actor','Rol','Desde','Hacia'],events.map(function(e){var p=shiftEventPresentation(e);return [e.created_at,p[0],e.actor_name||'Sistema',e.actor_role||'',workerNameById(e.from_worker_id),workerNameById(e.to_worker_id)]}))};
 }
 function bindCoverButtons(){
  document.querySelectorAll('[data-shift-history]').forEach(function(b){b.onclick=function(){shiftHistoryModal(b.getAttribute('data-shift-history'))}});
@@ -820,11 +817,7 @@ function shifts(){
    await notifyWorkers(ids,'Recordatorio de cuadrante','Tu coordinador ha actualizado o revisado el cuadrante. Consulta tus próximos turnos en GuardShift.');
    alert('Aviso enviado a '+ids.length+' trabajador(es).');
  };
- document.getElementById('shiftCsv').onclick=function(){
-   if(!currentList.length){alert('No hay turnos para exportar.');return}
-   var csv='Fecha,Instalacion,Inicio,Fin,Trabajador,Estado,Publicado,Riesgo\n'+currentList.map(function(x){var warn=shiftWarning(x);return [d(x.starts_at),x.facilities&&x.facilities.name||'',x.starts_at,x.ends_at,x.workers&&x.workers.full_name||'',x.status,x.open_to_workers?'Sí':'No',warn?warn[0]:''].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_turnos_filtrados.csv';a.click();window.URL.revokeObjectURL(a.href);
- };
+ document.getElementById('shiftCsv').onclick=function(){if(!currentList.length){alert('No hay turnos para exportar.');return}downloadCsv('guardshift_turnos_filtrados.csv',['Fecha','Instalacion','Inicio','Fin','Trabajador','Estado','Publicado','Riesgo'],currentList.map(function(x){var warn=shiftWarning(x);return [d(x.starts_at),x.facilities&&x.facilities.name||'',x.starts_at,x.ends_at,x.workers&&x.workers.full_name||'',x.status,x.open_to_workers?'Sí':'No',warn?warn[0]:'']}))};
  draw();
 }
 function monday(offset){var x=new Date(),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day+((offset||0)*7));x.setHours(0,0,0,0);return x}
@@ -1536,12 +1529,8 @@ function documentsPage(){
    await notifyWorkers(attentionWorkers,'Documentación pendiente','Revisa la sección Documentos de GuardShift: tienes documentación pendiente, rechazada, caducada o próxima a caducar.');
    alert('Aviso enviado a '+attentionWorkers.length+' trabajador(es).');
  };
- document.getElementById('documentsCsv').onclick=function(){
-   var rows=current.length?current:state.documents;
-   var csv='Trabajador,Tipo,Estado,Origen,Caducidad,Nota,Turnos en riesgo\n'+rows.map(function(x){var w=state.workers.find(function(z){return z.id===x.worker_id}),st=documentReviewPresentation(x),impact=documentImpactShifts(x,90).length;return [w&&w.full_name||'',x.document_type,st[0],x.source||'',x.expires_on||'',x.review_note||'',impact].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-   var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=window.URL.createObjectURL(blob);a.download='guardshift_documentos.csv';a.click();window.URL.revokeObjectURL(a.href);
- };
-}
+ document.getElementById('documentsCsv').onclick=function(){var rows=current.length?current:state.documents;downloadCsv('guardshift_documentos.csv',['Trabajador','Tipo','Estado','Origen','Caducidad','Nota','Turnos en riesgo'],rows.map(function(x){var w=state.workers.find(function(z){return z.id===x.worker_id}),st=documentReviewPresentation(x),impact=documentImpactShifts(x,90).length;return [w&&w.full_name||'',x.document_type,st[0],x.source||'',x.expires_on||'',x.review_note||'',impact]}))};
+ }
 function documentReviewQueue(list){
  if(!list.length)return '<div class="card empty">No hay documentos pendientes de revisión.</div>';
  return '<div class="stack">'+list.slice().sort(function(a,b){return new Date(a.submitted_at||a.created_at)-new Date(b.submitted_at||b.created_at)}).map(function(x){
