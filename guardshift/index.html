@@ -1301,9 +1301,8 @@ function shiftModal(id,prefill){
      var pw=planningWarningsForAssignment(w,a,b,item&&item.id,[]);
      if(pw.length&&!confirm('GuardShift detecta estas advertencias de planificación:\n\n• '+pw.join('\n• ')+'\n\n¿Quieres continuar de todas formas?'))return;
    }
-   var payload={facility_id:facilityId,worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};
-   var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));
-   if(r.error){ferr(e.target,r.error.message);return}
+   var form=e.target,key='save-shift:'+(item&&item.id||'new'),btn=form.querySelector('button.btn.primary'),payload={facility_id:facilityId,worker_id:w,starts_at:a.toISOString(),ends_at:b.toISOString(),status:w?'assigned':'open'};if(!lockAction(key))return;var oldText=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent='Guardando…'}
+   try{var r=item?await sb.from('shifts').update(payload).eq('id',item.id):await sb.from('shifts').insert(Object.assign({company_id:state.profile.company_id,created_by:state.profile.id},payload));if(r.error)throw r.error;
    var facility=state.facilities.find(function(x){return x.id===facilityId}),where=facility&&facility.name?facility.name:'Turno';
    var detail=where+' · '+d(a)+' '+t(a)+'–'+t(b);
    if(!original&&w){
@@ -1314,6 +1313,7 @@ function shiftModal(id,prefill){
      if(w&&original.worker_id===w&&(original.facility_id!==facilityId||new Date(original.starts_at).getTime()!==a.getTime()||new Date(original.ends_at).getTime()!==b.getTime()))await notifyWorkers([w],'Turno actualizado',detail);
    }
    el.remove();await load();render()
+   }catch(err){ferr(form,readableError(err));if(btn){btn.disabled=false;btn.textContent=oldText}}finally{unlockAction(key)}
  }
 }
 
