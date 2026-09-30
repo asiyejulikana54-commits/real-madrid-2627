@@ -2058,7 +2058,7 @@ function offers(){
  }});
  bindOfferButtons();
 }
-function bindOfferButtons(){document.querySelectorAll('[data-accept-offer]').forEach(function(b){b.onclick=async function(){var id=b.getAttribute('data-accept-offer'),key='accept-offer:'+id;if(!confirm('¿Aceptar este turno?')||!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Aceptando…';try{var r=await sb.rpc('accept_substitution_offer',{p_offer_id:id});if(r.error)throw r.error;await load();render();alert('Turno asignado correctamente.')}catch(e){alert(readableError(e));await load();offers()}finally{unlockAction(key)}})}
+function bindOfferButtons(){document.querySelectorAll('[data-accept-offer]').forEach(function(b){b.onclick=async function(){var id=b.getAttribute('data-accept-offer'),key='accept-offer:'+id;if(!confirm('¿Aceptar este turno?')||!lockAction(key))return;var oldText=b.textContent;b.disabled=true;b.textContent='Aceptando…';try{var r=await sb.rpc('accept_substitution_offer',{p_offer_id:id});if(r.error)throw r.error;await load();render();alert('Turno asignado correctamente.')}catch(e){alert(readableError(e));await load();offers()}finally{unlockAction(key)}})});}
 function availabilityStatusPresentation(status){
  return status==='available'?['Disponible','green']:status==='unavailable'?['No disponible','red']:['Preferiría no','amber'];
 }
