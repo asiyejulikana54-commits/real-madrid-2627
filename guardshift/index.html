@@ -58,7 +58,7 @@ function savePreferences(){
 function csvCell(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}
 function downloadCsv(filename,headers,rows){
  var csv='\ufeff'+headers.map(csvCell).join(',')+'\n'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\n');
- var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=filename;a.click();setTimeout(function(){URL.revokeObjectURL(url)},0);
+ var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a'),objectUrl=window.URL.createObjectURL(blob);a.href=objectUrl;a.download=filename;a.click();setTimeout(function(){window.URL.revokeObjectURL(objectUrl)},0);
 }
 function syncStatusText(){
  if(navigator.onLine===false)return 'Sin conexión';
