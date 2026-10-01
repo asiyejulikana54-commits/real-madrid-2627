@@ -2643,13 +2643,13 @@ async function safeBoot(){
  catch(e){recovery(e,'No se pudo iniciar GuardShift.')}
 }
 window.addEventListener('error',function(ev){
- if(ev&&ev.error)recovery(ev.error,'Se ha producido un error inesperado en GuardShift.');
-});
-window.addEventListener('unhandledrejection',function(ev){
- if(ev&&ev.preventDefault)ev.preventDefault();
- recovery(ev&&ev.reason?ev.reason:'Promesa rechazada','Se ha producido un error inesperado al completar una operación.');
-});
-window.addEventListener('offline',function(){lastSyncError='';state.realtimeStatus='OFFLINE';if(syncRetryTimer){clearTimeout(syncRetryTimer);syncRetryTimer=null}refreshConnectionBanner()});
+  if(ev&&ev.error)reportBackgroundError(ev.error,'Error de interfaz');
+ });
+ window.addEventListener('unhandledrejection',function(ev){
+  if(ev&&ev.preventDefault)ev.preventDefault();
+  reportBackgroundError(ev&&ev.reason?ev.reason:'Promesa rechazada','Operación en segundo plano');
+ });
+ window.addEventListener('offline',function(){lastSyncError='';state.realtimeStatus='OFFLINE';if(syncRetryTimer){clearTimeout(syncRetryTimer);syncRetryTimer=null}refreshConnectionBanner()});
 window.addEventListener('online',function(){lastSyncError='';syncRetryAttempt=0;refreshConnectionBanner();if(state.session&&state.profile){setupRealtime();scheduleRealtimeRefresh()}});
 sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_OUT')auth()});safeBoot();
 })();
