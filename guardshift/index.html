@@ -72,6 +72,7 @@ function downloadCsv(filename,headers,rows){
 }
 function lockAction(key){if(actionLocks.has(key))return false;actionLocks.add(key);return true}
 function unlockAction(key){actionLocks.delete(key)}
+function reportBackgroundError(err,context){lastSyncError=(context?context+': ':'')+readableError(err);refreshConnectionBanner();if(window.console&&console.error)console.error('[GuardShift]',context||'background',err)}
 function syncStatusText(){
  if(navigator.onLine===false)return 'Sin conexión';
  if(lastSyncError)return 'Error de sincronización';
