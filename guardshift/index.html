@@ -1784,7 +1784,7 @@ function setupRealtime(){
     state.realtimeStatus=status;
     if(status==='SUBSCRIBED'){realtimeReconnectAttempt=0;lastSyncError='';lastSyncAt=Date.now()}
     else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
-      if(err&&err.message)lastSyncError=err.message;
+      reportBackgroundError(err||status,'Realtime');
       scheduleRealtimeReconnect(generation);
     }
     refreshConnectionBanner();
@@ -2580,7 +2580,9 @@ function clientHealthChecks(){
   {name:'Sesión',ok:!!state.session,detail:state.session?'Sesión autenticada':'Sin sesión activa'},
   {name:'Perfil',ok:!!(state.profile&&state.profile.id),detail:state.profile?(state.profile.role==='coordinator'?'Coordinador':'Trabajador'):'Perfil no cargado'},
   {name:'Realtime',ok:state.realtimeStatus==='SUBSCRIBED'||navigator.onLine===false,detail:syncStatusText()},
-  {name:'Service Worker',ok:!('serviceWorker' in navigator)||!!navigator.serviceWorker.controller,detail:'serviceWorker' in navigator?(navigator.serviceWorker.controller?'Activo':'Instalándose / pendiente de control'):'No compatible'}
+  {name:'Service Worker',ok:'serviceWorker' in navigator&&!!navigator.serviceWorker.controller,detail:'serviceWorker' in navigator?(navigator.serviceWorker.controller?'Activo':'Instalándose / pendiente de control'):'No compatible'},
+   {name:'Última sincronización',ok:!lastSyncError,detail:lastSyncError||'Sin errores pendientes'},
+   {name:'Reconexiones Realtime',ok:realtimeReconnectAttempt<3,detail:realtimeReconnectAttempt?realtimeReconnectAttempt+' intento(s) reciente(s)':'Sin reconexiones pendientes'}
  ];
  return checks;
 }
