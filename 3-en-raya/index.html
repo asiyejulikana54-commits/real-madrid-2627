@@ -3,69 +3,108 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
-  <title>3 en raya · Dos jugadores</title>
+  <meta name="theme-color" content="#0b1220">
+  <title>3 en raya PRO · Dos jugadores</title>
   <style>
     *{box-sizing:border-box}
     :root{
-      --bg:#0b1220;--panel:#111827;--panel2:#182235;--text:#f8fafc;--muted:#9ca3af;
-      --line:#334155;--x:#60a5fa;--o:#f472b6;--ok:#22c55e;--danger:#ef4444;
+      --bg:#07101d;--panel:#111827;--panel2:#182235;--panel3:#0f172a;
+      --text:#f8fafc;--muted:#94a3b8;--line:#334155;
+      --x:#60a5fa;--o:#f472b6;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;
     }
-    body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at top,#172554 0,#0b1220 42%);color:var(--text)}
+    body{
+      margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at top,#172554 0,#0b1220 40%,#07101d 100%);color:var(--text)
+    }
     button,input{font:inherit}
     button{touch-action:manipulation}
-    .app{width:min(100%,520px);margin:0 auto;padding:24px 18px 40px}
-    .brand{text-align:center;margin:6px 0 24px}
-    .brand h1{font-size:34px;line-height:1.05;margin:0 0 8px}
-    .brand p{margin:0;color:var(--muted)}
-    .card{background:rgba(17,24,39,.94);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+    .app{width:min(100%,540px);margin:0 auto;padding:20px 16px 40px}
+    .brand{text-align:center;margin:4px 0 18px}
+    .brand h1{font-size:32px;line-height:1.05;margin:0 0 7px}
+    .brand p{margin:0;color:var(--muted);font-size:14px}
+    .pro{display:inline-block;margin-left:5px;padding:4px 8px;border-radius:999px;background:#f59e0b;color:#1f1300;font-size:13px;vertical-align:5px}
+    .card{background:rgba(17,24,39,.95);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+    .rule{
+      display:flex;gap:10px;align-items:flex-start;margin-bottom:16px;padding:13px 14px;border-radius:16px;
+      background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.3);color:#fde68a;font-size:14px;line-height:1.35
+    }
     .home-actions{display:grid;gap:12px}
-    .primary,.secondary,.whatsapp{border:0;border-radius:16px;min-height:54px;padding:12px 16px;font-weight:800;cursor:pointer}
+    .primary,.secondary,.whatsapp{border:0;border-radius:16px;min-height:54px;padding:12px 16px;font-weight:850;cursor:pointer}
     .primary{background:#f8fafc;color:#0f172a}
     .secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
-    .whatsapp{background:#25D366;color:#06270f;width:100%;margin-top:14px}
+    .whatsapp{background:#25D366;color:#06270f;width:100%;margin-top:2px}
     .join-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px}
-    input{min-width:0;border:1px solid var(--line);background:#0f172a;color:var(--text);border-radius:14px;padding:0 14px;min-height:52px;text-transform:uppercase;letter-spacing:.16em;font-weight:800;font-size:16px}
+    input{
+      min-width:0;border:1px solid var(--line);background:#0f172a;color:var(--text);border-radius:14px;
+      padding:0 14px;min-height:52px;text-transform:uppercase;letter-spacing:.16em;font-weight:800;font-size:16px
+    }
     .small{font-size:13px;color:var(--muted);line-height:1.4}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
-    .room{font-size:13px;color:var(--muted)}
-    .room strong{display:block;color:var(--text);font-size:20px;letter-spacing:.12em}
-    .badge{border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-weight:800;background:#0f172a}
-    .status{text-align:center;border-radius:16px;background:var(--panel2);padding:14px 12px;margin:8px 0 18px;font-size:18px;font-weight:800}
-    .status.sub{font-size:15px;font-weight:650;color:var(--muted)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+    .room{font-size:12px;color:var(--muted)}
+    .room strong{display:block;color:var(--text);font-size:19px;letter-spacing:.12em}
+    .badge{border:1px solid var(--line);border-radius:999px;padding:8px 11px;font-weight:800;background:#0f172a;font-size:14px}
+    .scorebox{
+      display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;
+      background:var(--panel3);border:1px solid var(--line);border-radius:18px;padding:12px 14px;margin-bottom:12px
+    }
+    .scoreplayer{text-align:center;font-weight:800}
+    .scoreplayer strong{display:block;font-size:28px;line-height:1.05;margin-top:2px}
+    .scoreplayer.x{color:var(--x)} .scoreplayer.o{color:var(--o)}
+    .round{text-align:center;color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap}
+    .status{text-align:center;border-radius:16px;background:var(--panel2);padding:13px 12px;margin:8px 0 8px;font-size:18px;font-weight:850}
+    .hint{text-align:center;color:var(--muted);font-size:13px;min-height:20px;margin:0 0 14px}
     .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .cell{aspect-ratio:1;border:1px solid var(--line);border-radius:20px;background:#0f172a;color:var(--text);font-size:54px;font-weight:900;display:grid;place-items:center;cursor:pointer;transition:transform .08s ease,border-color .15s ease,background .15s ease}
+    .cell{
+      position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:20px;background:#0f172a;color:var(--text);
+      font-size:54px;font-weight:900;display:grid;place-items:center;cursor:pointer;
+      transition:transform .08s ease,border-color .15s ease,background .15s ease,opacity .15s ease
+    }
     .cell:active:not(:disabled){transform:scale(.97)}
     .cell:disabled{cursor:default}
     .cell.x{color:var(--x)}
     .cell.o{color:var(--o)}
     .cell.win{border-color:var(--ok);background:rgba(34,197,94,.12)}
-    .actions{display:grid;gap:10px;margin-top:16px}
+    .cell.oldest{
+      border-color:var(--warn);background:rgba(245,158,11,.08);animation:pulseOld 1.2s ease-in-out infinite
+    }
+    .cell.oldest::after{
+      content:"SALE";position:absolute;right:7px;top:7px;font-size:9px;line-height:1;font-weight:900;letter-spacing:.08em;
+      color:#1f1300;background:#fbbf24;border-radius:999px;padding:5px 6px
+    }
+    @keyframes pulseOld{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 0 4px rgba(245,158,11,.22)}}
+    .legend{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:12px}
+    .legend b{color:#fbbf24}
+    .actions{display:grid;gap:10px;margin-top:15px}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .hidden{display:none!important}
     .error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.45);color:#fecaca;border-radius:14px;padding:12px;margin-top:12px}
     .spinner{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media (prefers-reduced-motion:reduce){.spinner{animation:none}.cell{transition:none}}
-    @media (max-width:360px){.brand h1{font-size:30px}.cell{font-size:46px}.app{padding-left:12px;padding-right:12px}.card{padding:15px}}
+    @media (prefers-reduced-motion:reduce){.spinner,.cell.oldest{animation:none}.cell{transition:none}}
+    @media (max-width:360px){.brand h1{font-size:28px}.cell{font-size:45px}.app{padding-left:11px;padding-right:11px}.card{padding:14px}}
   </style>
 </head>
 <body>
   <main class="app">
     <div class="brand">
-      <h1>❌ 3 en raya ⭕</h1>
-      <p>Dos personas · cada uno desde su móvil</p>
+      <h1>❌ 3 en raya <span class="pro">PRO</span> ⭕</h1>
+      <p>Dos personas · una partida que no se atasca en empate</p>
     </div>
 
     <section id="home" class="card">
+      <div class="rule">
+        <span>🔥</span>
+        <div><strong>Regla PRO:</strong> solo puedes tener 3 fichas. Cuando colocas la 4.ª, desaparece automáticamente tu ficha más antigua.</div>
+      </div>
+
       <div class="home-actions">
-        <button id="createBtn" class="primary" type="button">Crear partida</button>
+        <button id="createBtn" class="primary" type="button">Crear partida PRO</button>
       </div>
       <div class="join-row">
         <input id="roomInput" maxlength="6" autocomplete="off" placeholder="CÓDIGO" aria-label="Código de partida">
         <button id="joinBtn" class="secondary" type="button">Unirme</button>
       </div>
-      <p class="small">Lo más fácil: crea una partida y pulsa “Enviar por WhatsApp”. La otra persona abre el enlace y entra.</p>
+      <p class="small">Crea una partida, mándala por WhatsApp y jugad cada uno desde su móvil. El tablero se sincroniza solo.</p>
       <div id="homeError" class="error hidden" role="alert"></div>
     </section>
 
@@ -75,7 +114,14 @@
         <div id="symbolBadge" class="badge">Tú: ❌</div>
       </div>
 
+      <div class="scorebox">
+        <div class="scoreplayer x">❌<strong id="xScore">0</strong></div>
+        <div class="round">RONDA<br><strong id="roundNo">1</strong></div>
+        <div class="scoreplayer o">⭕<strong id="oScore">0</strong></div>
+      </div>
+
       <div id="status" class="status" aria-live="polite">Conectando…</div>
+      <div id="hint" class="hint">Cada jugador puede tener un máximo de 3 fichas.</div>
 
       <div id="board" class="board" aria-label="Tablero de tres en raya">
         <button class="cell" type="button" data-cell="0" aria-label="Casilla 1"></button>
@@ -89,10 +135,12 @@
         <button class="cell" type="button" data-cell="8" aria-label="Casilla 9"></button>
       </div>
 
+      <div class="legend"><span><b>SALE</b> = tu ficha más antigua</span></div>
+
       <div class="actions">
         <button id="shareBtn" class="whatsapp" type="button">📲 Enviar partida por WhatsApp</button>
         <div class="row">
-          <button id="rematchBtn" class="secondary hidden" type="button">🔁 Revancha</button>
+          <button id="rematchBtn" class="primary hidden" type="button">🔥 Revancha</button>
           <button id="newBtn" class="secondary" type="button">➕ Nueva partida</button>
         </div>
       </div>
@@ -102,27 +150,32 @@
 
 <script>
 (() => {
-  const SUPABASE_URL = "https://vvltmdedwgjtvlcmindn.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_Temwpp4vUWzwRQ5u3FUgtg_qzMFFLQz";
-  const home = document.getElementById("home");
-  const gameEl = document.getElementById("game");
-  const createBtn = document.getElementById("createBtn");
-  const joinBtn = document.getElementById("joinBtn");
-  const roomInput = document.getElementById("roomInput");
-  const roomCodeEl = document.getElementById("roomCode");
-  const symbolBadge = document.getElementById("symbolBadge");
-  const statusEl = document.getElementById("status");
-  const boardEl = document.getElementById("board");
-  const cells = [...boardEl.querySelectorAll(".cell")];
-  const shareBtn = document.getElementById("shareBtn");
-  const rematchBtn = document.getElementById("rematchBtn");
-  const newBtn = document.getElementById("newBtn");
-  const homeError = document.getElementById("homeError");
-  const gameError = document.getElementById("gameError");
+  const SUPABASE_URL = 'https://vvltmdedwgjtvlcmindn.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_Temwpp4vUWzwRQ5u3FUgtg_qzMFFLQz';
 
-  let room = "";
-  let token = "";
-  let symbol = "";
+  const home = document.getElementById('home');
+  const gameEl = document.getElementById('game');
+  const createBtn = document.getElementById('createBtn');
+  const joinBtn = document.getElementById('joinBtn');
+  const roomInput = document.getElementById('roomInput');
+  const roomCodeEl = document.getElementById('roomCode');
+  const symbolBadge = document.getElementById('symbolBadge');
+  const statusEl = document.getElementById('status');
+  const hintEl = document.getElementById('hint');
+  const xScoreEl = document.getElementById('xScore');
+  const oScoreEl = document.getElementById('oScore');
+  const roundNoEl = document.getElementById('roundNo');
+  const boardEl = document.getElementById('board');
+  const cells = [...boardEl.querySelectorAll('.cell')];
+  const shareBtn = document.getElementById('shareBtn');
+  const rematchBtn = document.getElementById('rematchBtn');
+  const newBtn = document.getElementById('newBtn');
+  const homeError = document.getElementById('homeError');
+  const gameError = document.getElementById('gameError');
+
+  let room = '';
+  let token = '';
+  let symbol = '';
   let game = null;
   let pollTimer = null;
   let busy = false;
@@ -136,13 +189,13 @@
   function randomToken() {
     const bytes = new Uint8Array(24);
     crypto.getRandomValues(bytes);
-    return [...bytes].map(b => b.toString(16).padStart(2,"0")).join("");
+    return [...bytes].map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
-  function keyFor(code) { return "ttt-player-" + code; }
+  function keyFor(code) { return 'ttt-player-' + code; }
 
   function savePlayer() {
-    localStorage.setItem(keyFor(room), JSON.stringify({ token, symbol }));
+    localStorage.setItem(keyFor(room), JSON.stringify({ token: token, symbol: symbol }));
   }
 
   function restorePlayer(code) {
@@ -150,103 +203,113 @@
       const raw = localStorage.getItem(keyFor(code));
       if (!raw) return false;
       const parsed = JSON.parse(raw);
-      if (!parsed.token || !["X","O"].includes(parsed.symbol)) return false;
+      if (!parsed.token || !['X','O'].includes(parsed.symbol)) return false;
       room = code;
       token = parsed.token;
       symbol = parsed.symbol;
       return true;
-    } catch { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
   async function rpc(name, body) {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + name, {
-      method: "POST",
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST',
       headers: {
-        "apikey": SUPABASE_KEY,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(body)
     });
     const text = await res.text();
     let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch {}
+    try { data = text ? JSON.parse(text) : null; } catch (e) {}
     if (!res.ok) {
       const message = data && (data.message || data.hint || data.details);
-      throw new Error(message || "No se pudo conectar con la partida.");
+      throw new Error(message || 'No se pudo conectar con la partida.');
     }
     return data;
   }
 
   function setError(el, msg) {
-    if (!msg) { el.textContent = ""; el.classList.add("hidden"); return; }
+    if (!msg) {
+      el.textContent = '';
+      el.classList.add('hidden');
+      return;
+    }
     el.textContent = msg;
-    el.classList.remove("hidden");
+    el.classList.remove('hidden');
   }
 
   function inviteUrl() {
-    return location.origin + location.pathname + "?room=" + encodeURIComponent(room);
+    return location.origin + location.pathname + '?room=' + encodeURIComponent(room);
   }
 
   function setUrl() {
-    history.replaceState({}, "", location.pathname + "?room=" + encodeURIComponent(room));
+    history.replaceState({}, '', location.pathname + '?room=' + encodeURIComponent(room));
   }
 
   function showGame() {
-    home.classList.add("hidden");
-    gameEl.classList.remove("hidden");
+    home.classList.add('hidden');
+    gameEl.classList.remove('hidden');
     roomCodeEl.textContent = room;
-    symbolBadge.textContent = "Tú: " + (symbol === "X" ? "❌" : "⭕");
-    shareBtn.classList.toggle("hidden", symbol !== "X");
+    symbolBadge.textContent = 'Tú: ' + (symbol === 'X' ? '❌' : '⭕');
     startPolling();
   }
 
   function showHome() {
     stopPolling();
-    room = ""; token = ""; symbol = ""; game = null;
-    history.replaceState({}, "", location.pathname);
-    gameEl.classList.add("hidden");
-    home.classList.remove("hidden");
-    roomInput.value = "";
-    setError(homeError, "");
-    setError(gameError, "");
+    room = '';
+    token = '';
+    symbol = '';
+    game = null;
+    history.replaceState({}, '', location.pathname);
+    gameEl.classList.add('hidden');
+    home.classList.remove('hidden');
+    roomInput.value = '';
+    setError(homeError, '');
+    setError(gameError, '');
   }
 
   async function createGame() {
     if (busy) return;
     busy = true;
-    setError(homeError, "");
+    setError(homeError, '');
     createBtn.disabled = true;
     createBtn.innerHTML = '<span class="spinner"></span>Creando…';
     try {
       token = randomToken();
-      const rows = await rpc("ttt_create_game", { p_player_token: token });
+      const rows = await rpc('ttt_create_game', { p_player_token: token });
       const row = rows && rows[0];
-      if (!row) throw new Error("No se pudo crear la partida.");
+      if (!row) throw new Error('No se pudo crear la partida.');
       room = row.room_code;
-      symbol = "X";
+      symbol = 'X';
       savePlayer();
       setUrl();
       showGame();
+      game = row;
+      render();
       await refresh();
     } catch (e) {
       setError(homeError, friendlyError(e));
     } finally {
       busy = false;
       createBtn.disabled = false;
-      createBtn.textContent = "Crear partida";
+      createBtn.textContent = 'Crear partida PRO';
     }
   }
 
   async function joinGame(code) {
-    code = String(code || "").trim().toUpperCase();
+    code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z0-9]{6}$/.test(code)) {
-      setError(homeError, "Introduce un código de 6 caracteres.");
+      setError(homeError, 'Introduce un código de 6 caracteres.');
       return;
     }
     if (busy) return;
     busy = true;
-    setError(homeError, "");
+    setError(homeError, '');
     joinBtn.disabled = true;
     joinBtn.innerHTML = '<span class="spinner"></span>Entrando…';
     try {
@@ -258,9 +321,9 @@
         return;
       }
       const newToken = randomToken();
-      const rows = await rpc("ttt_join_game", { p_room_code: code, p_player_token: newToken });
+      const rows = await rpc('ttt_join_game', { p_room_code: code, p_player_token: newToken });
       const row = rows && rows[0];
-      if (!row) throw new Error("No se pudo entrar en la partida.");
+      if (!row) throw new Error('No se pudo entrar en la partida.');
       room = code;
       token = newToken;
       symbol = row.symbol;
@@ -274,18 +337,18 @@
     } finally {
       busy = false;
       joinBtn.disabled = false;
-      joinBtn.textContent = "Unirme";
+      joinBtn.textContent = 'Unirme';
     }
   }
 
   async function refresh() {
     if (!room) return;
     try {
-      const rows = await rpc("ttt_get_game", { p_room_code: room });
+      const rows = await rpc('ttt_get_game', { p_room_code: room });
       if (rows && rows[0]) {
         game = rows[0];
         render();
-        setError(gameError, "");
+        setError(gameError, '');
       }
     } catch (e) {
       setError(gameError, friendlyError(e));
@@ -293,12 +356,15 @@
   }
 
   async function play(cellIndex) {
-    if (busy || !game || game.status !== "playing" || game.turn !== symbol) return;
-    if (game.board[cellIndex] !== ".") return;
+    if (busy || !game || game.status !== 'playing' || game.turn !== symbol) return;
+    if (game.board[cellIndex] !== '.') return;
+
     busy = true;
-    setError(gameError, "");
+    render();
+    setError(gameError, '');
+
     try {
-      const rows = await rpc("ttt_play_move", {
+      const rows = await rpc('ttt_play_move', {
         p_room_code: room,
         p_player_token: token,
         p_cell: cellIndex
@@ -312,6 +378,7 @@
       await refresh();
     } finally {
       busy = false;
+      render();
     }
   }
 
@@ -319,78 +386,110 @@
     if (busy) return;
     busy = true;
     rematchBtn.disabled = true;
+    rematchBtn.innerHTML = '<span class="spinner"></span>Preparando…';
     try {
-      const rows = await rpc("ttt_restart_game", {
+      const rows = await rpc('ttt_restart_game', {
         p_room_code: room,
         p_player_token: token
       });
       if (rows && rows[0]) {
         game = rows[0];
         render();
-        setError(gameError, "");
+        setError(gameError, '');
       }
     } catch (e) {
       setError(gameError, friendlyError(e));
     } finally {
       busy = false;
       rematchBtn.disabled = false;
+      rematchBtn.textContent = '🔥 Revancha';
     }
   }
 
   function winnerLine(board) {
     for (const line of winLines) {
-      const [a,b,c] = line;
-      if (board[a] !== "." && board[a] === board[b] && board[a] === board[c]) return line;
+      const a = line[0], b = line[1], c = line[2];
+      if (board[a] !== '.' && board[a] === board[b] && board[a] === board[c]) return line;
     }
     return [];
   }
 
+  function ownOldest() {
+    if (!game) return null;
+    return symbol === 'X' ? game.x_oldest : game.o_oldest;
+  }
+
+  function ownCount() {
+    if (!game || !game.board) return 0;
+    return [...game.board].filter(v => v === symbol).length;
+  }
+
   function render() {
     if (!game) return;
-    const win = winnerLine(game.board || ".........");
-    const yourTurn = game.status === "playing" && game.turn === symbol;
+
+    const board = game.board || '.........';
+    const win = winnerLine(board);
+    const yourTurn = game.status === 'playing' && game.turn === symbol;
+    const oldest = ownOldest();
+    const count = ownCount();
+
+    xScoreEl.textContent = String(game.x_score || 0);
+    oScoreEl.textContent = String(game.o_score || 0);
+    roundNoEl.textContent = String(game.round_no || 1);
 
     cells.forEach((cell, i) => {
-      const v = game.board[i];
-      cell.textContent = v === "X" ? "×" : v === "O" ? "○" : "";
-      cell.classList.toggle("x", v === "X");
-      cell.classList.toggle("o", v === "O");
-      cell.classList.toggle("win", win.includes(i));
-      cell.disabled = busy || !yourTurn || v !== ".";
-      cell.setAttribute("aria-label", "Casilla " + (i+1) + (v === "." ? " vacía" : v === "X" ? " X" : " O"));
+      const v = board[i];
+      cell.textContent = v === 'X' ? '×' : v === 'O' ? '○' : '';
+      cell.classList.toggle('x', v === 'X');
+      cell.classList.toggle('o', v === 'O');
+      cell.classList.toggle('win', win.includes(i));
+      cell.classList.toggle('oldest', game.status === 'playing' && oldest === i && count >= 3);
+      cell.disabled = busy || !yourTurn || v !== '.';
+      cell.setAttribute('aria-label', 'Casilla ' + (i + 1) + (v === '.' ? ' vacía' : v === 'X' ? ' X' : ' O'));
     });
 
-    if (game.status === "waiting") {
-      statusEl.textContent = "📲 Envía el enlace por WhatsApp";
-    } else if (game.status === "playing") {
-      statusEl.textContent = yourTurn ? "👉 Tu turno" : "⏳ Turno del rival";
-    } else if (game.status === "draw") {
-      statusEl.textContent = "🤝 Empate";
+    if (game.status === 'waiting') {
+      statusEl.textContent = '📲 Envía el enlace por WhatsApp';
+      hintEl.textContent = 'Cuando entre tu rival, empezará la ronda 1.';
+    } else if (game.status === 'playing') {
+      statusEl.textContent = yourTurn ? '👉 Tu turno' : '⏳ Turno del rival';
+      if (count >= 3 && oldest !== null && oldest !== undefined) {
+        hintEl.textContent = yourTurn
+          ? '⚠️ Al colocar una ficha, desaparecerá la marcada como SALE.'
+          : 'Tu ficha marcada como SALE será la próxima en desaparecer.';
+      } else {
+        hintEl.textContent = 'Tienes ' + count + '/3 fichas colocadas.';
+      }
+    } else if (game.status === 'x_won' || game.status === 'o_won') {
+      const winner = game.status === 'x_won' ? 'X' : 'O';
+      statusEl.textContent = winner === symbol ? '🏆 ¡Has ganado la ronda!' : '😈 La ronda es de tu rival';
+      hintEl.textContent = 'Marcador: ❌ ' + (game.x_score || 0) + ' - ' + (game.o_score || 0) + ' ⭕';
     } else {
-      const winner = game.status === "x_won" ? "X" : "O";
-      statusEl.textContent = winner === symbol ? "🏆 ¡Has ganado!" : "😅 Ha ganado tu rival";
+      statusEl.textContent = 'Ronda terminada';
+      hintEl.textContent = 'Pulsa revancha para seguir.';
     }
 
-    const ended = ["x_won","o_won","draw"].includes(game.status);
-    rematchBtn.classList.toggle("hidden", !ended);
-    shareBtn.classList.toggle("hidden", symbol !== "X" || game.status !== "waiting");
+    const ended = ['x_won','o_won','draw'].includes(game.status);
+    rematchBtn.classList.toggle('hidden', !ended);
+    shareBtn.classList.toggle('hidden', symbol !== 'X' || game.status !== 'waiting');
   }
 
   function friendlyError(e) {
-    const msg = String((e && e.message) || "");
-    if (/already has two|ya tiene dos/i.test(msg)) return "Esta partida ya tiene dos jugadores.";
-    if (/not found|no encontrada/i.test(msg)) return "No encuentro esa partida. Revisa el código.";
-    if (/not your turn|No es tu turno/i.test(msg)) return "Todavía no es tu turno.";
-    if (/occupied|ocupada/i.test(msg)) return "Esa casilla ya está ocupada.";
-    if (/does not belong|No perteneces/i.test(msg)) return "Este navegador no está registrado como jugador de esta partida.";
-    return msg || "Ha ocurrido un error.";
+    const msg = String((e && e.message) || '');
+    if (/already has two|ya tiene dos/i.test(msg)) return 'Esta partida ya tiene dos jugadores.';
+    if (/not found|no encontrada/i.test(msg)) return 'No encuentro esa partida. Revisa el código.';
+    if (/not your turn|No es tu turno/i.test(msg)) return 'Todavía no es tu turno.';
+    if (/occupied|ocupada/i.test(msg)) return 'Esa casilla ya está ocupada.';
+    if (/does not belong|No perteneces/i.test(msg)) return 'Este navegador no está registrado como jugador de esta partida.';
+    if (/todavía no ha terminado|not finished/i.test(msg)) return 'La ronda todavía no ha terminado.';
+    return msg || 'Ha ocurrido un error.';
   }
 
   function startPolling() {
     stopPolling();
     pollTimer = setInterval(() => {
-      if (!busy && document.visibilityState === "visible") refresh();
-    }, 900);
+      if (!busy && document.visibilityState === 'visible') refresh();
+    }, 800);
   }
 
   function stopPolling() {
@@ -398,26 +497,36 @@
     pollTimer = null;
   }
 
-  createBtn.addEventListener("click", createGame);
-  joinBtn.addEventListener("click", () => joinGame(roomInput.value));
-  roomInput.addEventListener("input", () => {
-    roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-  });
-  roomInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") joinGame(roomInput.value);
-  });
-  cells.forEach(cell => cell.addEventListener("click", () => play(Number(cell.dataset.cell))));
-  rematchBtn.addEventListener("click", rematch);
-  newBtn.addEventListener("click", showHome);
-  shareBtn.addEventListener("click", () => {
-    const text = "🎮 Te reto a un 3 en raya. Abre este enlace y juega conmigo:\n" + inviteUrl();
-    location.href = "https://wa.me/?text=" + encodeURIComponent(text);
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && room) refresh();
+  createBtn.addEventListener('click', createGame);
+  joinBtn.addEventListener('click', () => joinGame(roomInput.value));
+
+  roomInput.addEventListener('input', () => {
+    roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
   });
 
-  const initialRoom = new URLSearchParams(location.search).get("room");
+  roomInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinGame(roomInput.value);
+  });
+
+  cells.forEach(cell => {
+    cell.addEventListener('click', () => play(Number(cell.dataset.cell)));
+  });
+
+  rematchBtn.addEventListener('click', rematch);
+  newBtn.addEventListener('click', showHome);
+
+  shareBtn.addEventListener('click', () => {
+    const text =
+      '🔥 Te reto al 3 EN RAYA PRO. Solo puedes tener 3 fichas: al poner la 4ª desaparece la más antigua.\\n\\n' +
+      'Entra aquí y juega conmigo:\\n' + inviteUrl();
+    location.href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && room) refresh();
+  });
+
+  const initialRoom = new URLSearchParams(location.search).get('room');
   if (initialRoom && /^[A-Z0-9]{6}$/i.test(initialRoom)) {
     const code = initialRoom.toUpperCase();
     if (restorePlayer(code)) {
